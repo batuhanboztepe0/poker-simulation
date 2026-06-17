@@ -342,6 +342,35 @@ class TestRLTorch:
             engine.play_hand()
         assert sum(p.stack for p in players) == total
 
+    def test_multi_hand_episodes_train_and_conserve_chips(self):
+        """Bankroll (multi-hand) mode: stacks persist within an episode, the
+        reward is a bounded log-utility delta, and chips are conserved every
+        hand. Single-hand mode is unaffected (separate default path)."""
+        import torch
+        torch.manual_seed(0)
+        tr = rl.SelfPlayTrainer(
+            n_players=2, seed=1, opponent_mode="fixed", mc_sims=100,
+            multi_hand=True, hands_per_episode=20, gamma=0.99)
+        # Looser clip is auto-selected for log-utility rewards.
+        assert tr.reward_clip == 3.0
+
+        orig = tr.engine.play_hand
+        n_players = len(tr.players)
+
+        def checked():
+            result = orig()
+            assert (sum(p.stack for p in tr.players)
+                    == n_players * tr.stack0), "chip conservation violated"
+            return result
+
+        tr.engine.play_hand = checked
+        losses = tr.train(60, batch_size=32, refresh_every=5,
+                          hands_per_refresh=20)
+        assert len(losses) == 60
+        # Every stored reward is a clipped log-utility delta.
+        assert tr.buffer._buf, "no transitions collected"
+        assert all(abs(t[2]) <= tr.reward_clip + 1e-9 for t in tr.buffer._buf)
+
 
 @pytest.mark.skipif(not rl._HAVE_TORCH, reason="torch not installed")
 class TestRLBeatsBaseline:

@@ -38,13 +38,19 @@ def main():
     ap.add_argument("--final-seeds", type=int, default=50)
     ap.add_argument("--final-hands", type=int, default=200)
     ap.add_argument("--mc-sims", type=int, default=100)
+    ap.add_argument("--multi-hand", action="store_true",
+                    help="bankroll episodes (persistent stacks, log-utility reward)")
+    ap.add_argument("--hands-per-episode", type=int, default=15)
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
+    # Multi-hand bankroll episodes are longer-horizon, so nudge gamma up.
+    gamma = 0.99 if args.multi_hand else 0.97
     trainer = SelfPlayTrainer(
         n_players=2, hidden=args.hidden, seed=args.trainer_seed,
         opponent_mode=args.mode, mc_sims=args.mc_sims,
-        epsilon_start=1.0, epsilon_end=0.05, gamma=0.97, snapshot_every=300,
+        epsilon_start=1.0, epsilon_end=0.05, gamma=gamma, snapshot_every=300,
+        multi_hand=args.multi_hand, hands_per_episode=args.hands_per_episode,
     )
 
     print(f"Training mode={args.mode} steps={args.steps} hidden={args.hidden} "

@@ -14,6 +14,7 @@ alpha model fit on realised PnL.
 """
 
 import copy
+import math
 from collections import deque
 
 from src.player import (
@@ -287,12 +288,21 @@ def paired_t_test(diffs):
 
 class SelfPlayTrainer:
     """
-    DQN-style trainer with Monte-Carlo (terminal-reward) regression targets.
+    DQN trainer with TD(0) bootstrapped targets (target net + Huber loss).
 
-    Each training hand is an independent episode: stacks reset, epsilon-greedy
-    learner bots play one hand, and every decision they made is labeled with
-    that bot's normalized, clipped chip delta. `train(n_steps)` performs
-    n_steps minibatch Huber-regression updates toward those returns.
+    Each learner's consecutive decisions are chained into (s, a, r, s', done)
+    transitions; the target is `r + gamma * max_a' Q_target(s', a')` over the
+    legal next actions (terminal transitions use `r` alone). `train(n_steps)`
+    performs n_steps minibatch Huber-regression updates toward those targets.
+
+    Episode modes:
+        single-hand (default, multi_hand=False) - stacks reset every hand, each
+            hand is its own episode, reward = normalized clipped chip delta.
+            Risk-neutral per-hand EV; the strongest beats-baseline number.
+        multi-hand  (multi_hand=True) - stacks PERSIST across hands_per_episode
+            hands, reward = per-hand change in log-utility of the stack
+            (log(S'/S)); decisions chain into one episode-long TD sequence. The
+            agent optimizes long-run log-bankroll-growth (Kelly / ROADMAP s11).
 
     Opponent modes (the M1->M4 progression in docs/RL_HANDOFF.md):
         "self"     - all n_players bots are learners sharing the live net
@@ -308,15 +318,28 @@ class SelfPlayTrainer:
 
     def __init__(self, n_players=2, stack0=1000, hidden=64, lr=1e-3,
                  epsilon=0.2, seed=0, small_blind=10, big_blind=20,
-                 opponent_mode="self", mc_sims=100, reward_clip=1.0,
+                 opponent_mode="self", mc_sims=100, reward_clip=None,
                  epsilon_start=None, epsilon_end=None, snapshot_every=500,
-                 baseline_kwargs=None, gamma=0.97, target_update_every=50):
+                 baseline_kwargs=None, gamma=0.97, target_update_every=50,
+                 multi_hand=False, hands_per_episode=15, util_floor=1.0):
         _require_torch()
         import random as _random
         from src.game import GameEngine
 
         self.stack0 = stack0
         self.reward_scale = float(stack0)
+        # Multi-hand (bankroll) episodes: stacks PERSIST across hands_per_episode
+        # hands and the reward is the per-hand change in log-utility of the
+        # stack (the log-utility Bellman of ROADMAP s11) -> growth-optimal,
+        # risk-averse near bust. Single-hand mode (default) keeps the original
+        # i.i.d. per-hand chip-delta reward and is unchanged.
+        self.multi_hand = multi_hand
+        self.hands_per_episode = hands_per_episode
+        self.util_floor = float(util_floor)
+        # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
+        # so multi-hand wants a looser clip than the [-1,1] chip-delta reward.
+        if reward_clip is None:
+            reward_clip = 3.0 if multi_hand else 1.0
         self.reward_clip = reward_clip
         self.rng = _random.Random(seed)
         self.qnet = QNetwork(hidden=hidden)
@@ -386,7 +409,20 @@ class SelfPlayTrainer:
             state = self.rng.choice(self.snapshot_pool)
             opp.qnet.load_state_dict(state)
 
+    def _utility(self, stack):
+        """Log-utility of a chip stack (floored so a bust is finite-bad)."""
+        return math.log(max(stack, self.util_floor))
+
+    def _clip(self, r):
+        return max(-self.reward_clip, min(self.reward_clip, r))
+
     def _collect(self, n_hands):
+        if self.multi_hand:
+            self._collect_multi(n_hands)
+        else:
+            self._collect_single(n_hands)
+
+    def _collect_single(self, n_hands):
         for _ in range(n_hands):
             if self.opponent_mode == "snapshot":
                 self._reseat_snapshot_opponents()
@@ -399,7 +435,7 @@ class SelfPlayTrainer:
             self.engine.play_hand()
             for b in self.learners:
                 raw = (b.stack - before[b.player_id]) / self.reward_scale
-                reward = max(-self.reward_clip, min(self.reward_clip, raw))
+                reward = self._clip(raw)
                 log = b._episode_log
                 # Chain this bot's consecutive decisions into TD transitions:
                 # the realised hand reward lands only on the terminal decision;
@@ -414,6 +450,77 @@ class SelfPlayTrainer:
                                          False)
                     else:
                         self.buffer.push(feat, idx, reward, None, None, True)
+
+    def _collect_multi(self, n_hands):
+        """
+        Bankroll episodes: play matches of up to `hands_per_episode` hands with
+        PERSISTENT stacks. Each hand's reward is the change in the learner's
+        log-utility of its stack; decisions are chained into one TD sequence
+        spanning the whole episode (the episode's final decision is terminal),
+        so the value head learns long-run log-bankroll-growth-to-go, not just
+        single-hand EV. `n_hands` is the approximate hand budget for this call.
+        """
+        n_episodes = max(1, math.ceil(n_hands / self.hands_per_episode))
+        for _ in range(n_episodes):
+            self._collect_episode()
+
+    def _collect_episode(self):
+        if self.opponent_mode == "snapshot":
+            self._reseat_snapshot_opponents()
+        # Reset stacks ONCE, at the start of the episode.
+        for p in self.players:
+            p.stack = self.stack0
+            if hasattr(p, "_episode_log"):
+                p._episode_log = []
+
+        # Per learner, accumulate the episode's decisions as mutable
+        # [feat, idx, legal, reward] rows. `carry` holds log-utility change from
+        # hands in which the bot never acted (e.g. the BB winning when the SB
+        # folds pre-flop) so no bankroll change is dropped.
+        rows = {b.player_id: [] for b in self.learners}
+        carry = {b.player_id: 0.0 for b in self.learners}
+
+        for _ in range(self.hands_per_episode):
+            if sum(1 for p in self.players if p.stack > 0) < 2:
+                break
+            before = {b.player_id: b.stack for b in self.learners}
+            for b in self.learners:
+                b._episode_log = []
+            self.engine.play_hand()
+            for b in self.learners:
+                d_util = (self._utility(b.stack)
+                          - self._utility(before[b.player_id]))
+                decisions = b._episode_log
+                if decisions:
+                    # This hand's whole utility change lands on its LAST
+                    # decision (earlier within-hand decisions bootstrap to it);
+                    # plus any carried utility from prior actionless hands.
+                    bonus = carry[b.player_id]
+                    carry[b.player_id] = 0.0
+                    last = len(decisions) - 1
+                    for j, (feat, idx, legal) in enumerate(decisions):
+                        r = (d_util + bonus) if j == last else 0.0
+                        rows[b.player_id].append([feat, idx, legal, r])
+                else:
+                    carry[b.player_id] += d_util
+
+        for b in self.learners:
+            seq = rows[b.player_id]
+            if not seq:
+                # Learner never acted the whole episode -> no decision to credit,
+                # so any carry is dropped. Practically unreachable heads-up (the
+                # SB always acts pre-flop); negligible and conservative if it is.
+                continue
+            # Flush any trailing carry (actionless final hands) onto the last
+            # decision so the episode's total utility change is conserved.
+            seq[-1][3] += carry[b.player_id]
+            for k, (feat, idx, legal, r) in enumerate(seq):
+                r = self._clip(r)
+                if k + 1 < len(seq):
+                    nxt_feat, _, nxt_legal, _ = seq[k + 1]
+                    self.buffer.push(feat, idx, r, nxt_feat, nxt_legal, False)
+                else:
+                    self.buffer.push(feat, idx, r, None, None, True)
 
     def _grad_step(self, batch):
         feats = torch.tensor([t[0] for t in batch], dtype=torch.float32)
