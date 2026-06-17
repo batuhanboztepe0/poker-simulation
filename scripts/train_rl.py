@@ -1,0 +1,81 @@
+"""
+train_rl.py
+-----------
+Train the Phase C RL agent and report whether it beats the myopic EV baseline.
+
+This is the demo/report driver for docs/RL_HANDOFF.md: it trains an
+`RLBotPlayer` (DQN over the 18-dim featurization, TD(0) targets, MC equity),
+prints the learning curve, and prints the headline `evaluate_vs_baseline`
+number (wins/N and mean chip diff + a paired t-test).
+
+Examples:
+    python -m scripts.train_rl --mode fixed --steps 1500
+    python -m scripts.train_rl --mode snapshot --steps 1500 --eval-hands 200
+"""
+
+import argparse
+import time
+
+import torch
+
+from src.rl_agent import SelfPlayTrainer, evaluate_vs_baseline, paired_t_test
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", default="fixed",
+                    choices=["fixed", "snapshot", "self"])
+    ap.add_argument("--steps", type=int, default=1500)
+    ap.add_argument("--hidden", type=int, default=64)
+    ap.add_argument("--torch-seed", type=int, default=0)
+    ap.add_argument("--trainer-seed", type=int, default=1)
+    ap.add_argument("--batch-size", type=int, default=64)
+    ap.add_argument("--refresh-every", type=int, default=5)
+    ap.add_argument("--hands-per-refresh", type=int, default=20)
+    ap.add_argument("--eval-every", type=int, default=300)
+    ap.add_argument("--eval-seeds", type=int, default=30)
+    ap.add_argument("--eval-hands", type=int, default=120)
+    ap.add_argument("--final-seeds", type=int, default=50)
+    ap.add_argument("--final-hands", type=int, default=200)
+    ap.add_argument("--mc-sims", type=int, default=100)
+    args = ap.parse_args()
+
+    torch.manual_seed(args.torch_seed)
+    trainer = SelfPlayTrainer(
+        n_players=2, hidden=args.hidden, seed=args.trainer_seed,
+        opponent_mode=args.mode, mc_sims=args.mc_sims,
+        epsilon_start=1.0, epsilon_end=0.05, gamma=0.97, snapshot_every=300,
+    )
+
+    print(f"Training mode={args.mode} steps={args.steps} hidden={args.hidden} "
+          f"torch_seed={args.torch_seed} ...")
+    t0 = time.time()
+    losses = trainer.train(
+        args.steps, batch_size=args.batch_size,
+        refresh_every=args.refresh_every,
+        hands_per_refresh=args.hands_per_refresh,
+        eval_every=args.eval_every, eval_seeds=args.eval_seeds,
+        eval_hands=args.eval_hands, eval_mc_sims=args.mc_sims,
+    )
+    train_dt = time.time() - t0
+
+    print(f"\nLearning curve (eval vs myopic, "
+          f"{args.eval_seeds} seeds x {args.eval_hands} hands):")
+    for h in trainer.history:
+        print(f"  step {h['step']:5d}:  wins {h['wins']:2d}/{h['n_seeds']}  "
+              f"mean_diff {h['mean_chip_diff']:+8.0f}")
+
+    final = evaluate_vs_baseline(
+        trainer.qnet, n_seeds=args.final_seeds, n_hands=args.final_hands,
+        mc_sims=args.mc_sims)
+    tt = paired_t_test(final["per_seed_diffs"])
+    print(f"\nHEADLINE  ({args.final_seeds} seeds x {args.final_hands} hands):")
+    print(f"  wins           : {final['wins']}/{final['n_seeds']}")
+    print(f"  mean chip diff : {final['mean_chip_diff']:+.1f}")
+    print(f"  paired t-test  : t={tt['t']:.2f}  p={tt['p_value']:.4f}  "
+          f"(n={tt['n']})")
+    print(f"  train time     : {train_dt:.1f}s  (final loss {losses[-1]:.4f})")
+
+
+if __name__ == "__main__":
+    main()
