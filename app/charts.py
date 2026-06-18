@@ -219,3 +219,120 @@ def tournament_matrix_figure(win_matrix, n_seeds):
         yaxis_title="Agent (row)",
     )
     return fig
+
+
+# ---------------------------------------------------------------------------
+# Evaluation / PnL panels (src.evaluation, src.analytics drawdown)
+# ---------------------------------------------------------------------------
+
+def pnl_distribution_figure(diffs, name_a="A", name_b="B"):
+    """
+    Histogram of per-seed PnL diffs (net_chips A − net_chips B), mean marked.
+    Each seed is one MC-driven match, so this is the realised PnL distribution
+    of A vs B across scenarios.
+    """
+    mean = (sum(diffs) / len(diffs)) if diffs else 0.0
+    fig = go.Figure(go.Histogram(x=diffs, nbinsx=20))
+    fig.add_vline(x=0, line=dict(color="gray", dash="dot"))
+    fig.add_vline(x=mean, line=dict(color="green" if mean >= 0 else "red"),
+                  annotation_text=f"mean {mean:+.0f}")
+    fig.update_layout(
+        title=f"PnL distribution: {name_a} − {name_b} (per seed)",
+        xaxis_title=f"Chip PnL ({name_a} − {name_b})", yaxis_title="Seeds",
+        showlegend=False,
+    )
+    return fig
+
+
+def paired_diff_figure(diffs, name_a="A", name_b="B", seeds=None):
+    """Per-seed PnL diff as a green(win)/red(loss) bar chart (paired view)."""
+    x = [str(s) for s in (seeds if seeds is not None else range(len(diffs)))]
+    colors = ["#2ca02c" if d > 0 else "#d62728" if d < 0 else "#888"
+              for d in diffs]
+    fig = go.Figure(go.Bar(x=x, y=diffs, marker_color=colors))
+    fig.add_hline(y=0, line=dict(color="gray"))
+    fig.update_layout(
+        title=f"Per-seed PnL: {name_a} − {name_b}",
+        xaxis_title="Seed", yaxis_title=f"Chip PnL ({name_a} − {name_b})",
+    )
+    return fig
+
+
+def learning_curve_figure(history):
+    """
+    Dual-axis RL learning curve from `SelfPlayTrainer.history` snapshots (each
+    {step, wins, n_seeds, mean_chip_diff}): win rate (left) and mean chip diff
+    vs baseline (right) over training steps.
+    """
+    steps = [h["step"] for h in history]
+    win_rate = [h["wins"] / h["n_seeds"] if h.get("n_seeds") else 0.0
+                for h in history]
+    mean_diff = [h["mean_chip_diff"] for h in history]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=steps, y=win_rate, mode="lines+markers",
+                             name="win rate vs baseline", yaxis="y"))
+    fig.add_trace(go.Scatter(x=steps, y=mean_diff, mode="lines+markers",
+                             name="mean chip diff", yaxis="y2"))
+    fig.update_layout(
+        title="RL learning curve (held-out eval during training)",
+        xaxis_title="Training step",
+        yaxis=dict(title="Win rate", range=[0, 1]),
+        yaxis2=dict(title="Mean chip diff", overlaying="y", side="right"),
+        legend=dict(orientation="h"),
+    )
+    return fig
+
+
+def equity_drawdown_figure(dd_df, name=None):
+    """
+    Bankroll trajectory + underwater drawdown for one player.
+
+    Args:
+        dd_df (DataFrame): `analytics.drawdown_curve` output
+            [hand_number, stack, peak, drawdown].
+        name (str | None): player display name.
+    """
+    label = name or "Player"
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=dd_df["hand_number"], y=dd_df["stack"],
+        mode="lines", name=f"{label} stack", yaxis="y",
+    ))
+    fig.add_trace(go.Scatter(
+        x=dd_df["hand_number"], y=[-d for d in dd_df["drawdown"]],
+        mode="lines", name="drawdown", yaxis="y2",
+        fill="tozeroy", line=dict(color="#d62728"),
+    ))
+    fig.update_layout(
+        title=f"Bankroll & drawdown: {label}",
+        xaxis_title="Hand",
+        yaxis=dict(title="Chips"),
+        yaxis2=dict(title="Drawdown", overlaying="y", side="right",
+                    rangemode="tozero"),
+        legend=dict(orientation="h"),
+    )
+    return fig
+
+
+def pnl_box_figure(per_agent_nets):
+    """
+    Box plot of per-seed net chips per agent (cross-agent PnL distribution).
+
+    Args:
+        per_agent_nets (dict): {name: [net chips per (pair, seed)]}.
+    """
+    order = sorted(
+        per_agent_nets,
+        key=lambda n: (sum(per_agent_nets[n]) / len(per_agent_nets[n])
+                       if per_agent_nets[n] else 0.0),
+        reverse=True,
+    )
+    fig = go.Figure()
+    for name in order:
+        fig.add_trace(go.Box(y=per_agent_nets[name], name=name, boxmean=True))
+    fig.add_hline(y=0, line=dict(color="gray", dash="dot"))
+    fig.update_layout(
+        title="Per-seed net-chip distribution by agent",
+        yaxis_title="Net chips (per match)", showlegend=False,
+    )
+    return fig

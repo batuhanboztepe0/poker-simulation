@@ -18,7 +18,9 @@ import time
 
 import torch
 
-from src.rl_agent import SelfPlayTrainer, evaluate_vs_baseline, paired_t_test
+from src.rl_agent import (
+    SelfPlayTrainer, evaluate_vs_baseline, paired_t_test, save_trainer_checkpoint,
+)
 
 
 def main():
@@ -48,6 +50,9 @@ def main():
                     help="number of players at the table (default 2)")
     ap.add_argument("--extended-features", action="store_true",
                     help="use the extended feature vector (horizon appended)")
+    ap.add_argument("--save", default=None,
+                    help="path to save a reloadable checkpoint (weights + "
+                         "feature_mode + learning-curve history) for the dashboard")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
@@ -110,6 +115,11 @@ def main():
     print(f"  paired t-test  : t={tt['t']:.2f}  p={tt['p_value']:.4f}  "
           f"(n={tt['n']})")
     print(f"  train time     : {train_dt:.1f}s  (final loss {losses[-1]:.4f})")
+
+    if args.save:
+        save_trainer_checkpoint(trainer, args.save,
+                                meta={"mode": args.mode, "steps": args.steps})
+        print(f"  saved checkpoint -> {args.save}")
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ alpha model fit on realised PnL.
 
 import copy
 import math
+import os
 from collections import deque
 
 from src.player import (
@@ -737,3 +738,62 @@ class SelfPlayTrainer:
                 snap["step"] = step + 1
                 self.history.append(snap)
         return losses
+
+
+# ---------------------------------------------------------------------------
+# Checkpointing (so a trained policy can be reloaded into the dashboard)
+# ---------------------------------------------------------------------------
+
+def save_checkpoint(qnet, path, hidden=64, input_dim=None, feature_mode="base",
+                    history=None, meta=None):
+    """
+    Save a Q-network checkpoint the dashboard / `load_checkpoint` can reload.
+
+    Stores the weights plus the architecture (input_dim, hidden), the
+    `feature_mode` the policy expects, and the optional learning-curve `history`
+    (the list of `evaluate_vs_baseline` snapshots from `SelfPlayTrainer.train`).
+    """
+    _require_torch()
+    if input_dim is None:
+        input_dim = qnet.net[0].in_features
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    torch.save({
+        "state_dict": qnet.state_dict(),
+        "input_dim": int(input_dim),
+        "hidden": int(hidden),
+        "feature_mode": feature_mode,
+        "history": list(history or []),
+        "meta": dict(meta or {}),
+    }, path)
+    return path
+
+
+def load_checkpoint(path):
+    """
+    Load a checkpoint saved by `save_checkpoint`.
+
+    Returns (qnet, ckpt) where `ckpt` is the full dict (incl. 'history' and
+    'feature_mode'), so callers can both run the net and chart its learning curve.
+    """
+    _require_torch()
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    qnet = QNetwork(input_dim=ckpt["input_dim"], hidden=ckpt["hidden"])
+    qnet.load_state_dict(ckpt["state_dict"])
+    qnet.eval()
+    return qnet, ckpt
+
+
+def save_trainer_checkpoint(trainer, path, meta=None):
+    """Convenience: checkpoint a SelfPlayTrainer's live policy + learning curve."""
+    _require_torch()
+    qnet = trainer.qnet
+    return save_checkpoint(
+        qnet, path,
+        hidden=qnet.net[0].out_features,
+        input_dim=qnet.net[0].in_features,
+        feature_mode=getattr(trainer, "feature_mode", "base"),
+        history=getattr(trainer, "history", []),
+        meta=meta,
+    )

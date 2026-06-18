@@ -1,0 +1,183 @@
+"""
+evaluation.py
+-------------
+Monte-Carlo PnL evaluation between agents (the "measure PnL with MC" layer).
+
+Each seed is one self-contained heads-up bankroll match driven by a shared
+`random.Random(seed)` (deck + every bot's MC sampling), so a seed is a paired
+observation and the per-seed chip difference is a realised PnL draw. This is the
+torch-free generalisation of `rl_agent.evaluate_vs_baseline`: it works for ANY
+agent factories (myopic / Kelly / rollout, and RL when a qnet-backed factory is
+supplied by the caller), and exposes the *per-seed* diffs so the dashboard can
+chart the PnL distribution and its paired t-test, not just the mean.
+
+Quant parallel: per-seed diff = a strategy's realised PnL per scenario; the
+paired t-test t-stat is its Sharpe-like significance over the scenario set.
+
+Pure of torch and Streamlit; reuses the deterministic seeding helpers from
+`tournament` and the `paired_t_test` from `rl_agent` (both torch-free).
+"""
+
+import random
+from dataclasses import dataclass
+from typing import Callable, Dict, List, Tuple
+
+from src.simulation import simulate_session
+from src.game import DEFAULT_SMALL_BLIND, DEFAULT_BIG_BLIND
+from src.tournament import _wire_rng, _pair_seed
+from src.rl_agent import paired_t_test
+
+# A factory builds a FRESH player each call: factory(player_id, stack) -> Player.
+AgentFactory = Callable[[int, int], object]
+
+
+@dataclass
+class MatchupResult:
+    """
+    One A-vs-B evaluation over a set of seeds (A seated as player_id=1).
+
+    Attributes:
+        name_a, name_b: agent display names.
+        seeds: the seeds actually played.
+        diffs: per-seed PnL diff = net_chips(A) - net_chips(B).
+        net_a, net_b: per-seed net chips for each agent.
+        wins_a, wins_b, ties: per-seed outcome counts.
+        mean_diff: mean of `diffs`.
+        t_test: paired_t_test(diffs) -> {mean, n, t, p_value}.
+    """
+    name_a: str
+    name_b: str
+    seeds: List[int]
+    diffs: List[int]
+    net_a: List[int]
+    net_b: List[int]
+    wins_a: int
+    wins_b: int
+    ties: int
+    mean_diff: float
+    t_test: dict
+
+
+@dataclass
+class RosterResult:
+    """
+    Round-robin PnL evaluation over a roster of named agent factories.
+
+    Attributes:
+        leaderboard: list of {name, mean_net_chips, n_matches} sorted desc.
+        win_matrix: win_matrix[A][B] = seeds A finished ahead of B.
+        per_agent_nets: {name: [net chips for every (pair, seed) it played]}.
+        pair_results: {(A, B): MatchupResult} for A < B lexicographically.
+        n_seeds: seeds per pair.
+    """
+    leaderboard: List[dict]
+    win_matrix: Dict[str, Dict[str, int]]
+    per_agent_nets: Dict[str, List[int]]
+    pair_results: Dict[Tuple[str, str], MatchupResult]
+    n_seeds: int = 0
+
+
+def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
+                     name_a: str, name_b: str, seeds: List[int],
+                     n_hands: int = 200, small_blind: int = DEFAULT_SMALL_BLIND,
+                     big_blind: int = DEFAULT_BIG_BLIND,
+                     starting_stack: int = 1000,
+                     fast_mode: bool = False) -> MatchupResult:
+    """
+    Play one seeded heads-up bankroll match per seed and collect the PnL diffs.
+
+    For each seed, A is seated as player_id=1 and B as player_id=2 over the same
+    deck (paired). Chip conservation is asserted per match. Returns the per-seed
+    diffs plus their paired t-test against 0.
+    """
+    diffs, net_a, net_b = [], [], []
+    wins_a = wins_b = ties = 0
+    for seed in seeds:
+        pa = factory_a(1, starting_stack)
+        pb = factory_b(2, starting_stack)
+        total_before = pa.stack + pb.stack
+
+        shared_rng = random.Random(seed)
+        for p in (pa, pb):
+            _wire_rng(p, shared_rng)
+
+        result = simulate_session(
+            [pa, pb], n_hands=n_hands,
+            small_blind=small_blind, big_blind=big_blind,
+            seed=seed, fast_mode=fast_mode,
+        )
+        total_after = sum(result.final_stacks.values())
+        assert total_after == total_before, (
+            f"Chip conservation violated ({name_a} vs {name_b}, seed={seed}): "
+            f"{total_before} -> {total_after}"
+        )
+
+        na, nb = result.net_chips(1), result.net_chips(2)
+        net_a.append(na)
+        net_b.append(nb)
+        diffs.append(na - nb)
+        if na > nb:
+            wins_a += 1
+        elif nb > na:
+            wins_b += 1
+        else:
+            ties += 1
+
+    return MatchupResult(
+        name_a=name_a, name_b=name_b, seeds=list(seeds),
+        diffs=diffs, net_a=net_a, net_b=net_b,
+        wins_a=wins_a, wins_b=wins_b, ties=ties,
+        mean_diff=(sum(diffs) / len(diffs) if diffs else 0.0),
+        t_test=paired_t_test(diffs),
+    )
+
+
+def evaluate_roster(roster: Dict[str, AgentFactory], seeds: List[int],
+                    n_hands: int = 200, small_blind: int = DEFAULT_SMALL_BLIND,
+                    big_blind: int = DEFAULT_BIG_BLIND,
+                    starting_stack: int = 1000,
+                    fast_mode: bool = False) -> RosterResult:
+    """
+    Round-robin every unordered pair via `evaluate_matchup`, reusing the
+    tournament's deterministic per-pair seeding, and aggregate into a leaderboard
+    (mean net chips), a directed win matrix, and per-agent net-chip samples (for
+    a PnL distribution box/violin).
+    """
+    names = list(roster.keys())
+    win_matrix = {a: {b: 0 for b in names if b != a} for a in names}
+    per_agent_nets = {a: [] for a in names}
+    net_total = {a: 0.0 for a in names}
+    n_matches = {a: 0 for a in names}
+    pair_results: Dict[Tuple[str, str], MatchupResult] = {}
+
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            a, b = names[i], names[j]
+            pair_seeds = [_pair_seed(a, b, k) for k in range(len(seeds))]
+            mr = evaluate_matchup(
+                roster[a], roster[b], a, b, pair_seeds,
+                n_hands=n_hands, small_blind=small_blind, big_blind=big_blind,
+                starting_stack=starting_stack, fast_mode=fast_mode,
+            )
+            pair_results[(a, b)] = mr
+            win_matrix[a][b] += mr.wins_a
+            win_matrix[b][a] += mr.wins_b
+            per_agent_nets[a].extend(mr.net_a)
+            per_agent_nets[b].extend(mr.net_b)
+            net_total[a] += sum(mr.net_a)
+            net_total[b] += sum(mr.net_b)
+            n_matches[a] += len(mr.seeds)
+            n_matches[b] += len(mr.seeds)
+
+    leaderboard = sorted(
+        ({"name": a,
+          "mean_net_chips": (net_total[a] / n_matches[a]) if n_matches[a] else 0.0,
+          "n_matches": n_matches[a]}
+         for a in names),
+        key=lambda d: d["mean_net_chips"], reverse=True,
+    )
+    return RosterResult(
+        leaderboard=leaderboard, win_matrix=win_matrix,
+        per_agent_nets=per_agent_nets, pair_results=pair_results,
+        n_seeds=len(seeds),
+    )

@@ -121,6 +121,37 @@ def equity_curve(session):
     return pd.DataFrame(rows, columns=["hand_number", "player_id", "stack"])
 
 
+def drawdown_curve(session, player_id):
+    """
+    Bankroll drawdown series for one player over hands.
+
+    Returns a tidy DataFrame [hand_number, stack, peak, drawdown] where `peak`
+    is the running high-water mark and `drawdown = peak - stack` (>= 0, the depth
+    below the peak). Hand 0 is the starting stack. The poker analogue of a PnL
+    max-drawdown curve.
+    """
+    eq = equity_curve(session)
+    sub = eq[eq["player_id"] == player_id].sort_values("hand_number")
+    rows = []
+    peak = None
+    for _, r in sub.iterrows():
+        stack = r["stack"]
+        peak = stack if peak is None else max(peak, stack)
+        rows.append({
+            "hand_number": int(r["hand_number"]),
+            "stack": stack,
+            "peak": peak,
+            "drawdown": peak - stack,
+        })
+    return pd.DataFrame(rows, columns=["hand_number", "stack", "peak", "drawdown"])
+
+
+def max_drawdown(session, player_id):
+    """Largest peak-to-trough drop in a player's stack over the session."""
+    dd = drawdown_curve(session, player_id)
+    return float(dd["drawdown"].max()) if not dd.empty else 0.0
+
+
 def win_rate_by_player(session):
     """
     Fraction of hands each player won (won > 0 chips).

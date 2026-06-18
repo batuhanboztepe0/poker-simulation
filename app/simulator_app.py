@@ -123,11 +123,163 @@ def _render_panels(result, collector):
     st.dataframe(collector.to_dataframe())
 
 
+def _evaluation_page():
+    """Monte-Carlo PnL evaluation page: matchup, cross-agent, RL curve, drawdown."""
+    st.header("Evaluation / PnL — Monte-Carlo")
+    st.caption("Each seed is one MC-driven heads-up match; the per-seed chip "
+               "difference is a realised PnL draw. Pick agents and a mode.")
+
+    # Lazy imports keep the module import-safe for headless tests.
+    from src.evaluation import evaluate_matchup, evaluate_roster
+    from src.analytics import drawdown_curve, max_drawdown
+    from src.simulation import simulate_session
+    from src.player import BotPlayer
+    from src.kelly_agent import KellyBotPlayer
+    from src.stochastic_control import RolloutPolicy, RolloutBotPlayer
+    from src.monte_carlo import MonteCarloEngine
+    from app.charts import (
+        pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
+        equity_drawdown_figure, pnl_box_figure, tournament_leaderboard_figure,
+        tournament_matrix_figure,
+    )
+
+    st.sidebar.header("Evaluation settings")
+    mode = st.sidebar.radio("Mode", [
+        "Matchup (PnL + t-test)", "Cross-agent leaderboard",
+        "RL learning curve", "Equity + drawdown",
+    ])
+    n_seeds = st.sidebar.slider("Seeds", 2, 60, 20)
+    n_hands = st.sidebar.slider("Hands per match", 20, 500, 150, step=10)
+    mc_sims = st.sidebar.slider("MC simulations", 100, 1000, 200, step=100)
+
+    def mc():
+        return MonteCarloEngine(n_simulations=mc_sims)
+
+    factories = {
+        "Myopic": lambda pid, stack: BotPlayer(
+            pid, "Myopic", stack, tight_threshold=0.2, aggression=0.5,
+            mc_engine=mc()),
+        "Kelly": lambda pid, stack: KellyBotPlayer(
+            pid, "Kelly", stack, kelly_scalar=0.5, mc_engine=mc()),
+        "Rollout": lambda pid, stack: RolloutBotPlayer(
+            pid, "Rollout", stack, rollout_policy=RolloutPolicy(mc())),
+    }
+
+    # Optional RL agent from a saved checkpoint in models/.
+    rl_history = []
+    models_dir = os.path.join(os.path.dirname(DATA_DIR), "models")
+    try:
+        import torch  # noqa: F401
+        have_torch = True
+    except ImportError:
+        have_torch = False
+    ckpts = (sorted(f for f in os.listdir(models_dir)
+                    if f.endswith((".pt", ".pth")))
+             if os.path.isdir(models_dir) else [])
+    if not have_torch:
+        st.sidebar.caption("torch not installed → RL agent unavailable.")
+    elif not ckpts:
+        st.sidebar.caption(
+            "No RL checkpoints in models/. Train one with "
+            "`python -m scripts.train_rl --save models/rl.pt --eval-every 200`.")
+    else:
+        sel = st.sidebar.selectbox("RL checkpoint (models/)", ["(none)"] + ckpts)
+        if sel != "(none)":
+            from src.rl_agent import load_checkpoint, RLBotPlayer
+            qnet, ckpt = load_checkpoint(os.path.join(models_dir, sel))
+            rl_history = ckpt.get("history", [])
+            fm = ckpt.get("feature_mode", "base")
+            if fm == "base":
+                def _rl(pid, stack, _q=qnet):
+                    return RLBotPlayer(pid, "RL", stack, qnet=_q, epsilon=0.0,
+                                       training=False, mc_engine=mc())
+                factories["RL"] = _rl
+            else:
+                st.sidebar.warning(
+                    f"Checkpoint uses feature_mode='{fm}', which needs episodic "
+                    "horizon/belief context — its learning curve is shown, but it "
+                    "can't play the heads-up PnL evals here.")
+
+    names = list(factories.keys())
+    seeds = list(range(n_seeds))
+
+    if mode == "Matchup (PnL + t-test)":
+        c1, c2 = st.columns(2)
+        a = c1.selectbox("Agent A (seat 1)", names, index=0)
+        b = c2.selectbox("Agent B (seat 2)", names,
+                         index=min(1, len(names) - 1))
+        if a == b:
+            st.warning("Pick two different agents.")
+        elif st.button("Run matchup", type="primary"):
+            with st.spinner(f"Playing {n_seeds} seeded matches..."):
+                mr = evaluate_matchup(factories[a], factories[b], a, b, seeds,
+                                      n_hands=n_hands)
+            tt = mr.t_test
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric(f"{a} wins", f"{mr.wins_a}/{len(seeds)}")
+            m2.metric("Mean PnL diff", f"{mr.mean_diff:+.0f}")
+            m3.metric("t-stat",
+                      f"{tt['t']:.2f}" if tt['t'] is not None else "—")
+            m4.metric("p-value",
+                      f"{tt['p_value']:.4f}" if tt['p_value'] is not None else "—")
+            st.plotly_chart(pnl_distribution_figure(mr.diffs, a, b),
+                            use_container_width=True)
+            st.plotly_chart(paired_diff_figure(mr.diffs, a, b, mr.seeds),
+                            use_container_width=True)
+
+    elif mode == "Cross-agent leaderboard":
+        chosen = st.multiselect("Agents", names, default=names)
+        if len(chosen) < 2:
+            st.warning("Pick at least two agents.")
+        elif st.button("Run round-robin", type="primary"):
+            with st.spinner("Running round-robin..."):
+                rr = evaluate_roster({n: factories[n] for n in chosen}, seeds,
+                                     n_hands=n_hands)
+            st.subheader("Leaderboard (mean net chips)")
+            st.plotly_chart(tournament_leaderboard_figure(rr.leaderboard),
+                            use_container_width=True)
+            st.subheader("Per-seed net-chip distribution")
+            st.plotly_chart(pnl_box_figure(rr.per_agent_nets),
+                            use_container_width=True)
+            st.subheader("Head-to-head win matrix")
+            st.plotly_chart(tournament_matrix_figure(rr.win_matrix, rr.n_seeds),
+                            use_container_width=True)
+
+    elif mode == "RL learning curve":
+        if rl_history:
+            st.plotly_chart(learning_curve_figure(rl_history),
+                            use_container_width=True)
+            st.caption(f"{len(rl_history)} held-out eval snapshots from the "
+                       "loaded checkpoint.")
+        else:
+            st.info("Load an RL checkpoint (sidebar) trained with `--eval-every` "
+                    "so it carries a learning-curve history, e.g. "
+                    "`python -m scripts.train_rl --save models/rl.pt --eval-every 200`.")
+
+    elif mode == "Equity + drawdown":
+        c1, c2 = st.columns(2)
+        a = c1.selectbox("Agent A (seat 1)", names, index=0)
+        b = c2.selectbox("Agent B (seat 2)", names,
+                         index=min(1, len(names) - 1))
+        seed = st.number_input("Seed", value=0, step=1)
+        if st.button("Simulate one match", type="primary"):
+            pa = factories[a](1, 1000)
+            pb = factories[b](2, 1000)
+            with st.spinner("Simulating..."):
+                res = simulate_session([pa, pb], n_hands=n_hands, seed=int(seed))
+            for pid, nm in ((1, a), (2, b)):
+                st.metric(f"{nm} (seat {pid}) max drawdown",
+                          f"{max_drawdown(res, pid):.0f} chips")
+                st.plotly_chart(equity_drawdown_figure(drawdown_curve(res, pid), nm),
+                                use_container_width=True)
+
+
 def main():
     st.set_page_config(page_title="Poker Simulator", layout="wide")
     st.title("Poker-Quant Simulator")
 
-    page = st.sidebar.radio("Page", ["Run", "Replay", "Tournament"])
+    page = st.sidebar.radio("Page",
+                            ["Run", "Replay", "Tournament", "Evaluation"])
 
     if page == "Run":
         cfg = _sidebar_config()
@@ -227,6 +379,9 @@ def main():
         else:
             st.info("Configure the tournament in the sidebar and click "
                     "**Run tournament**.")
+
+    elif page == "Evaluation":
+        _evaluation_page()
 
 
 if __name__ == "__main__":
