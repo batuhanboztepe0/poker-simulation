@@ -233,7 +233,12 @@ class RLBotPlayer(BotPlayer):
         self._episode_log = []
         # Set by SelfPlayTrainer before each hand in multi-hand mode.
         self._horizon_info = None   # (hands_remaining, hands_per_episode) or None
-        self._belief = None         # BeliefState or None
+        # Belief is used as a FEATURE only (the engine updates `belief_state` via
+        # observe_action); equity stays the fast vanilla MC estimate, so the
+        # belief-conditioning is an explicit input to the Q-net, not a hidden
+        # change to the equity feature.
+        self._belief = self.belief_state
+        self.use_belief_equity = False
 
     def decide(self, game_state):
         equity = (self._estimate_equity(game_state)
@@ -406,7 +411,9 @@ class SelfPlayTrainer:
                  baseline_kwargs=None, gamma=0.97, target_update_every=50,
                  multi_hand=False, hands_per_episode=15, util_floor=1.0,
                  icm_prize_structure=None, extended_features=False,
-                 feature_mode='base', opponent_factory=None):
+                 feature_mode='base', opponent_factory=None,
+                 reward_mode='log', learner_belief_factory=None,
+                 opponent_factories=None):
         _require_torch()
         import random as _random
         from src.game import GameEngine
@@ -433,10 +440,22 @@ class SelfPlayTrainer:
         # Extended feature mode.
         self.extended_features = extended_features
         self.feature_mode = feature_mode
+        # Multi-hand reward_mode: 'log' = per-hand log-utility change (risk-averse,
+        # default), 'chips' = normalized chip delta (RISK-NEUTRAL, so the agent
+        # gambles into a spewing opponent), 'icm' implied when icm_prize_structure
+        # is set. learner_belief_factory wires an opponent belief into each learner
+        # (engine auto-updates it; used as a feature). opponent_factories is a pool
+        # rotated per episode (domain randomization -> resists overfitting to one
+        # opponent).
+        self.reward_mode = 'icm' if icm_prize_structure is not None else reward_mode
+        self.learner_belief_factory = learner_belief_factory
+        self.opponent_factories = opponent_factories
         # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
-        # so multi-hand wants a looser clip than the [-1,1] chip-delta reward.
+        # so log-mode multi-hand wants a looser clip; 'chips' stays on the tight
+        # chip-delta scale like single-hand.
         if reward_clip is None:
-            reward_clip = 3.0 if multi_hand else 1.0
+            loose = multi_hand and self.reward_mode != 'chips'
+            reward_clip = 3.0 if loose else 1.0
         self.reward_clip = reward_clip
         self.rng = _random.Random(seed)
 
@@ -481,17 +500,27 @@ class SelfPlayTrainer:
         _fm = feature_mode if extended_features else 'base'
 
         def _learner(i):
+            belief = (learner_belief_factory()
+                      if learner_belief_factory is not None else None)
             return RLBotPlayer(i, f"RL{i}", stack0, qnet=self.qnet,
                                epsilon=self.epsilon_start, training=True,
                                mc_engine=self.mc, rng=_random.Random(seed + i),
-                               feature_mode=_fm)
+                               feature_mode=_fm, belief_state=belief)
 
         if opponent_mode == "self":
             self.learners = [_learner(i) for i in range(1, n_players + 1)]
             self.opponents = []
         elif opponent_mode == "fixed":
             self.learners = [_learner(1)]
-            if opponent_factory is not None:
+            if self.opponent_factories:
+                # A pool of opponent archetypes; rotated per episode in
+                # _collect_episode (domain randomization). Seat one to start.
+                self.opponents = [
+                    self.rng.choice(self.opponent_factories)(
+                        i, stack0, self.mc, _random.Random(seed + i))
+                    for i in range(2, n_players + 1)
+                ]
+            elif opponent_factory is not None:
                 # Custom frozen opponents (e.g. adaptive / tilt bots) so the
                 # learner trains against a non-myopic, possibly non-stationary
                 # target. Factory signature: (player_id, stack, mc_engine, rng).
@@ -603,9 +632,32 @@ class SelfPlayTrainer:
         for _ in range(n_episodes):
             self._collect_episode()
 
+    def _reseat_rotating_opponents(self):
+        """
+        Rebuild each frozen opponent from a randomly-chosen factory in
+        `opponent_factories` and reseat it (domain randomization over opponent
+        archetypes — resists overfitting to any single opponent).
+        """
+        import random as _random
+        new_opps = []
+        for opp in self.opponents:
+            fac = self.rng.choice(self.opponent_factories)
+            new_opps.append(fac(opp.player_id, self.stack0, self.mc,
+                                _random.Random(self.rng.randint(0, 2**31 - 1))))
+        self.opponents = new_opps
+        self.players = self.learners + self.opponents
+        self.engine.players = self.players
+
     def _collect_episode(self):
         if self.opponent_mode == "snapshot":
             self._reseat_snapshot_opponents()
+        elif self.opponent_factories:
+            self._reseat_rotating_opponents()
+        # Fresh opponent belief per episode (the opponent's regime resets too).
+        if self.learner_belief_factory is not None:
+            for b in self.learners:
+                b.belief_state = self.learner_belief_factory()
+                b._belief = b.belief_state
         # Reset stacks ONCE, at the start of the episode.
         for p in self.players:
             p.stack = self.stack0
@@ -633,11 +685,15 @@ class SelfPlayTrainer:
             self.engine.play_hand()
 
             for b in self.learners:
-                # Per-hand utility delta: ICM mode or log-utility mode.
-                if self.icm_prize_structure is not None:
+                # Per-hand reward: ICM equity, risk-neutral chip delta, or
+                # log-utility change (self.reward_mode).
+                if self.reward_mode == 'icm':
                     all_after = [p.stack for p in self.players]
                     d_util = (self._icm_utility(all_after)
                               - self._icm_utility(all_before))
+                elif self.reward_mode == 'chips':
+                    d_util = ((b.stack - before_stacks[b.player_id])
+                              / self.reward_scale)
                 else:
                     d_util = (self._utility(b.stack)
                               - self._utility(before_stacks[b.player_id]))

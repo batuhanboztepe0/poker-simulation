@@ -255,5 +255,54 @@ class TestTrainAgainstAdaptive(unittest.TestCase):
         self.assertTrue(all(loss >= 0 for loss in losses))
 
 
+class TestBeliefMixTraining(unittest.TestCase):
+    def _torch_or_skip(self):
+        try:
+            import torch  # noqa: F401
+        except ImportError:
+            self.skipTest("torch not installed")
+
+    def test_belief_feature_and_chips_reward(self):
+        self._torch_or_skip()
+        from src.rl_agent import SelfPlayTrainer
+        from src.opponent_model import HMMBeliefState
+        tr = SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                             hands_per_episode=8, mc_sims=100, seed=0,
+                             extended_features=True, feature_mode="belief",
+                             learner_belief_factory=lambda: HMMBeliefState(),
+                             reward_mode="chips")
+        learner = tr.learners[0]
+        self.assertEqual(tr.qnet.net[0].in_features, 20)   # 18 + 2 belief floats
+        self.assertIsNotNone(learner.belief_state)
+        self.assertIs(learner._belief, learner.belief_state)
+        self.assertFalse(learner.use_belief_equity)        # belief is feature-only
+        self.assertEqual(tr.reward_mode, "chips")
+        self.assertEqual(tr.reward_clip, 1.0)              # risk-neutral chip scale
+        losses = tr.train(12, hands_per_refresh=16)
+        self.assertEqual(len(losses), 12)
+
+    def test_opponent_rotation_uses_pool(self):
+        self._torch_or_skip()
+        from src.rl_agent import SelfPlayTrainer
+        from src.player import BotPlayer
+
+        def myo(pid, s, mc, rng):
+            return BotPlayer(pid, "M", s, mc_engine=mc, rng=rng)
+
+        def tilt(pid, s, mc, rng):
+            return AdaptiveBotPlayer(pid, "T", s, mode="tilt", mc_engine=mc, rng=rng)
+
+        tr = SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                             hands_per_episode=8, mc_sims=100, seed=0,
+                             opponent_factories=[myo, tilt])
+        seen = set()
+        for _ in range(12):
+            tr._reseat_rotating_opponents()
+            seen.add(type(tr.opponents[0]).__name__)
+        self.assertEqual(seen, {"BotPlayer", "AdaptiveBotPlayer"})  # both rotated in
+        losses = tr.train(10, hands_per_refresh=16)
+        self.assertEqual(len(losses), 10)
+
+
 if __name__ == "__main__":
     unittest.main()

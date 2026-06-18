@@ -194,16 +194,22 @@ def _evaluation_page():
             qnet, ckpt = load_checkpoint(os.path.join(models_dir, sel))
             rl_history = ckpt.get("history", [])
             fm = ckpt.get("feature_mode", "base")
-            if fm == "base":
-                def _rl(pid, stack, _q=qnet):
+            if fm in ("base", "belief"):
+                from src.opponent_model import HMMBeliefState
+
+                def _rl(pid, stack, _q=qnet, _fm=fm):
+                    # belief mode: the engine auto-updates this belief during the
+                    # match (observe_action) and the Q-net reads it as a feature.
+                    belief = HMMBeliefState() if _fm == "belief" else None
                     return RLBotPlayer(pid, "RL", stack, qnet=_q, epsilon=0.0,
-                                       training=False, mc_engine=mc())
+                                       training=False, feature_mode=_fm,
+                                       belief_state=belief, mc_engine=mc())
                 factories["RL"] = _rl
             else:
                 st.sidebar.warning(
                     f"Checkpoint uses feature_mode='{fm}', which needs episodic "
-                    "horizon/belief context — its learning curve is shown, but it "
-                    "can't play the heads-up PnL evals here.")
+                    "horizon context — its learning curve is shown, but it can't "
+                    "play the heads-up PnL evals here.")
 
     names = list(factories.keys())
     seeds = list(range(n_seeds))

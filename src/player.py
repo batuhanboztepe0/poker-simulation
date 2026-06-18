@@ -530,8 +530,11 @@ class BotPlayer(Player):
         else:
             n_opponents = max(1, game_state.get("active_player_count", 2) - 1)
 
-        # Belief-conditioned path (Phase 3).
+        # Belief-conditioned path (Phase 3). `use_belief_equity` (default True)
+        # lets a subclass keep equity vanilla while still carrying a belief model
+        # for other purposes (the RL agent uses belief as a feature only).
         if (self.belief_state is not None
+                and getattr(self, "use_belief_equity", True)
                 and self.belief_state.n_observations >= MIN_HANDS_FOR_BELIEF
                 and n_opponents >= 1):
             try:

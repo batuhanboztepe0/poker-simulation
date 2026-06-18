@@ -22,6 +22,8 @@ from src.rl_agent import (
     SelfPlayTrainer, evaluate_vs_baseline, paired_t_test, save_trainer_checkpoint,
 )
 from src.adaptive_agent import AdaptiveBotPlayer
+from src.player import BotPlayer
+from src.opponent_model import HMMBeliefState
 
 
 def main():
@@ -59,12 +61,23 @@ def main():
                     help="fixed-mode opponent: myopic EV bot, or an adaptive bot "
                          "with random or PnL-driven tilt aggression (tilt implies "
                          "--multi-hand)")
+    ap.add_argument("--opponent-mix", action="store_true",
+                    help="rotate the opponent over {myopic, tilt, random} per "
+                         "episode (domain randomization; implies --multi-hand) — "
+                         "trains a generalist that resists overfitting to one foe")
+    ap.add_argument("--belief", action="store_true",
+                    help="belief-conditioned policy: feed the opponent belief "
+                         "(posterior_mean, p_tilted) into phi(s) as a feature")
+    ap.add_argument("--reward-mode", default="log", choices=["log", "chips"],
+                    help="multi-hand reward: log-utility (risk-averse) or chips "
+                         "(RISK-NEUTRAL chip delta — gambles into a spewing foe)")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
     # ICM prize-pool reward runs as bankroll (multi-hand) episodes; a tilt
     # opponent also needs persistent stacks to accumulate the losses that tilt it.
-    multi_hand = args.multi_hand or args.icm or (args.opponent == "tilt")
+    multi_hand = (args.multi_hand or args.icm or (args.opponent == "tilt")
+                  or args.opponent_mix)
     # Multi-hand bankroll episodes are longer-horizon, so nudge gamma up.
     gamma = 0.99 if multi_hand else 0.97
 
@@ -82,10 +95,40 @@ def main():
             s = sum(fracs) or 1.0
             prize_structure = [total_chips * f / s for f in fracs]
         extra_kwargs["icm_prize_structure"] = prize_structure
-    if args.extended_features:
+    # Feature mode: horizon and/or belief append-ons (opt-in).
+    if args.belief and args.extended_features:
+        fmode = "full"
+    elif args.belief:
+        fmode = "belief"
+    elif args.extended_features:
+        fmode = "horizon"
+    else:
+        fmode = None
+    if fmode:
         extra_kwargs["extended_features"] = True
-        extra_kwargs["feature_mode"] = "horizon"
-    if args.opponent != "myopic":
+        extra_kwargs["feature_mode"] = fmode
+    if args.belief:
+        extra_kwargs["learner_belief_factory"] = lambda: HMMBeliefState()
+    if multi_hand:
+        extra_kwargs["reward_mode"] = args.reward_mode
+
+    if args.opponent_mix:
+        if args.mode != "fixed":
+            print("  [note] --opponent-mix only applies to --mode fixed.")
+
+        def _myopic_f(pid, s, mc, rng):
+            return BotPlayer(pid, "Myopic", s, tight_threshold=0.2,
+                             aggression=0.5, mc_engine=mc, rng=rng)
+
+        def _tilt_f(pid, s, mc, rng):
+            return AdaptiveBotPlayer(pid, "Tilt", s, mode="tilt",
+                                     mc_engine=mc, rng=rng)
+
+        def _rand_f(pid, s, mc, rng):
+            return AdaptiveBotPlayer(pid, "Random", s, mode="random",
+                                     mc_engine=mc, rng=rng)
+        extra_kwargs["opponent_factories"] = [_myopic_f, _tilt_f, _rand_f]
+    elif args.opponent != "myopic":
         if args.mode != "fixed":
             print(f"  [note] --opponent {args.opponent} only applies to "
                   f"--mode fixed; ignored for --mode {args.mode}.")
@@ -111,27 +154,35 @@ def main():
         args.steps, batch_size=args.batch_size,
         refresh_every=args.refresh_every,
         hands_per_refresh=args.hands_per_refresh,
-        eval_every=args.eval_every, eval_seeds=args.eval_seeds,
+        eval_every=(None if args.belief else args.eval_every),
+        eval_seeds=args.eval_seeds,
         eval_hands=args.eval_hands, eval_mc_sims=args.mc_sims,
     )
     train_dt = time.time() - t0
 
-    print(f"\nLearning curve (eval vs myopic, "
-          f"{args.eval_seeds} seeds x {args.eval_hands} hands):")
-    for h in trainer.history:
-        print(f"  step {h['step']:5d}:  wins {h['wins']:2d}/{h['n_seeds']}  "
-              f"mean_diff {h['mean_chip_diff']:+8.0f}")
-
-    final = evaluate_vs_baseline(
-        trainer.qnet, n_seeds=args.final_seeds, n_hands=args.final_hands,
-        mc_sims=args.mc_sims)
-    tt = paired_t_test(final["per_seed_diffs"])
-    print(f"\nHEADLINE  ({args.final_seeds} seeds x {args.final_hands} hands):")
-    print(f"  wins           : {final['wins']}/{final['n_seeds']}")
-    print(f"  mean chip diff : {final['mean_chip_diff']:+.1f}")
-    print(f"  paired t-test  : t={tt['t']:.2f}  p={tt['p_value']:.4f}  "
-          f"(n={tt['n']})")
-    print(f"  train time     : {train_dt:.1f}s  (final loss {losses[-1]:.4f})")
+    if args.belief:
+        # The vs-myopic headline / learning curve use the BASE feature vector and
+        # would mismatch a belief-conditioned net; evaluate this checkpoint in the
+        # dashboard "Evaluation / Parameter sweep" tab instead.
+        print(f"\nBelief-conditioned policy trained "
+              f"(train {train_dt:.1f}s, final loss {losses[-1]:.4f}). "
+              f"Evaluate it in the dashboard 'Evaluation' tab.")
+    else:
+        print(f"\nLearning curve (eval vs myopic, "
+              f"{args.eval_seeds} seeds x {args.eval_hands} hands):")
+        for h in trainer.history:
+            print(f"  step {h['step']:5d}:  wins {h['wins']:2d}/{h['n_seeds']}  "
+                  f"mean_diff {h['mean_chip_diff']:+8.0f}")
+        final = evaluate_vs_baseline(
+            trainer.qnet, n_seeds=args.final_seeds, n_hands=args.final_hands,
+            mc_sims=args.mc_sims)
+        tt = paired_t_test(final["per_seed_diffs"])
+        print(f"\nHEADLINE  ({args.final_seeds} seeds x {args.final_hands} hands):")
+        print(f"  wins           : {final['wins']}/{final['n_seeds']}")
+        print(f"  mean chip diff : {final['mean_chip_diff']:+.1f}")
+        print(f"  paired t-test  : t={tt['t']:.2f}  p={tt['p_value']:.4f}  "
+              f"(n={tt['n']})")
+        print(f"  train time     : {train_dt:.1f}s  (final loss {losses[-1]:.4f})")
 
     if args.save:
         save_trainer_checkpoint(trainer, args.save,
