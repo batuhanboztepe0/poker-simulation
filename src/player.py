@@ -184,6 +184,19 @@ class Player:
         """
         pass
 
+    def observe_hand_result(self, observation):
+        """
+        Post-hand callback: observe another player's realised per-hand chip
+        delta (Phase B tilt hook). The engine calls this once per other player
+        at the end of every hand, so a PnL-driven belief can transition its
+        tilt regime at the hand boundary. Base implementation is a no-op.
+
+        Args:
+            observation (dict): Keys include hand_id, player_id (the player whose
+                delta this is), delta_stack.
+        """
+        pass
+
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
@@ -580,6 +593,20 @@ class BotPlayer(Player):
             n_actions=1,
             delta_stack=0,
         )
+
+    def observe_hand_result(self, observation):
+        """
+        Feed an opponent's realised per-hand PnL into the belief's tilt regime
+        (Phase B). No-op when no belief is attached, preserving baseline
+        behaviour. In heads-up the observed delta is the sole opponent's; the
+        HMM's observe_pnl then fires its PnL->tilt trigger so p_tilted leads the
+        aggression-only signal by a hand. (Per-action `observe_action` carries no
+        realised PnL — it stays emission-only with delta_stack=0; the realised
+        chip delta is a hand-boundary quantity delivered here.)
+        """
+        if self.belief_state is None:
+            return
+        self.belief_state.observe_pnl(observation.get("delta_stack", 0))
 
     def ev_breakdown(self, game_state):
         """

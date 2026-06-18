@@ -74,6 +74,9 @@ def main():
     ap.add_argument("--belief-sharp", action="store_true",
                     help="use the tuned, sharper-detecting HMM belief "
                          "(mu_normal=0.25, mu_tilted=0.92, recover=0.05)")
+    ap.add_argument("--no-belief-pnl", action="store_true",
+                    help="ablation: disable the hand-boundary PnL->tilt belief "
+                         "trigger (revert to aggression-emission-only detection)")
     ap.add_argument("--tilt-bonus", type=float, default=0.0,
                     help="gain-only reward multiplier (1 + tilt_bonus*p_tilted) to "
                          "press the edge vs a detected-tilted opponent (needs --belief)")
@@ -117,12 +120,27 @@ def main():
     if args.belief:
         if args.belief_sharp:
             belief_kwargs = dict(mu_normal=0.25, mu_tilted=0.92, recover=0.05)
+        # Stored in the checkpoint so the dashboard/eval rebuild the EXACT
+        # detector (incl. whether the PnL->tilt trigger is live).
+        belief_kwargs["use_pnl"] = not args.no_belief_pnl
         extra_kwargs["learner_belief_factory"] = (
             lambda bk=belief_kwargs: HMMBeliefState(**bk))
     if multi_hand:
         extra_kwargs["reward_mode"] = args.reward_mode
     if args.tilt_bonus:
         extra_kwargs["tilt_reward_bonus"] = args.tilt_bonus
+        # FOOTGUN: the PnL->tilt belief feed and the gain-only tilt-bonus are
+        # SUBSTITUTES for the tilt edge, not complements. Poker is zero-sum, so a
+        # learner win == the opponent's loss spikes p_tilted exactly when the
+        # learner just won big; the bonus then amplifies the learner's OWN big
+        # wins (a reward distortion) and the policy collapses to ~break-even.
+        # Measured: PnL+bonus tilt +34 vs PnL+no-bonus +533 / no-PnL+bonus +567.
+        # Use one or the other.
+        if args.belief and not args.no_belief_pnl:
+            print("  [WARN] --tilt-bonus with the PnL->tilt belief feed live is "
+                  "DESTRUCTIVE (zero-sum coupling corrupts the reward). Use "
+                  "EITHER --tilt-bonus (add --no-belief-pnl) OR the PnL feed "
+                  "with no --tilt-bonus. See RL_HANDOFF §10.")
 
     if args.opponent_mix:
         if args.mode != "fixed":

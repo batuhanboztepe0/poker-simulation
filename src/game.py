@@ -156,6 +156,10 @@ class GameEngine:
         self._log(f"  HAND #{self.hand_number}  ({len(self._active_players())} players)")
         self._log(f"{'='*60}")
 
+        # Stacks entering the hand (= end of the previous hand), for the
+        # post-hand PnL callback.
+        start_stacks = {p.player_id: p.stack for p in self.players}
+
         self._setup_hand()
         self._post_blinds()
         self._deal_hole_cards()
@@ -168,6 +172,7 @@ class GameEngine:
         winnings = self._showdown()
         self._distribute_winnings(winnings)
         self._emit_hand_end(winnings)
+        self._notify_hand_result(start_stacks)
         self._log_stacks()
         self.rotate_dealer()
         return winnings
@@ -789,6 +794,28 @@ class GameEngine:
         for p in self.players:
             if p is not actor:
                 p.observe_action(observation)
+
+    def _notify_hand_result(self, start_stacks):
+        """
+        Post-hand callback: tell each player the realised per-hand chip delta of
+        every OTHER player (this hand's PnL).
+
+        A PnL-driven belief (the HMM tilt regime) transitions on this, mirroring
+        an AdaptiveBotPlayer's own per-hand regime switch, so tilt is detected
+        from a realised loss before the opponent's aggression changes. Players
+        without such a belief see a no-op (Player.observe_hand_result), so this
+        is backward compatible. It only reads stacks, so it is chip-neutral.
+        """
+        deltas = {p.player_id: p.stack - start_stacks.get(p.player_id, p.stack)
+                  for p in self.players}
+        for observer in self.players:
+            for p in self.players:
+                if p is not observer:
+                    observer.observe_hand_result({
+                        "hand_id":     self.hand_number,
+                        "player_id":   p.player_id,
+                        "delta_stack": deltas[p.player_id],
+                    })
 
     # ------------------------------------------------------------------
     # Utility helpers

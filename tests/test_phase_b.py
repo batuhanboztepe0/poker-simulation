@@ -277,3 +277,116 @@ class TestSessionIntegrity:
                 break
             engine.play_hand()
         assert sum(p.stack for p in players) == total
+
+
+# ===========================================================================
+# PnL -> tilt belief feed (hand-boundary realised-PnL transition)
+# ===========================================================================
+
+class TestPnLBeliefFeed:
+    def test_loss_raises_p_tilted(self):
+        """A realised loss fed via observe_pnl pushes the regime toward tilted."""
+        hmm = HMMBeliefState()  # default use_pnl=True
+        before = hmm.p_tilted()
+        for _ in range(4):
+            hmm.observe_pnl(-200)   # lost 200 of a 1000 stack each hand
+        assert hmm.p_tilted() > before + 0.3
+
+    def test_win_recovers_toward_normal(self):
+        """A winning hand only applies the recovery drift (toward normal)."""
+        hmm = HMMBeliefState()
+        for _ in range(4):
+            hmm.observe_pnl(-200)   # tilt it up first
+        tilted = hmm.p_tilted()
+        for _ in range(8):
+            hmm.observe_pnl(+200)   # winning hands -> recover
+        assert hmm.p_tilted() < tilted
+
+    def test_transition_stays_normalised(self):
+        """The 2x2 regime transition keeps pi a probability vector."""
+        hmm = HMMBeliefState()
+        for d in (-300, +50, -120, 0, -900, +400):
+            hmm.observe_pnl(d)
+            assert hmm.pi_normal + hmm.pi_tilted == pytest.approx(1.0)
+            assert 0.0 <= hmm.p_tilted() <= 1.0
+
+    def test_use_pnl_false_is_inert(self):
+        """Ablation: use_pnl=False reproduces the dormant (no-PnL) detector."""
+        hmm = HMMBeliefState(use_pnl=False)
+        before = hmm.p_tilted()
+        for _ in range(6):
+            hmm.observe_pnl(-500)
+        assert hmm.p_tilted() == before
+
+    def test_static_belief_observe_pnl_is_noop(self):
+        """The static / Beta models have no tilt regime: observe_pnl is a no-op."""
+        b = BeliefState()
+        b.observe_pnl(-500)
+        assert b.p_tilted() == 0.0  # unchanged
+
+    def test_calibrated_to_opponent_trigger(self):
+        """
+        With a shared TiltTrigger, one observe_pnl predict-step reproduces the
+        opponent's own P(normal->tilted) exactly (the belief is calibrated to the
+        true transition, not a heuristic).
+        """
+        trig = TiltTrigger(epsilon=0.04, kappa=1.5, stack0=1000)
+        hmm = HMMBeliefState(prior_tilted=0.0, recover=0.0, tilt_trigger=trig)
+        delta = -200  # loss fraction 0.2 -> p_nt = 0.04 + 1.5*0.2 = 0.34
+        hmm.observe_pnl(delta)
+        assert hmm.p_tilted() == pytest.approx(trig.transition_prob(delta))
+
+    def test_engine_feeds_realised_delta(self):
+        """
+        The engine delivers each opponent's realised per-hand chip delta to the
+        other player's belief at the hand boundary (and stays chip-neutral).
+        """
+        rng = random.Random(11)
+        mc = MonteCarloEngine(n_simulations=100, rng=rng)
+        hero = BotPlayer(1, "Hero", 1000, 0.3, 0.5, mc, rng,
+                         belief_state=HMMBeliefState())
+        villain = BotPlayer(2, "Villain", 1000, 0.3, 0.5, mc, rng)
+
+        captured = []
+        orig = hero.observe_hand_result
+        hero.observe_hand_result = lambda obs: (captured.append(dict(obs)),
+                                                orig(obs))[1]
+
+        engine = GameEngine([hero, villain], 10, 20, verbose=False, rng=rng)
+        total = sum(p.stack for p in (hero, villain))
+        v_before = villain.stack
+        engine.play_hand()
+
+        assert sum(p.stack for p in (hero, villain)) == total  # chip-neutral
+        assert len(captured) == 1                              # one opponent
+        obs = captured[0]
+        assert obs["player_id"] == 2
+        assert obs["delta_stack"] == villain.stack - v_before  # realised PnL
+
+    def test_pnl_feed_leads_aggression_only_detector(self):
+        """
+        Headline: against a real tilting opponent, the PnL-fed belief reaches a
+        higher mean p_tilted than the aggression-emission-only belief over the
+        same seeded match (earlier / stronger detection).
+        """
+        from src.adaptive_agent import AdaptiveBotPlayer
+
+        def run(use_pnl):
+            rng = random.Random(7)
+            mc = MonteCarloEngine(n_simulations=100, rng=rng)
+            hero = BotPlayer(1, "Hero", 1000, 0.2, 0.5, mc, rng,
+                             belief_state=HMMBeliefState(
+                                 mu_normal=0.25, mu_tilted=0.92, recover=0.05,
+                                 use_pnl=use_pnl))
+            villain = AdaptiveBotPlayer(2, "Tilt", 1000, mode="tilt",
+                                        mc_engine=mc, rng=rng)
+            engine = GameEngine([hero, villain], 10, 20, verbose=False, rng=rng)
+            ps = []
+            for _ in range(60):
+                if sum(1 for p in (hero, villain) if p.stack > 0) < 2:
+                    break
+                engine.play_hand()
+                ps.append(hero.belief_state.p_tilted())
+            return sum(ps) / len(ps)
+
+        assert run(use_pnl=True) > run(use_pnl=False)

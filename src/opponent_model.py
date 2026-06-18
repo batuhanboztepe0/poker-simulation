@@ -13,6 +13,7 @@ conditions its equity on that range via
 This class defines the FROZEN INTERFACE that Phases A, B and C depend on:
 
     update(action, n_aggressive, n_actions, delta_stack=0) -> None
+    observe_pnl(delta_stack) -> None  # hand-boundary tilt transition (HMM only)
     update_from_showdown(hole_cards) -> None
     posterior_mean() -> float        # E[aggression]
     p_tilted() -> float              # 0.0 for the static model
@@ -121,6 +122,16 @@ class BeliefState:
             self.alpha_loose += 1.0
         elif action == FOLD_ACTION:
             self.beta_loose += 1.0
+
+    def observe_pnl(self, delta_stack):
+        """
+        Hand-boundary hook: a PnL-driven regime transition.
+
+        Called once per hand with the opponent's realised per-hand chip delta.
+        The static / Beta models have no tilt regime, so this is a no-op; only
+        `HMMBeliefState` consumes realised PnL (see its override).
+        """
+        pass
 
     def update_from_showdown(self, hole_cards):
         """
@@ -298,12 +309,16 @@ class HMMBeliefState(BeliefState):
     """
 
     def __init__(self, mu_normal=0.30, mu_tilted=0.80, recover=0.15,
-                 prior_tilted=0.1, tilt_trigger=None, **kwargs):
+                 prior_tilted=0.1, tilt_trigger=None, use_pnl=True, **kwargs):
         super().__init__(**kwargs)
         self.mu_normal = mu_normal
         self.mu_tilted = mu_tilted
         self.recover = recover            # P(tilted -> normal)
         self.tilt_trigger = tilt_trigger or TiltTrigger()
+        # When True, observe_pnl() fires the TiltTrigger at each hand boundary
+        # from the opponent's realised PnL (earlier detection). False reproduces
+        # the aggression-emission-only detector (the dormant pre-fix behaviour).
+        self.use_pnl = use_pnl
         self.pi_normal = 1.0 - prior_tilted
         self.pi_tilted = prior_tilted
 
@@ -334,6 +349,29 @@ class HMMBeliefState(BeliefState):
         self._observe_looseness(action)
         self.n_observations += 1
         self.total_actions += n_actions
+
+    def observe_pnl(self, delta_stack):
+        """
+        Hand-boundary regime transition driven by the opponent's realised
+        per-hand PnL — the HMM *predict* step only (no emission).
+
+        A losing opponent's P(normal -> tilted) rises via the TiltTrigger, so
+        p_tilted climbs the moment a hand is lost, *before* the opponent's
+        aggression emissions reveal the regime. Because this trigger shares the
+        opponent's epsilon/kappa/stack0, the predicted P(tilted) matches the
+        opponent's TRUE transition probability — the belief leads the
+        aggression-only detector by one hand. A winning / break-even hand only
+        applies the recovery drift (toward normal), mirroring the opponent's own
+        per-hand recovery. The 2x2 transition is stochastic, so the regime belief
+        stays normalised without a renorm step.
+        """
+        if not self.use_pnl:
+            return
+        p_nt = self.tilt_trigger.transition_prob(delta_stack)  # normal->tilted
+        p_tn = self.recover                                    # tilted->normal
+        pred_normal = self.pi_normal * (1.0 - p_nt) + self.pi_tilted * p_tn
+        pred_tilted = self.pi_normal * p_nt + self.pi_tilted * (1.0 - p_tn)
+        self.pi_normal, self.pi_tilted = pred_normal, pred_tilted
 
     def posterior_mean(self):
         """E[aggression] = regime-weighted emission mean."""
