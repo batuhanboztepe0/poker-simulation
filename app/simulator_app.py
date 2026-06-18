@@ -130,23 +130,24 @@ def _evaluation_page():
                "difference is a realised PnL draw. Pick agents and a mode.")
 
     # Lazy imports keep the module import-safe for headless tests.
-    from src.evaluation import evaluate_matchup, evaluate_roster
+    from src.evaluation import evaluate_matchup, evaluate_roster, parameter_sweep
     from src.analytics import drawdown_curve, max_drawdown
     from src.simulation import simulate_session
     from src.player import BotPlayer
     from src.kelly_agent import KellyBotPlayer
     from src.stochastic_control import RolloutPolicy, RolloutBotPlayer
+    from src.adaptive_agent import AdaptiveBotPlayer
     from src.monte_carlo import MonteCarloEngine
     from app.charts import (
         pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
         equity_drawdown_figure, pnl_box_figure, tournament_leaderboard_figure,
-        tournament_matrix_figure,
+        tournament_matrix_figure, parameter_heatmap_figure,
     )
 
     st.sidebar.header("Evaluation settings")
     mode = st.sidebar.radio("Mode", [
         "Matchup (PnL + t-test)", "Cross-agent leaderboard",
-        "RL learning curve", "Equity + drawdown",
+        "Parameter sweep", "RL learning curve", "Equity + drawdown",
     ])
     n_seeds = st.sidebar.slider("Seeds", 2, 60, 20)
     n_hands = st.sidebar.slider("Hands per match", 20, 500, 150, step=10)
@@ -163,6 +164,10 @@ def _evaluation_page():
             pid, "Kelly", stack, kelly_scalar=0.5, mc_engine=mc()),
         "Rollout": lambda pid, stack: RolloutBotPlayer(
             pid, "Rollout", stack, rollout_policy=RolloutPolicy(mc())),
+        "Adaptive(tilt)": lambda pid, stack: AdaptiveBotPlayer(
+            pid, "Adaptive(tilt)", stack, mode="tilt", mc_engine=mc()),
+        "Adaptive(random)": lambda pid, stack: AdaptiveBotPlayer(
+            pid, "Adaptive(random)", stack, mode="random", mc_engine=mc()),
     }
 
     # Optional RL agent from a saved checkpoint in models/.
@@ -272,6 +277,44 @@ def _evaluation_page():
                           f"{max_drawdown(res, pid):.0f} chips")
                 st.plotly_chart(equity_drawdown_figure(drawdown_curve(res, pid), nm),
                                 use_container_width=True)
+
+    elif mode == "Parameter sweep":
+        st.caption("Round-robin a grid of (tight × aggression) personalities — "
+                   "the static-skill fitness landscape an RL agent must beat.")
+        c1, c2 = st.columns(2)
+        tight_raw = c1.text_input("tight_threshold values", "0.2,0.4,0.6,0.8")
+        aggr_raw = c2.text_input("aggression values", "0.3,0.5,0.7,0.9")
+        fast = st.checkbox("Fast mode (no Monte Carlo — much quicker)", value=True)
+        add_extra = st.checkbox("Add Kelly + adaptive agents to the grid",
+                                value=False)
+        if st.button("Run sweep", type="primary"):
+            try:
+                tights = [float(x) for x in tight_raw.split(",") if x.strip()]
+                aggrs = [float(x) for x in aggr_raw.split(",") if x.strip()]
+            except ValueError:
+                st.error("Grid values must be comma-separated numbers.")
+                return
+            extra = None
+            if add_extra:
+                extra = {n: factories[n] for n in
+                         ("Kelly", "Adaptive(tilt)", "Adaptive(random)")
+                         if n in factories}
+            n_cells = len(tights) * len(aggrs) + (len(extra) if extra else 0)
+            with st.spinner(f"Round-robin over {n_cells} agents "
+                            f"× {n_seeds} seeds..."):
+                rr, grid = parameter_sweep(
+                    tights, aggrs, seeds, n_hands=n_hands,
+                    mc_sims=(None if fast else mc_sims), fast_mode=fast,
+                    extra_agents=extra)
+            st.subheader("Fitness landscape (mean net chips)")
+            st.plotly_chart(parameter_heatmap_figure(grid),
+                            use_container_width=True)
+            st.subheader("Leaderboard")
+            st.plotly_chart(tournament_leaderboard_figure(rr.leaderboard),
+                            use_container_width=True)
+            st.subheader("Per-seed net-chip distribution")
+            st.plotly_chart(pnl_box_figure(rr.per_agent_nets),
+                            use_container_width=True)
 
 
 def main():

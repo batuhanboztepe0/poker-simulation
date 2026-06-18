@@ -21,13 +21,15 @@ from src.player import BotPlayer
 from src.kelly_agent import KellyBotPlayer
 from src.monte_carlo import MonteCarloEngine
 from src.simulation import simulate_session
+from src.adaptive_agent import AdaptiveBotPlayer
 from src.evaluation import (
-    evaluate_matchup, evaluate_roster, MatchupResult, RosterResult,
+    evaluate_matchup, evaluate_roster, parameter_sweep,
+    MatchupResult, RosterResult,
 )
 from src.analytics import drawdown_curve, max_drawdown
 from app.charts import (
     pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
-    equity_drawdown_figure, pnl_box_figure,
+    equity_drawdown_figure, pnl_box_figure, parameter_heatmap_figure,
 )
 
 
@@ -123,6 +125,10 @@ class TestCharts(unittest.TestCase):
         self.assertIsInstance(learning_curve_figure(hist), go.Figure)
         self.assertIsInstance(
             pnl_box_figure({"A": [10, -5, 3], "B": [-10, 5, -3]}), go.Figure)
+        self.assertIsInstance(parameter_heatmap_figure([
+            {"tight": 0.3, "aggr": 0.5, "mean_net_chips": 10.0},
+            {"tight": 0.6, "aggr": 0.5, "mean_net_chips": -5.0},
+        ]), go.Figure)
 
     def test_drawdown_chart(self):
         players = [
@@ -157,6 +163,74 @@ class TestCheckpoint(unittest.TestCase):
             for k in net.state_dict():
                 self.assertTrue(torch.equal(net.state_dict()[k],
                                             net2.state_dict()[k]))
+
+
+class TestAdaptiveAgent(unittest.TestCase):
+    def test_invalid_mode_raises(self):
+        with self.assertRaises(ValueError):
+            AdaptiveBotPlayer(1, "x", 1000, mode="nope")
+
+    def test_random_mode_varies_within_range(self):
+        import random as _r
+        p = AdaptiveBotPlayer(1, "R", 1000, mode="random", aggr_lo=0.1,
+                              aggr_hi=0.9, rng=_r.Random(0))
+        seen = set()
+        for _ in range(25):
+            p.reset_for_hand()
+            self.assertGreaterEqual(p.aggression, 0.1)
+            self.assertLessEqual(p.aggression, 0.9)
+            seen.add(round(p.aggression, 6))
+        self.assertGreater(len(seen), 1)  # genuinely resampled
+
+    def test_tilt_triggers_on_big_loss(self):
+        # An 800-chip loss gives transition_prob = min(1, 0.04+1.5*0.8) = 1.0,
+        # so the regime switch is certain regardless of the rng draw.
+        p = AdaptiveBotPlayer(1, "T", 1000, mode="tilt", base_aggression=0.3,
+                              tilt_aggression=0.95, tilt_tight=0.1, recover=0.0)
+        p._prev_stack = 1000
+        p.stack = 200
+        p.reset_for_hand()
+        self.assertTrue(p.is_tilted)
+        self.assertEqual(p.aggression, 0.95)
+        self.assertEqual(p.tight_threshold, 0.1)
+
+    def test_adaptive_session_conserves_and_deterministic(self):
+        def roster():
+            return [
+                AdaptiveBotPlayer(1, "Tilt", 1000, mode="tilt"),
+                AdaptiveBotPlayer(2, "Rand", 1000, mode="random"),
+                BotPlayer(3, "S", 1000, tight_threshold=0.5, aggression=0.5),
+            ]
+        r1 = simulate_session(roster(), n_hands=40, seed=5, fast_mode=True)
+        self.assertEqual(sum(r1.starting_stacks.values()),
+                         sum(r1.final_stacks.values()))
+        r2 = simulate_session(roster(), n_hands=40, seed=5, fast_mode=True)
+        self.assertEqual(r1.final_stacks, r2.final_stacks)
+
+
+class TestParameterSweep(unittest.TestCase):
+    def test_grid_shape_and_leaderboard(self):
+        rr, grid = parameter_sweep([0.3, 0.6], [0.4, 0.8], seeds=[0, 1],
+                                   n_hands=30, fast_mode=True)
+        self.assertEqual(len(grid), 4)            # 2 x 2
+        self.assertEqual(len(rr.leaderboard), 4)  # one agent per cell
+        for cell in grid:
+            self.assertIn("mean_net_chips", cell)
+
+    def test_extra_agents_join_roster_not_grid(self):
+        from src.kelly_agent import KellyBotPlayer
+        extra = {"Kelly": lambda pid, s: KellyBotPlayer(pid, "Kelly", s)}
+        rr, grid = parameter_sweep([0.3, 0.6], [0.5], seeds=[0, 1], n_hands=30,
+                                   fast_mode=True, extra_agents=extra)
+        self.assertIn("Kelly", {e["name"] for e in rr.leaderboard})
+        self.assertEqual(len(grid), 2)  # Kelly is in the roster, not the grid
+
+    def test_determinism(self):
+        r1, _ = parameter_sweep([0.3, 0.6], [0.4, 0.8], seeds=[0, 1],
+                                n_hands=30, fast_mode=True)
+        r2, _ = parameter_sweep([0.3, 0.6], [0.4, 0.8], seeds=[0, 1],
+                                n_hands=30, fast_mode=True)
+        self.assertEqual(r1.leaderboard, r2.leaderboard)
 
 
 if __name__ == "__main__":

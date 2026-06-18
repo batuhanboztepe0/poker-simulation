@@ -336,3 +336,31 @@ def pnl_box_figure(per_agent_nets):
         yaxis_title="Net chips (per match)", showlegend=False,
     )
     return fig
+
+
+def parameter_heatmap_figure(grid, value="mean_net_chips"):
+    """
+    Heatmap of a swept metric over the (tight_threshold × aggression) grid — the
+    personality fitness landscape from `evaluation.parameter_sweep`. Blue = net
+    winner, red = net loser, white ≈ break-even.
+
+    Args:
+        grid (list[dict]): cells with keys 'tight', 'aggr', and `value`.
+        value (str): metric key to colour by (default mean net chips).
+    """
+    tights = sorted({g["tight"] for g in grid})
+    aggrs = sorted({g["aggr"] for g in grid})
+    lookup = {(g["tight"], g["aggr"]): g[value] for g in grid}
+    z = [[lookup.get((t, a)) for a in aggrs] for t in tights]
+    text = [[(f"{lookup[(t, a)]:+.0f}" if (t, a) in lookup else "")
+             for a in aggrs] for t in tights]
+    fig = go.Figure(go.Heatmap(
+        z=z, x=[f"{a:.2f}" for a in aggrs], y=[f"{t:.2f}" for t in tights],
+        text=text, texttemplate="%{text}",
+        colorscale="RdBu", zmid=0, colorbar=dict(title="Mean net chips"),
+    ))
+    fig.update_layout(
+        title="Personality fitness landscape (mean net chips per match)",
+        xaxis_title="aggression", yaxis_title="tight_threshold",
+    )
+    return fig

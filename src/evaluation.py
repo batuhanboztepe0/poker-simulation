@@ -26,6 +26,8 @@ from src.simulation import simulate_session
 from src.game import DEFAULT_SMALL_BLIND, DEFAULT_BIG_BLIND
 from src.tournament import _wire_rng, _pair_seed
 from src.rl_agent import paired_t_test
+from src.player import BotPlayer
+from src.monte_carlo import MonteCarloEngine
 
 # A factory builds a FRESH player each call: factory(player_id, stack) -> Player.
 AgentFactory = Callable[[int, int], object]
@@ -181,3 +183,50 @@ def evaluate_roster(roster: Dict[str, AgentFactory], seeds: List[int],
         per_agent_nets=per_agent_nets, pair_results=pair_results,
         n_seeds=len(seeds),
     )
+
+
+def parameter_sweep(tight_values, aggr_values, seeds, n_hands=120,
+                    mc_sims=None, fast_mode=True, extra_agents=None,
+                    small_blind=DEFAULT_SMALL_BLIND, big_blind=DEFAULT_BIG_BLIND,
+                    starting_stack=1000):
+    """
+    Round-robin a GRID of static (tight_threshold × aggression) personalities —
+    plus any `extra_agents` (e.g. Kelly, adaptive, RL) — so you don't have to
+    hand-tune bots one at a time. Returns (RosterResult, grid) where `grid` is a
+    list of {tight, aggr, mean_net_chips} cells: the personality "fitness
+    landscape" behind a heatmap, and the static-skill bar an RL agent must beat.
+
+    With `mc_sims` set and `fast_mode=False` the landscape reflects real Monte
+    Carlo equity (slower); `fast_mode=True` (default) is the quick random-equity
+    proxy — still a valid bot-vs-bot landscape, just betting-discipline-driven.
+
+    Args:
+        tight_values, aggr_values (list[float]): grid axes.
+        seeds (list[int]): seeds per pair (paired, deterministic).
+        extra_agents (dict | None): {name: factory(player_id, stack)} added to
+            the grid roster (named distinctly from the t../a.. cells).
+    """
+    def _make(t, a):
+        def factory(pid, stack):
+            mc = MonteCarloEngine(mc_sims) if (mc_sims and not fast_mode) else None
+            return BotPlayer(pid, f"t{t:.2f}/a{a:.2f}", stack,
+                             tight_threshold=t, aggression=a, mc_engine=mc)
+        return factory
+
+    roster, cell_name = {}, {}
+    for t in tight_values:
+        for a in aggr_values:
+            name = f"t{t:.2f}/a{a:.2f}"
+            roster[name] = _make(t, a)
+            cell_name[(t, a)] = name
+    if extra_agents:
+        roster.update(extra_agents)
+
+    rr = evaluate_roster(roster, seeds, n_hands=n_hands,
+                         small_blind=small_blind, big_blind=big_blind,
+                         starting_stack=starting_stack, fast_mode=fast_mode)
+    mean_by_name = {e["name"]: e["mean_net_chips"] for e in rr.leaderboard}
+    grid = [{"tight": t, "aggr": a,
+             "mean_net_chips": mean_by_name[cell_name[(t, a)]]}
+            for t in tight_values for a in aggr_values]
+    return rr, grid
