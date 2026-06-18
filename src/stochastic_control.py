@@ -72,10 +72,16 @@ class RolloutPolicy:
 
         equity = self._equity(hero_hole, community, opponent_ids, n_opp)
 
-        values = {ACTION_FOLD: 0.0}
+        # With no bet to face the free option is CHECK, never FOLD: folding for
+        # free forfeits the pot and is strictly dominated by checking. (The old
+        # code listed FOLD:0.0 and CHECK:0.0 together, and the argmax tie-break
+        # picked FOLD — so the bot folded every unprofitable check spot and bled
+        # chips, badly so against aggressive/adaptive opponents.)
+        values = {}
         if call_amount == 0:
             values[ACTION_CHECK] = 0.0
         else:
+            values[ACTION_FOLD] = 0.0
             values[ACTION_CALL] = ev_call(equity, pot, call_amount)
 
         if max_raise >= min_raise:

@@ -304,5 +304,21 @@ class TestBeliefMixTraining(unittest.TestCase):
         self.assertEqual(len(losses), 10)
 
 
+class TestRolloutFreeCheck(unittest.TestCase):
+    def test_never_folds_a_free_check(self):
+        # Regression: a free-check spot (call_amount == 0) must never be FOLDED
+        # (folding for free forfeits the pot). The old argmax tie-break picked
+        # FOLD over CHECK and the rollout bled chips, badly vs adaptive bots.
+        import random
+        from src.stochastic_control import RolloutPolicy
+        from src.card import Card
+        pol = RolloutPolicy(MonteCarloEngine(100), rng=random.Random(0))
+        gs = {"pot": 40, "call_amount": 0, "min_raise": 20, "current_bet": 0,
+              "community_cards": [Card('K', 's'), Card('Q', 'd'), Card('9', 'c')],
+              "round_name": "Flop", "active_player_count": 2, "opponent_ids": [2]}
+        action, _ = pol.decide([Card('7', 'h'), Card('2', 'd')], gs, 1000)
+        self.assertEqual(action, "check")  # weak hand checks for free, never folds
+
+
 if __name__ == "__main__":
     unittest.main()
