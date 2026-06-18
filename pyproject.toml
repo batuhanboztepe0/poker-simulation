@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poker-simulation"
+version = "1.0.0"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "treys==0.1.8",
+    "pytest==8.0.0",
+    "matplotlib==3.9.0",
+    "plotly==5.22.0",
+    "notebook==7.2.0",
+    "ipykernel==6.29.0",
+    "numpy==1.26.4",
+    "pandas==2.2.2",
+    "streamlit==1.36.0",
+    "pyarrow==16.1.0",
+    "scipy==1.11.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.0.0", "pytest-cov"]
+rl = ["torch>=2.0"]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/main.py"]
