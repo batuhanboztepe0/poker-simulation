@@ -41,16 +41,45 @@ def main():
     ap.add_argument("--multi-hand", action="store_true",
                     help="bankroll episodes (persistent stacks, log-utility reward)")
     ap.add_argument("--hands-per-episode", type=int, default=15)
+    ap.add_argument("--icm", action="store_true",
+                    help="ICM prize-pool reward mode (implies --multi-hand; "
+                         "--n-players sets the field size)")
+    ap.add_argument("--n-players", type=int, default=2,
+                    help="number of players at the table (default 2)")
+    ap.add_argument("--extended-features", action="store_true",
+                    help="use the extended feature vector (horizon appended)")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
+    # ICM prize-pool reward runs as bankroll (multi-hand) episodes.
+    multi_hand = args.multi_hand or args.icm
     # Multi-hand bankroll episodes are longer-horizon, so nudge gamma up.
-    gamma = 0.99 if args.multi_hand else 0.97
+    gamma = 0.99 if multi_hand else 0.97
+
+    extra_kwargs = {}
+    if args.icm:
+        total_chips = args.n_players * 1000  # stack0=1000
+        if args.n_players == 2:
+            prize_structure = [total_chips * 0.6, total_chips * 0.4]
+        elif args.n_players == 3:
+            prize_structure = [total_chips * 0.5, total_chips * 0.3,
+                               total_chips * 0.2]
+        else:
+            fracs = [0.5, 0.3, 0.2] + [0.0] * max(0, args.n_players - 3)
+            fracs = fracs[:args.n_players]
+            s = sum(fracs) or 1.0
+            prize_structure = [total_chips * f / s for f in fracs]
+        extra_kwargs["icm_prize_structure"] = prize_structure
+    if args.extended_features:
+        extra_kwargs["extended_features"] = True
+        extra_kwargs["feature_mode"] = "horizon"
+
     trainer = SelfPlayTrainer(
-        n_players=2, hidden=args.hidden, seed=args.trainer_seed,
+        n_players=args.n_players, hidden=args.hidden, seed=args.trainer_seed,
         opponent_mode=args.mode, mc_sims=args.mc_sims,
         epsilon_start=1.0, epsilon_end=0.05, gamma=gamma, snapshot_every=300,
-        multi_hand=args.multi_hand, hands_per_episode=args.hands_per_episode,
+        multi_hand=multi_hand, hands_per_episode=args.hands_per_episode,
+        **extra_kwargs,
     )
 
     print(f"Training mode={args.mode} steps={args.steps} hidden={args.hidden} "

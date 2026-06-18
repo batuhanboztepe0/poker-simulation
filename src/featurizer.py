@@ -15,6 +15,12 @@ from src.ev_calculator import pot_odds
 
 FEATURE_DIM = 18
 
+# Extended-feature dimension constants (for callers that opt in to the
+# horizon and/or belief appends via featurize_extended).
+FEATURE_DIM_HORIZON = 19   # base + horizon_frac
+FEATURE_DIM_BELIEF = 20    # base + 2 belief floats (posterior_mean, p_tilted)
+FEATURE_DIM_FULL = 21      # base + horizon_frac + 2 belief floats
+
 # Streets in canonical order for the one-hot block.
 _STREETS = ["Pre-Flop", "Flop", "Turn", "River"]
 
@@ -77,4 +83,48 @@ def featurize(game_state, hero, equity=None):
         min(1.0, len(game_state.get("community_cards", [])) / 5.0),  # 16 board
         min(1.0, pot / total_chips),         # 17 pot / all chips
     ]
+    return features
+
+
+def featurize_extended(game_state, hero, equity=None, horizon=None,
+                       belief=None):
+    """
+    Extended feature vector phi_ext(s), optionally appending horizon and/or
+    belief floats to the canonical 18-dim featurize() output.
+
+    The first 18 positions are byte-identical to featurize(game_state, hero,
+    equity).  Additional floats are appended in a fixed order: horizon first
+    (if supplied), then belief (if supplied), so callers can use the
+    FEATURE_DIM_* constants to know the resulting length.
+
+    Args:
+        game_state (dict): Engine game-state snapshot.
+        hero (Player): The acting player.
+        equity (float | None): Precomputed equity (passed through to featurize).
+        horizon (tuple | None): (hands_remaining, hands_per_episode). Appends
+            a single float `hands_remaining / max(1, hands_per_episode)` clamped
+            to [0.0, 1.0].
+        belief (BeliefState | None): Opponent belief state.  Appends two floats:
+            belief.posterior_mean() and belief.p_tilted().  Any NaN/Inf is
+            clamped to [0.0, 1.0] to avoid corrupting the Q-network.
+
+    Returns:
+        list[float]: Length 18, 19, 20, or 21 depending on which extras are set.
+    """
+    features = featurize(game_state, hero, equity=equity)
+
+    if horizon is not None:
+        remaining, total = horizon
+        frac = float(remaining) / max(1, total)
+        frac = max(0.0, min(1.0, frac))
+        features = features + [frac]
+
+    if belief is not None:
+        pm = float(belief.posterior_mean())
+        pt = float(belief.p_tilted())
+        # Guard against degenerate belief states (NaN / Inf from particle filter).
+        pm = pm if (pm == pm and abs(pm) != float("inf")) else 0.5
+        pt = pt if (pt == pt and abs(pt) != float("inf")) else 0.0
+        features = features + [pm, pt]
+
     return features

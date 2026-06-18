@@ -21,7 +21,11 @@ from src.player import (
     BotPlayer,
     ACTION_FOLD, ACTION_CHECK, ACTION_CALL, ACTION_RAISE, ACTION_ALL_IN,
 )
-from src.featurizer import featurize, FEATURE_DIM
+from src.featurizer import (
+    featurize, featurize_extended, FEATURE_DIM,
+    FEATURE_DIM_HORIZON, FEATURE_DIM_BELIEF, FEATURE_DIM_FULL,
+)
+from src.icm import icm_equity
 from src.monte_carlo import MonteCarloEngine
 
 try:
@@ -35,6 +39,17 @@ except ImportError:  # pragma: no cover - exercised only without torch
 # Discrete action set indexed by the Q-network output.
 ACTION_NAMES = ["fold", "passive", "raise_half", "raise_pot", "all_in"]
 N_ACTIONS = len(ACTION_NAMES)
+
+# Extended 7-action grid.  Indices 2-5 are raise fractions of the pot:
+#   2=quarter, 3=half, 4=two-thirds, 5=pot, 6=all-in.
+# WARNING: these indices are INCOMPATIBLE with the 5-action grid — do not
+# mix checkpoints trained with different grids.
+EXTENDED_ACTION_NAMES = [
+    "fold", "passive",
+    "raise_quarter", "raise_half", "raise_two_thirds", "raise_pot",
+    "all_in",
+]
+N_EXTENDED_ACTIONS = len(EXTENDED_ACTION_NAMES)
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +96,52 @@ def map_action_index(idx, game_state, stack):
             return ACTION_ALL_IN, stack
         return ACTION_RAISE, target
     # all-in
+    return ACTION_ALL_IN, stack
+
+
+def legal_action_indices_ext(game_state, stack):
+    """Indices into EXTENDED_ACTION_NAMES that are legal in this state."""
+    call_amount = game_state.get("call_amount", 0)
+    min_raise = game_state.get("min_raise", max(call_amount * 2, 1))
+    legal = [0, 1]  # fold + passive always available
+    can_raise = stack > call_amount and stack >= min_raise
+    if can_raise:
+        legal += [2, 3, 4, 5]  # raise_quarter, raise_half, raise_two_thirds, raise_pot
+    if stack > 0:
+        legal.append(6)  # all-in
+    return legal
+
+
+# Raise fractions for the extended grid (indices 2-5).
+_EXT_RAISE_FRACS = [0.25, 0.5, 0.667, 1.0]
+
+
+def map_action_index_ext(idx, game_state, stack):
+    """Translate an extended action index into a concrete (action, amount)."""
+    call_amount = game_state.get("call_amount", 0)
+    pot = game_state.get("pot", 1)
+    min_raise = game_state.get("min_raise", max(call_amount * 2, 1))
+    current_bet = game_state.get("current_bet", 0)
+
+    if idx == 0:
+        return ACTION_FOLD, 0
+    if idx == 1:
+        if call_amount == 0:
+            return ACTION_CHECK, 0
+        if call_amount >= stack:
+            return ACTION_ALL_IN, stack
+        return ACTION_CALL, call_amount
+    if idx in (2, 3, 4, 5):
+        can_raise = stack > call_amount and stack >= min_raise
+        if not can_raise:
+            return map_action_index_ext(1, game_state, stack)
+        frac = _EXT_RAISE_FRACS[idx - 2]
+        target = current_bet + int(pot * frac)
+        target = max(min_raise, min(target, stack))
+        if target >= stack:
+            return ACTION_ALL_IN, stack
+        return ACTION_RAISE, target
+    # idx == 6: all-in
     return ACTION_ALL_IN, stack
 
 
@@ -150,22 +211,42 @@ class RLBotPlayer(BotPlayer):
     Requires torch. With `training=True` it explores epsilon-greedily and logs
     (features, action_idx) per decision so a SelfPlayTrainer can attach the
     hand's realised return.
+
+    feature_mode controls which feature vector is built:
+        'base'    - featurize() (18 dims, default, byte-identical to before)
+        'horizon' - featurize_extended(..., horizon=_horizon_info)  (19 dims)
+        'belief'  - featurize_extended(..., belief=_belief)         (20 dims)
+        'full'    - featurize_extended(..., horizon=..., belief=...) (21 dims)
+    The trainer sets `_horizon_info` (a (remaining, total) tuple or None) before
+    each hand in multi-hand mode.
     """
 
     def __init__(self, *args, qnet=None, epsilon=0.1, training=False,
-                 **kwargs):
+                 feature_mode='base', **kwargs):
         _require_torch()
         super().__init__(*args, **kwargs)
         self.qnet = qnet if qnet is not None else QNetwork()
         self.epsilon = epsilon
         self.training = training
+        self.feature_mode = feature_mode
         self._episode_log = []
+        # Set by SelfPlayTrainer before each hand in multi-hand mode.
+        self._horizon_info = None   # (hands_remaining, hands_per_episode) or None
+        self._belief = None         # BeliefState or None
 
     def decide(self, game_state):
         equity = (self._estimate_equity(game_state)
                   if self.mc_engine is not None else None)
-        features = featurize(game_state, self, equity=equity)
-        legal = legal_action_indices(game_state, self.stack)
+
+        if self.feature_mode == 'base':
+            features = featurize(game_state, self, equity=equity)
+            legal = legal_action_indices(game_state, self.stack)
+        else:
+            horizon = self._horizon_info if self.feature_mode in ('horizon', 'full') else None
+            belief = self._belief if self.feature_mode in ('belief', 'full') else None
+            features = featurize_extended(game_state, self, equity=equity,
+                                          horizon=horizon, belief=belief)
+            legal = legal_action_indices(game_state, self.stack)
 
         with torch.no_grad():
             q = self.qnet(torch.tensor(features, dtype=torch.float32)).tolist()
@@ -301,8 +382,9 @@ class SelfPlayTrainer:
             Risk-neutral per-hand EV; the strongest beats-baseline number.
         multi-hand  (multi_hand=True) - stacks PERSIST across hands_per_episode
             hands, reward = per-hand change in log-utility of the stack
-            (log(S'/S)); decisions chain into one episode-long TD sequence. The
-            agent optimizes long-run log-bankroll-growth (Kelly / ROADMAP s11).
+            (log(S'/S)), or in ICM prize equity when icm_prize_structure is set;
+            decisions chain into one episode-long TD sequence. The agent
+            optimizes long-run log-bankroll-growth (Kelly / ROADMAP s11).
 
     Opponent modes (the M1->M4 progression in docs/RL_HANDOFF.md):
         "self"     - all n_players bots are learners sharing the live net
@@ -321,10 +403,18 @@ class SelfPlayTrainer:
                  opponent_mode="self", mc_sims=100, reward_clip=None,
                  epsilon_start=None, epsilon_end=None, snapshot_every=500,
                  baseline_kwargs=None, gamma=0.97, target_update_every=50,
-                 multi_hand=False, hands_per_episode=15, util_floor=1.0):
+                 multi_hand=False, hands_per_episode=15, util_floor=1.0,
+                 icm_prize_structure=None, extended_features=False,
+                 feature_mode='base'):
         _require_torch()
         import random as _random
         from src.game import GameEngine
+
+        if icm_prize_structure is not None and not multi_hand:
+            raise ValueError(
+                "icm_prize_structure requires multi_hand=True; pass "
+                "multi_hand=True to activate bankroll-episode mode."
+            )
 
         self.stack0 = stack0
         self.reward_scale = float(stack0)
@@ -336,17 +426,38 @@ class SelfPlayTrainer:
         self.multi_hand = multi_hand
         self.hands_per_episode = hands_per_episode
         self.util_floor = float(util_floor)
+        # ICM reward mode: per-hand reward is change in ICM equity (prize-pool
+        # weighted by stack shares). Requires multi_hand=True.
+        self.icm_prize_structure = icm_prize_structure
+        # Extended feature mode.
+        self.extended_features = extended_features
+        self.feature_mode = feature_mode
         # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
         # so multi-hand wants a looser clip than the [-1,1] chip-delta reward.
         if reward_clip is None:
             reward_clip = 3.0 if multi_hand else 1.0
         self.reward_clip = reward_clip
         self.rng = _random.Random(seed)
-        self.qnet = QNetwork(hidden=hidden)
+
+        # Compute the QNetwork input dimension from feature_mode.
+        if extended_features:
+            _mode = feature_mode
+            if _mode == 'horizon':
+                _input_dim = FEATURE_DIM_HORIZON
+            elif _mode == 'belief':
+                _input_dim = FEATURE_DIM_BELIEF
+            elif _mode == 'full':
+                _input_dim = FEATURE_DIM_FULL
+            else:
+                _input_dim = FEATURE_DIM
+        else:
+            _input_dim = FEATURE_DIM
+
+        self.qnet = QNetwork(input_dim=_input_dim, hidden=hidden)
         # Target network for the TD bootstrap (frozen between periodic syncs);
         # gives a stable regression target so the value estimates don't chase
         # their own tail.
-        self.target_qnet = QNetwork(hidden=hidden)
+        self.target_qnet = QNetwork(input_dim=_input_dim, hidden=hidden)
         self.target_qnet.load_state_dict(self.qnet.state_dict())
         self.gamma = gamma
         self.target_update_every = target_update_every
@@ -366,10 +477,13 @@ class SelfPlayTrainer:
                                    rng=_random.Random(seed + 200))
         bk = baseline_kwargs or dict(tight_threshold=0.2, aggression=0.5)
 
+        _fm = feature_mode if extended_features else 'base'
+
         def _learner(i):
             return RLBotPlayer(i, f"RL{i}", stack0, qnet=self.qnet,
                                epsilon=self.epsilon_start, training=True,
-                               mc_engine=self.mc, rng=_random.Random(seed + i))
+                               mc_engine=self.mc, rng=_random.Random(seed + i),
+                               feature_mode=_fm)
 
         if opponent_mode == "self":
             self.learners = [_learner(i) for i in range(1, n_players + 1)]
@@ -386,7 +500,8 @@ class SelfPlayTrainer:
             # Opponents are RL bots driven by frozen weight snapshots; they
             # never train and their logs are discarded.
             self.opponents = [
-                RLBotPlayer(i, f"Snap{i}", stack0, qnet=QNetwork(hidden=hidden),
+                RLBotPlayer(i, f"Snap{i}", stack0,
+                            qnet=QNetwork(input_dim=_input_dim, hidden=hidden),
                             epsilon=0.05, training=False, mc_engine=self.mc,
                             rng=_random.Random(seed + i))
                 for i in range(2, n_players + 1)
@@ -415,6 +530,20 @@ class SelfPlayTrainer:
 
     def _clip(self, r):
         return max(-self.reward_clip, min(self.reward_clip, r))
+
+    def _icm_utility(self, stacks_list):
+        """
+        ICM equity for the learner given current stacks.
+
+        Args:
+            stacks_list (list[float]): All player stacks in self.players order.
+
+        Returns:
+            float: The learner's (index 0 in self.learners) ICM prize equity.
+        """
+        # The learner is always self.learners[0]; its index in self.players is 0.
+        hero_index = self.players.index(self.learners[0])
+        return icm_equity(stacks_list, self.icm_prize_structure)[hero_index]
 
     def _collect(self, n_hands):
         if self.multi_hand:
@@ -455,10 +584,9 @@ class SelfPlayTrainer:
         """
         Bankroll episodes: play matches of up to `hands_per_episode` hands with
         PERSISTENT stacks. Each hand's reward is the change in the learner's
-        log-utility of its stack; decisions are chained into one TD sequence
-        spanning the whole episode (the episode's final decision is terminal),
-        so the value head learns long-run log-bankroll-growth-to-go, not just
-        single-hand EV. `n_hands` is the approximate hand budget for this call.
+        log-utility of its stack (or ICM equity when icm_prize_structure is
+        set); decisions are chained into one TD sequence spanning the whole
+        episode. `n_hands` is the approximate hand budget for this call.
         """
         n_episodes = max(1, math.ceil(n_hands / self.hands_per_episode))
         for _ in range(n_episodes):
@@ -474,27 +602,37 @@ class SelfPlayTrainer:
                 p._episode_log = []
 
         # Per learner, accumulate the episode's decisions as mutable
-        # [feat, idx, legal, reward] rows. `carry` holds log-utility change from
+        # [feat, idx, legal, reward] rows. `carry` holds utility change from
         # hands in which the bot never acted (e.g. the BB winning when the SB
         # folds pre-flop) so no bankroll change is dropped.
         rows = {b.player_id: [] for b in self.learners}
         carry = {b.player_id: 0.0 for b in self.learners}
 
-        for _ in range(self.hands_per_episode):
+        for hand_num in range(self.hands_per_episode):
             if sum(1 for p in self.players if p.stack > 0) < 2:
                 break
-            before = {b.player_id: b.stack for b in self.learners}
+            before_stacks = {b.player_id: b.stack for b in self.learners}
+            all_before = [p.stack for p in self.players]
             for b in self.learners:
                 b._episode_log = []
+                # Update horizon info for extended feature modes.
+                if self.extended_features and self.feature_mode in ('horizon', 'full'):
+                    b._horizon_info = (self.hands_per_episode - hand_num,
+                                       self.hands_per_episode)
             self.engine.play_hand()
+
             for b in self.learners:
-                d_util = (self._utility(b.stack)
-                          - self._utility(before[b.player_id]))
+                # Per-hand utility delta: ICM mode or log-utility mode.
+                if self.icm_prize_structure is not None:
+                    all_after = [p.stack for p in self.players]
+                    d_util = (self._icm_utility(all_after)
+                              - self._icm_utility(all_before))
+                else:
+                    d_util = (self._utility(b.stack)
+                              - self._utility(before_stacks[b.player_id]))
+
                 decisions = b._episode_log
                 if decisions:
-                    # This hand's whole utility change lands on its LAST
-                    # decision (earlier within-hand decisions bootstrap to it);
-                    # plus any carried utility from prior actionless hands.
                     bonus = carry[b.player_id]
                     carry[b.player_id] = 0.0
                     last = len(decisions) - 1
@@ -507,9 +645,8 @@ class SelfPlayTrainer:
         for b in self.learners:
             seq = rows[b.player_id]
             if not seq:
-                # Learner never acted the whole episode -> no decision to credit,
-                # so any carry is dropped. Practically unreachable heads-up (the
-                # SB always acts pre-flop); negligible and conservative if it is.
+                # Learner never acted the whole episode -> no decision to credit.
+                # Practically unreachable heads-up; negligible and conservative.
                 continue
             # Flush any trailing carry (actionless final hands) onto the last
             # decision so the episode's total utility change is conserved.
