@@ -342,6 +342,10 @@ class BotPlayer(Player):
         # Optional static Bayesian opponent model (Phase 3). When present and
         # warmed up, equity is conditioned on the modeled opponent range.
         self.belief_state    = belief_state
+        # Dedupe the per-hand PnL->tilt belief transition: the engine notifies
+        # observe_hand_result once per OTHER player, but a single belief models
+        # one (blended) opponent, so observe_pnl must fire at most once per hand.
+        self._last_pnl_hand_id = None
         # Optional fold-equity model (Phase A). When present, raising becomes a
         # strict EV gate including fold equity (enables EV-driven bluffing).
         # OFF by default -> the bot is byte-identical to the baseline.
@@ -603,9 +607,19 @@ class BotPlayer(Player):
         aggression-only signal by a hand. (Per-action `observe_action` carries no
         realised PnL — it stays emission-only with delta_stack=0; the realised
         chip delta is a hand-boundary quantity delivered here.)
+
+        In a 3+ player game the engine calls this once per other player; a single
+        belief models one blended opponent, so the transition is applied AT MOST
+        ONCE per hand (deduped by hand_id) to avoid compounding it N-1 times.
+        (True multi-opponent tracking needs a per-opponent belief dict — see
+        RL_HANDOFF §10 "Still open".)
         """
         if self.belief_state is None:
             return
+        hid = observation.get("hand_id")
+        if hid is not None and hid == self._last_pnl_hand_id:
+            return
+        self._last_pnl_hand_id = hid
         self.belief_state.observe_pnl(observation.get("delta_stack", 0))
 
     def ev_breakdown(self, game_state):

@@ -390,3 +390,19 @@ class TestPnLBeliefFeed:
             return sum(ps) / len(ps)
 
         assert run(use_pnl=True) > run(use_pnl=False)
+
+    def test_pnl_feed_fires_once_per_hand_in_3plus_player(self):
+        """In 3+ player the engine notifies once per opponent, but the single
+        belief's observe_pnl must fire AT MOST once per hand (deduped) — else the
+        regime transition compounds N-1 times."""
+        rng = random.Random(3)
+        mc = MonteCarloEngine(n_simulations=100, rng=rng)
+        hmm = HMMBeliefState()
+        calls = []
+        orig = hmm.observe_pnl
+        hmm.observe_pnl = lambda d: (calls.append(d), orig(d))[1]
+        hero = BotPlayer(1, "Hero", 1000, 0.3, 0.5, mc, rng, belief_state=hmm)
+        villains = [BotPlayer(i, f"V{i}", 1000, 0.3, 0.5, mc, rng) for i in (2, 3)]
+        engine = GameEngine([hero] + villains, 10, 20, verbose=False, rng=rng)
+        engine.play_hand()
+        assert len(calls) == 1   # one transition for the hand, not 2 opponents

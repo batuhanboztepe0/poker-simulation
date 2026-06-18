@@ -485,3 +485,42 @@ class TestEvBreakdownBustedGuard:
         assert breakdown["raise"] is None
         assert breakdown["optimal_raise_size"] is None
         assert breakdown["best_action"] in ("fold", "call")
+
+
+class TestIncompleteAllInMinRaise:
+    """
+    Regression: an incomplete all-in (a raise below the prior full increment)
+    must NOT shrink last_raise_size, so the minimum raise still owed by later
+    full raisers stays correct. (game.py ACTION_ALL_IN branch.)
+    """
+
+    def _engine(self):
+        players = [BotPlayer(i, f"P{i}", 1000) for i in range(1, 4)]
+        eng = GameEngine(players, small_blind=10, big_blind=20, verbose=False)
+        eng.pot_manager.reset()
+        # Simulate "A raised to 60" — a full 40-chip raise over the 20 BB.
+        eng.current_bet = 60
+        eng.last_raise_size = 40
+        return eng
+
+    def test_incomplete_all_in_preserves_last_raise_size(self):
+        eng = self._engine()
+        b = eng.players[1]
+        b.current_bet, b.stack = 0, 80     # all-in for 80 -> a 20-chip raise
+        eng._apply_action(b, ACTION_ALL_IN, 80, 60)
+        assert b.current_bet == 80 and eng.current_bet == 80
+        # 20 < 40 (incomplete) -> last_raise_size unchanged.
+        assert eng.last_raise_size == 40
+        # So C is owed a full raise to 120, not the buggy 100.
+        gs = eng._build_game_state(ROUND_PRE_FLOP, 80, actor=eng.players[2])
+        assert gs["min_raise"] == 120
+
+    def test_full_all_in_updates_last_raise_size(self):
+        eng = self._engine()
+        b = eng.players[1]
+        b.current_bet, b.stack = 0, 140    # all-in for 140 -> an 80-chip raise
+        eng._apply_action(b, ACTION_ALL_IN, 140, 60)
+        assert eng.current_bet == 140
+        assert eng.last_raise_size == 80   # full all-in DOES update it
+        gs = eng._build_game_state(ROUND_PRE_FLOP, 140, actor=eng.players[2])
+        assert gs["min_raise"] == 220

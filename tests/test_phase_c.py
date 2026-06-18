@@ -34,6 +34,7 @@ from src.icm import icm_equity, marginal_chip_value
 from src.featurizer import featurize, FEATURE_DIM
 from src.kelly_agent import KellyBotPlayer
 from src.stochastic_control import RolloutPolicy, RolloutBotPlayer
+from src.fold_equity import FoldEquityModel
 import src.rl_agent as rl
 from src.rl_agent import (
     ReplayBuffer, legal_action_indices, map_action_index, ACTION_NAMES,
@@ -270,6 +271,52 @@ class TestRollout:
             pol = RolloutPolicy(mc, rng=rng)
             players.append(RolloutBotPlayer(i, f"R{i}", 1000, mc_engine=mc,
                                             rng=rng, rollout_policy=pol))
+        engine = GameEngine(players, 10, 20, verbose=False, rng=rng)
+        total = sum(p.stack for p in players)
+        for _ in range(25):
+            if sum(1 for p in players if p.stack > 0) < 2:
+                break
+            engine.play_hand()
+        assert sum(p.stack for p in players) == total
+
+    def test_fold_equity_enables_semibluff(self):
+        """With a fold-equity model the rollout bets a weak hand for fold equity;
+        without one (p_fold=0) it can only check — the documented no-bluff limit.
+        Same hand/board/seed isolates the fold-equity effect."""
+        mc = MonteCarloEngine(n_simulations=200, rng=random.Random(0))
+        gs = {"round_name": "Flop", "pot": 40, "call_amount": 0, "min_raise": 20,
+              "current_bet": 0,
+              "community_cards": make_cards([("K", "s"), ("Q", "d"), ("9", "c")]),
+              "active_player_count": 2, "opponent_ids": [2]}
+        hand = make_cards([("7", "h"), ("2", "d")])
+        no_fe = RolloutPolicy(mc, rng=random.Random(1))
+        with_fe = RolloutPolicy(mc, rng=random.Random(1),
+                                fold_equity_model=FoldEquityModel())
+        assert no_fe.decide(hand, gs, 1000)[0] == "check"
+        assert with_fe.decide(hand, gs, 1000)[0] == "raise"
+
+    def test_bot_forwards_fold_equity_model_to_policy(self):
+        """A RolloutBotPlayer carrying a fold_equity_model wires it into a policy
+        that lacks one, but never overwrites a model the policy already has."""
+        mc = MonteCarloEngine(n_simulations=100, rng=random.Random(0))
+        fem = FoldEquityModel()
+        bot = RolloutBotPlayer(1, "R", 1000, mc_engine=mc, fold_equity_model=fem,
+                               rollout_policy=RolloutPolicy(mc))
+        assert bot.rollout_policy.fold_equity_model is fem
+        explicit = FoldEquityModel()
+        bot2 = RolloutBotPlayer(
+            2, "R2", 1000, mc_engine=mc, fold_equity_model=FoldEquityModel(),
+            rollout_policy=RolloutPolicy(mc, fold_equity_model=explicit))
+        assert bot2.rollout_policy.fold_equity_model is explicit
+
+    def test_chip_conservation_with_fold_equity(self):
+        """A table of fold-equity rollouts still conserves chips."""
+        rng = random.Random(4)
+        mc = MonteCarloEngine(n_simulations=100, rng=rng)
+        players = [RolloutBotPlayer(i, f"R{i}", 1000, mc_engine=mc, rng=rng,
+                                    fold_equity_model=FoldEquityModel(),
+                                    rollout_policy=RolloutPolicy(mc, rng=rng))
+                   for i in range(1, 4)]
         engine = GameEngine(players, 10, 20, verbose=False, rng=rng)
         total = sum(p.stack for p in players)
         for _ in range(25):

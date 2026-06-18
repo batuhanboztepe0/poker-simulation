@@ -556,7 +556,9 @@ class GameEngine:
                 f"must call {call_amount} chips or fold."
             )
         if action == ACTION_RAISE:
-            min_raise = self.last_raise_size + self.current_bet
+            # Match _build_game_state: floor the increment at big_blind so the
+            # validated minimum equals the one advertised to the player.
+            min_raise = max(self.last_raise_size, self.big_blind) + self.current_bet
             if amount < min_raise and amount < player.stack:
                 raise ValueError(
                     f"{player.name} raise of {amount} is below "
@@ -607,7 +609,13 @@ class GameEngine:
             self.pot_manager.add_contribution(player.player_id, actual)
             if player.current_bet > self.current_bet:
                 raise_size = player.current_bet - self.current_bet
-                self.last_raise_size = max(raise_size, self.big_blind)
+                # Only a FULL-increment all-in updates last_raise_size. An
+                # incomplete all-in (raise_size below the prior full raise)
+                # raises the amount-to-call but does NOT re-open betting (see the
+                # re-open gate in _play_betting_round), so it must not shrink the
+                # minimum-raise increment still owed by later full raisers.
+                if raise_size >= self.last_raise_size:
+                    self.last_raise_size = max(raise_size, self.big_blind)
                 self.current_bet = player.current_bet
             self._log(f"  {player.name:14s} ALL-IN   ({player.current_bet} total)")
             return actual

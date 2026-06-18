@@ -128,6 +128,13 @@ class RolloutBotPlayer(BotPlayer):
         super().__init__(*args, **kwargs)
         if rollout_policy is None:
             raise ValueError("RolloutBotPlayer requires a rollout_policy.")
+        # If the bot carries a fold-equity model but the policy wasn't given one,
+        # forward it so the rollout can value fold equity (and thus semi-bluff /
+        # bet thin) instead of the no-fold-equity p_fold=0 default that leaves it
+        # unable to bluff (RL_HANDOFF §10 residual vs-myopic -660).
+        if (rollout_policy.fold_equity_model is None
+                and self.fold_equity_model is not None):
+            rollout_policy.fold_equity_model = self.fold_equity_model
         self.rollout_policy = rollout_policy
 
     def decide(self, game_state):
