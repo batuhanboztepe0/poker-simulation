@@ -406,7 +406,7 @@ class SelfPlayTrainer:
                  baseline_kwargs=None, gamma=0.97, target_update_every=50,
                  multi_hand=False, hands_per_episode=15, util_floor=1.0,
                  icm_prize_structure=None, extended_features=False,
-                 feature_mode='base'):
+                 feature_mode='base', opponent_factory=None):
         _require_torch()
         import random as _random
         from src.game import GameEngine
@@ -491,11 +491,21 @@ class SelfPlayTrainer:
             self.opponents = []
         elif opponent_mode == "fixed":
             self.learners = [_learner(1)]
-            self.opponents = [
-                BotPlayer(i, f"Fix{i}", stack0, mc_engine=self.mc,
-                          rng=_random.Random(seed + i), **bk)
-                for i in range(2, n_players + 1)
-            ]
+            if opponent_factory is not None:
+                # Custom frozen opponents (e.g. adaptive / tilt bots) so the
+                # learner trains against a non-myopic, possibly non-stationary
+                # target. Factory signature: (player_id, stack, mc_engine, rng).
+                self.opponents = [
+                    opponent_factory(i, stack0, self.mc,
+                                     _random.Random(seed + i))
+                    for i in range(2, n_players + 1)
+                ]
+            else:
+                self.opponents = [
+                    BotPlayer(i, f"Fix{i}", stack0, mc_engine=self.mc,
+                              rng=_random.Random(seed + i), **bk)
+                    for i in range(2, n_players + 1)
+                ]
         elif opponent_mode == "snapshot":
             self.learners = [_learner(1)]
             # Opponents are RL bots driven by frozen weight snapshots; they

@@ -233,5 +233,27 @@ class TestParameterSweep(unittest.TestCase):
         self.assertEqual(r1.leaderboard, r2.leaderboard)
 
 
+class TestTrainAgainstAdaptive(unittest.TestCase):
+    def test_opponent_factory_uses_adaptive_and_trains(self):
+        try:
+            import torch  # noqa: F401
+        except ImportError:
+            self.skipTest("torch not installed")
+        from src.rl_agent import SelfPlayTrainer
+
+        def opp(pid, stack, mc, rng):
+            return AdaptiveBotPlayer(pid, "Tilt", stack, mode="tilt",
+                                     mc_engine=mc, rng=rng)
+
+        tr = SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                             hands_per_episode=8, mc_sims=100, seed=0,
+                             opponent_factory=opp)
+        # the frozen opponent is the adaptive bot we supplied, not a myopic bot
+        self.assertIsInstance(tr.opponents[0], AdaptiveBotPlayer)
+        losses = tr.train(15, hands_per_refresh=16)
+        self.assertEqual(len(losses), 15)
+        self.assertTrue(all(loss >= 0 for loss in losses))
+
+
 if __name__ == "__main__":
     unittest.main()

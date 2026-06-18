@@ -21,6 +21,7 @@ import torch
 from src.rl_agent import (
     SelfPlayTrainer, evaluate_vs_baseline, paired_t_test, save_trainer_checkpoint,
 )
+from src.adaptive_agent import AdaptiveBotPlayer
 
 
 def main():
@@ -53,11 +54,17 @@ def main():
     ap.add_argument("--save", default=None,
                     help="path to save a reloadable checkpoint (weights + "
                          "feature_mode + learning-curve history) for the dashboard")
+    ap.add_argument("--opponent", default="myopic",
+                    choices=["myopic", "random", "tilt"],
+                    help="fixed-mode opponent: myopic EV bot, or an adaptive bot "
+                         "with random or PnL-driven tilt aggression (tilt implies "
+                         "--multi-hand)")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
-    # ICM prize-pool reward runs as bankroll (multi-hand) episodes.
-    multi_hand = args.multi_hand or args.icm
+    # ICM prize-pool reward runs as bankroll (multi-hand) episodes; a tilt
+    # opponent also needs persistent stacks to accumulate the losses that tilt it.
+    multi_hand = args.multi_hand or args.icm or (args.opponent == "tilt")
     # Multi-hand bankroll episodes are longer-horizon, so nudge gamma up.
     gamma = 0.99 if multi_hand else 0.97
 
@@ -78,6 +85,15 @@ def main():
     if args.extended_features:
         extra_kwargs["extended_features"] = True
         extra_kwargs["feature_mode"] = "horizon"
+    if args.opponent != "myopic":
+        if args.mode != "fixed":
+            print(f"  [note] --opponent {args.opponent} only applies to "
+                  f"--mode fixed; ignored for --mode {args.mode}.")
+
+        def _opp_factory(pid, stack, mc, rng, _mode=args.opponent):
+            return AdaptiveBotPlayer(pid, _mode.capitalize(), stack,
+                                     mode=_mode, mc_engine=mc, rng=rng)
+        extra_kwargs["opponent_factory"] = _opp_factory
 
     trainer = SelfPlayTrainer(
         n_players=args.n_players, hidden=args.hidden, seed=args.trainer_seed,
@@ -87,7 +103,8 @@ def main():
         **extra_kwargs,
     )
 
-    print(f"Training mode={args.mode} steps={args.steps} hidden={args.hidden} "
+    print(f"Training mode={args.mode} opponent={args.opponent} "
+          f"steps={args.steps} hidden={args.hidden} "
           f"torch_seed={args.torch_seed} ...")
     t0 = time.time()
     losses = trainer.train(

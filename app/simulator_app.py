@@ -287,6 +287,10 @@ def _evaluation_page():
         fast = st.checkbox("Fast mode (no Monte Carlo — much quicker)", value=True)
         add_extra = st.checkbox("Add Kelly + adaptive agents to the grid",
                                 value=False)
+        have_rl = "RL" in factories
+        include_rl = have_rl and st.checkbox(
+            "Add the loaded RL checkpoint (forces Monte Carlo — fair, slower)",
+            value=True)
         if st.button("Run sweep", type="primary"):
             try:
                 tights = [float(x) for x in tight_raw.split(",") if x.strip()]
@@ -294,22 +298,45 @@ def _evaluation_page():
             except ValueError:
                 st.error("Grid values must be comma-separated numbers.")
                 return
-            extra = None
+            extra = {}
             if add_extra:
-                extra = {n: factories[n] for n in
-                         ("Kelly", "Adaptive(tilt)", "Adaptive(random)")
-                         if n in factories}
-            n_cells = len(tights) * len(aggrs) + (len(extra) if extra else 0)
+                extra.update({n: factories[n] for n in
+                              ("Kelly", "Adaptive(tilt)", "Adaptive(random)")
+                              if n in factories})
+            if include_rl:
+                extra["RL"] = factories["RL"]
+                fast = False  # RL needs real equity to be judged fairly
+            n_cells = len(tights) * len(aggrs) + len(extra)
             with st.spinner(f"Round-robin over {n_cells} agents "
                             f"× {n_seeds} seeds..."):
                 rr, grid = parameter_sweep(
                     tights, aggrs, seeds, n_hands=n_hands,
                     mc_sims=(None if fast else mc_sims), fast_mode=fast,
-                    extra_agents=extra)
+                    extra_agents=(extra or None))
+
+            # Did the RL agent clear the best static personality's bar?
+            best_static = max(grid, key=lambda g: g["mean_net_chips"])
+            board = {e["name"]: e for e in rr.leaderboard}
+            m1, m2 = st.columns(2)
+            m1.metric(
+                f"Best static  t{best_static['tight']:.2f}/a{best_static['aggr']:.2f}",
+                f"{best_static['mean_net_chips']:+.0f}")
+            if "RL" in board:
+                rl_mean = board["RL"]["mean_net_chips"]
+                rank = [e["name"] for e in rr.leaderboard].index("RL") + 1
+                delta = rl_mean - best_static["mean_net_chips"]
+                m2.metric(f"RL (rank {rank}/{len(rr.leaderboard)})",
+                          f"{rl_mean:+.0f}", delta=f"{delta:+.0f} vs best static")
+                if delta > 0:
+                    st.success("RL clears the best static personality's bar. 🎯")
+                else:
+                    st.warning("RL does not yet beat the best static personality "
+                               "— needs more training / tuning.")
+
             st.subheader("Fitness landscape (mean net chips)")
             st.plotly_chart(parameter_heatmap_figure(grid),
                             use_container_width=True)
-            st.subheader("Leaderboard")
+            st.subheader("Leaderboard (RL vs the static grid)")
             st.plotly_chart(tournament_leaderboard_figure(rr.leaderboard),
                             use_container_width=True)
             st.subheader("Per-seed net-chip distribution")
