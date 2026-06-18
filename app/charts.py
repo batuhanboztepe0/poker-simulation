@@ -145,3 +145,77 @@ def roi_leaderboard_figure(summary, name_by_id=None):
         xaxis_title="Player", yaxis_title="Chips / hand",
     )
     return fig
+
+
+def tournament_leaderboard_figure(leaderboard):
+    """
+    Horizontal bar chart of mean net chips per agent, best agent at top.
+
+    Args:
+        leaderboard (list[dict]): each entry has {name, mean_net_chips, ...}.
+
+    Returns:
+        go.Figure
+    """
+    # Sort ascending by value so the best agent ends up at the top of the
+    # horizontal bar chart (plotly renders bars bottom-to-top).
+    ordered = sorted(leaderboard, key=lambda d: d["mean_net_chips"])
+    fig = go.Figure(go.Bar(
+        x=[d["mean_net_chips"] for d in ordered],
+        y=[d["name"] for d in ordered],
+        orientation="h",
+    ))
+    fig.update_layout(
+        title="Agent tournament leaderboard (mean net chips)",
+        xaxis_title="Mean net chips",
+        yaxis_title="Agent",
+    )
+    return fig
+
+
+def tournament_matrix_figure(win_matrix, n_seeds):
+    """
+    Annotated heatmap of head-to-head win rates (row agent beats column agent).
+
+    Args:
+        win_matrix (dict[str, dict[str, int]]): win_matrix[A][B] = seeds A beat B.
+        n_seeds (int): total seeds per pair (denominator for win-rate).
+
+    Returns:
+        go.Figure
+    """
+    names = sorted(win_matrix.keys())
+    denom = max(1, n_seeds)
+    z = []
+    text = []
+    for row_name in names:
+        row_z = []
+        row_text = []
+        for col_name in names:
+            if row_name == col_name:
+                row_z.append(None)
+                row_text.append("")
+            else:
+                wins = win_matrix[row_name].get(col_name, 0)
+                rate = wins / denom
+                row_z.append(rate)
+                row_text.append(f"{rate:.2f}")
+        z.append(row_z)
+        text.append(row_text)
+
+    fig = go.Figure(go.Heatmap(
+        z=z,
+        x=names,
+        y=names,
+        text=text,
+        texttemplate="%{text}",
+        colorscale="RdBu",
+        zmid=0.5,
+        colorbar=dict(title="Win rate"),
+    ))
+    fig.update_layout(
+        title="Head-to-head win rates (row beats column)",
+        xaxis_title="Opponent (column)",
+        yaxis_title="Agent (row)",
+    )
+    return fig

@@ -127,7 +127,7 @@ def main():
     st.set_page_config(page_title="Poker Simulator", layout="wide")
     st.title("Poker-Quant Simulator")
 
-    page = st.sidebar.radio("Page", ["Run", "Replay"])
+    page = st.sidebar.radio("Page", ["Run", "Replay", "Tournament"])
 
     if page == "Run":
         cfg = _sidebar_config()
@@ -148,7 +148,7 @@ def main():
             st.info("Configure the table in the sidebar and click "
                     "**Run simulation**.")
 
-    else:  # Replay
+    elif page == "Replay":
         st.header("Replay a saved run")
         if not os.path.isdir(DATA_DIR):
             st.info("No saved runs yet.")
@@ -161,6 +161,72 @@ def main():
         df = load_parquet(os.path.join(DATA_DIR, choice))
         st.subheader("Event log")
         st.dataframe(df)
+
+    elif page == "Tournament":
+        st.header("Agent Tournament")
+        st.sidebar.header("Tournament settings")
+        t_n_hands = st.sidebar.slider("Hands per session", 10, 500, 100, step=10)
+        t_seeds_raw = st.sidebar.text_input("Seeds (comma-separated)", value="0,1,2,3,4")
+        t_fast_mode = st.sidebar.checkbox("Fast mode (no Monte Carlo)", value=True)
+        if st.button("Run tournament", type="primary"):
+            # Lazy imports: keep module top-level import-safe for headless tests.
+            from src.tournament import run_tournament
+            from app.charts import (
+                tournament_leaderboard_figure,
+                tournament_matrix_figure,
+            )
+            from src.player import BotPlayer
+            from src.kelly_agent import KellyBotPlayer
+
+            try:
+                t_seeds = [int(s.strip()) for s in t_seeds_raw.split(",")
+                           if s.strip()]
+            except ValueError:
+                st.error("Seeds must be comma-separated integers.")
+                return
+
+            roster = {
+                "Myopic": lambda pid, stack: BotPlayer(pid, "Myopic", stack),
+                "Kelly": lambda pid, stack: KellyBotPlayer(pid, "Kelly", stack),
+            }
+            try:
+                import torch  # noqa: F401
+                from src.rl_agent import RLBotPlayer, QNetwork
+
+                def _rl_factory(pid, stack):
+                    return RLBotPlayer(pid, "RL", stack)
+
+                roster["RL"] = _rl_factory
+            except ImportError:
+                pass
+
+            with st.spinner("Running tournament..."):
+                t_result = run_tournament(
+                    roster=roster,
+                    seeds=t_seeds,
+                    n_hands=t_n_hands,
+                    fast_mode=t_fast_mode,
+                )
+
+            st.subheader("Leaderboard")
+            st.plotly_chart(
+                tournament_leaderboard_figure(t_result.leaderboard),
+                use_container_width=True,
+            )
+
+            st.subheader("Head-to-head matrix")
+            st.plotly_chart(
+                tournament_matrix_figure(t_result.win_matrix, len(t_seeds)),
+                use_container_width=True,
+            )
+
+            st.subheader("Notes")
+            st.info(t_result.kuhn_cfr_note)
+            for note in t_result.notes:
+                st.warning(note)
+        else:
+            st.info("Configure the tournament in the sidebar and click "
+                    "**Run tournament**.")
 
 
 if __name__ == "__main__":
