@@ -71,6 +71,12 @@ def main():
     ap.add_argument("--reward-mode", default="log", choices=["log", "chips"],
                     help="multi-hand reward: log-utility (risk-averse) or chips "
                          "(RISK-NEUTRAL chip delta — gambles into a spewing foe)")
+    ap.add_argument("--belief-sharp", action="store_true",
+                    help="use the tuned, sharper-detecting HMM belief "
+                         "(mu_normal=0.25, mu_tilted=0.92, recover=0.05)")
+    ap.add_argument("--tilt-bonus", type=float, default=0.0,
+                    help="gain-only reward multiplier (1 + tilt_bonus*p_tilted) to "
+                         "press the edge vs a detected-tilted opponent (needs --belief)")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
@@ -107,10 +113,16 @@ def main():
     if fmode:
         extra_kwargs["extended_features"] = True
         extra_kwargs["feature_mode"] = fmode
+    belief_kwargs = {}
     if args.belief:
-        extra_kwargs["learner_belief_factory"] = lambda: HMMBeliefState()
+        if args.belief_sharp:
+            belief_kwargs = dict(mu_normal=0.25, mu_tilted=0.92, recover=0.05)
+        extra_kwargs["learner_belief_factory"] = (
+            lambda bk=belief_kwargs: HMMBeliefState(**bk))
     if multi_hand:
         extra_kwargs["reward_mode"] = args.reward_mode
+    if args.tilt_bonus:
+        extra_kwargs["tilt_reward_bonus"] = args.tilt_bonus
 
     if args.opponent_mix:
         if args.mode != "fixed":
@@ -186,7 +198,8 @@ def main():
 
     if args.save:
         save_trainer_checkpoint(trainer, args.save,
-                                meta={"mode": args.mode, "steps": args.steps})
+                                meta={"mode": args.mode, "steps": args.steps,
+                                      "belief_kwargs": belief_kwargs})
         print(f"  saved checkpoint -> {args.save}")
 
 

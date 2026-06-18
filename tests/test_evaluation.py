@@ -303,6 +303,20 @@ class TestBeliefMixTraining(unittest.TestCase):
         losses = tr.train(10, hands_per_refresh=16)
         self.assertEqual(len(losses), 10)
 
+    def test_tilt_reward_bonus_trains(self):
+        self._torch_or_skip()
+        from src.rl_agent import SelfPlayTrainer
+        from src.opponent_model import HMMBeliefState
+        tr = SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                             hands_per_episode=8, mc_sims=100, seed=0,
+                             extended_features=True, feature_mode="belief",
+                             learner_belief_factory=lambda: HMMBeliefState(
+                                 mu_tilted=0.92, recover=0.05),
+                             reward_mode="chips", tilt_reward_bonus=0.6)
+        self.assertEqual(tr.tilt_reward_bonus, 0.6)
+        losses = tr.train(10, hands_per_refresh=16)
+        self.assertEqual(len(losses), 10)
+
 
 class TestRolloutFreeCheck(unittest.TestCase):
     def test_never_folds_a_free_check(self):

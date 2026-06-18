@@ -196,11 +196,13 @@ def _evaluation_page():
             fm = ckpt.get("feature_mode", "base")
             if fm in ("base", "belief"):
                 from src.opponent_model import HMMBeliefState
+                _bk = (ckpt.get("meta") or {}).get("belief_kwargs") or {}
 
-                def _rl(pid, stack, _q=qnet, _fm=fm):
+                def _rl(pid, stack, _q=qnet, _fm=fm, _bk=_bk):
                     # belief mode: the engine auto-updates this belief during the
-                    # match (observe_action) and the Q-net reads it as a feature.
-                    belief = HMMBeliefState() if _fm == "belief" else None
+                    # match (observe_action) and the Q-net reads it as a feature;
+                    # rebuild it with the same kwargs the checkpoint trained on.
+                    belief = HMMBeliefState(**_bk) if _fm == "belief" else None
                     return RLBotPlayer(pid, "RL", stack, qnet=_q, epsilon=0.0,
                                        training=False, feature_mode=_fm,
                                        belief_state=belief, mc_engine=mc())

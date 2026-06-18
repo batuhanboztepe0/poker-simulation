@@ -413,7 +413,7 @@ class SelfPlayTrainer:
                  icm_prize_structure=None, extended_features=False,
                  feature_mode='base', opponent_factory=None,
                  reward_mode='log', learner_belief_factory=None,
-                 opponent_factories=None):
+                 opponent_factories=None, tilt_reward_bonus=0.0):
         _require_torch()
         import random as _random
         from src.game import GameEngine
@@ -450,6 +450,11 @@ class SelfPlayTrainer:
         self.reward_mode = 'icm' if icm_prize_structure is not None else reward_mode
         self.learner_belief_factory = learner_belief_factory
         self.opponent_factories = opponent_factories
+        # Tilt-exploitation shaping (chips reward, belief on): scale a hand's
+        # reward by (1 + tilt_reward_bonus * p_tilted) so the value head weights
+        # hands where the opponent is detected as tilted more heavily — it learns
+        # to press its edge against a spewing opponent. 0.0 = off (no shaping).
+        self.tilt_reward_bonus = tilt_reward_bonus
         # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
         # so log-mode multi-hand wants a looser clip; 'chips' stays on the tight
         # chip-delta scale like single-hand.
@@ -694,6 +699,13 @@ class SelfPlayTrainer:
                 elif self.reward_mode == 'chips':
                     d_util = ((b.stack - before_stacks[b.player_id])
                               / self.reward_scale)
+                    if (self.tilt_reward_bonus and b.belief_state is not None
+                            and d_util > 0):
+                        # Up-weight WINS against a detected-tilted opponent (press
+                        # the edge). Gains only: amplifying losses too makes the
+                        # agent cautious exactly when it should attack.
+                        d_util *= (1.0 + self.tilt_reward_bonus
+                                   * b.belief_state.p_tilted())
                 else:
                     d_util = (self._utility(b.stack)
                               - self._utility(before_stacks[b.player_id]))
