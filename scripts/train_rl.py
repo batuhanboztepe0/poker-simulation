@@ -53,6 +53,9 @@ def main():
                     help="number of players at the table (default 2)")
     ap.add_argument("--extended-features", action="store_true",
                     help="use the extended feature vector (horizon appended)")
+    ap.add_argument("--extended-actions", action="store_true",
+                    help="use the finer 7-action grid (quarter/half/two-thirds/"
+                         "pot raises) instead of the default 5-action grid")
     ap.add_argument("--save", default=None,
                     help="path to save a reloadable checkpoint (weights + "
                          "feature_mode + learning-curve history) for the dashboard")
@@ -116,6 +119,8 @@ def main():
     if fmode:
         extra_kwargs["extended_features"] = True
         extra_kwargs["feature_mode"] = fmode
+    if args.extended_actions:
+        extra_kwargs["extended_actions"] = True
     belief_kwargs = {}
     if args.belief:
         if args.belief_sharp:
@@ -205,7 +210,7 @@ def main():
                   f"mean_diff {h['mean_chip_diff']:+8.0f}")
         final = evaluate_vs_baseline(
             trainer.qnet, n_seeds=args.final_seeds, n_hands=args.final_hands,
-            mc_sims=args.mc_sims)
+            mc_sims=args.mc_sims, extended_actions=args.extended_actions)
         tt = paired_t_test(final["per_seed_diffs"])
         print(f"\nHEADLINE  ({args.final_seeds} seeds x {args.final_hands} hands):")
         print(f"  wins           : {final['wins']}/{final['n_seeds']}")

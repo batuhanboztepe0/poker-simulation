@@ -379,3 +379,102 @@ class TestHorizonBeliefFeaturesTraining:
         torch.manual_seed(42)
         l2 = run(42)
         assert l1 == l2, "Training is not deterministic with same seed"
+
+
+# ---------------------------------------------------------------------------
+# 5. TestExtendedActionGridTraining  (B2: 7-action grid wired end-to-end)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.skipif(not rl._HAVE_TORCH, reason="torch not installed")
+class TestExtendedActionGridTraining:
+    """The 7-action grid (EXTENDED_ACTION_NAMES) wired into RLBotPlayer /
+    SelfPlayTrainer / evaluate_vs_baseline / checkpoints. All opt-in: default off
+    keeps the 5-action grid and a 5-output qnet (baseline byte-identical)."""
+
+    def test_default_grid_is_five_actions(self):
+        """Default RLBotPlayer + SelfPlayTrainer keep the 5-action grid/net."""
+        bot = rl.RLBotPlayer(1, "R", 1000)
+        assert bot.extended_actions is False
+        assert bot.qnet.net[-1].out_features == N_ACTIONS == 5
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="fixed")
+        assert tr.extended_actions is False
+        assert tr.qnet.net[-1].out_features == 5
+        assert tr.target_qnet.net[-1].out_features == 5
+
+    def test_extended_grid_sizes_qnet_to_seven(self):
+        """extended_actions=True default-builds a 7-output qnet (+ target)."""
+        bot = rl.RLBotPlayer(1, "R", 1000, extended_actions=True)
+        assert bot.extended_actions is True
+        assert bot.qnet.net[-1].out_features == N_EXTENDED_ACTIONS == 7
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="fixed",
+                                extended_actions=True)
+        assert tr.qnet.net[-1].out_features == 7
+        assert tr.target_qnet.net[-1].out_features == 7
+
+    def test_decide_uses_extended_legal_set(self):
+        """A greedy/exploring extended bot logs the EXTENDED legal set (indices
+        up to 6, incl. the new raise sizings), not the 5-action one."""
+        bot = rl.RLBotPlayer(1, "R", 1000, extended_actions=True,
+                             mc_engine=None, rng=random.Random(0),
+                             training=True, epsilon=1.0)
+        bot.hole_cards = make_cards([("A", "s"), ("K", "s")])
+        s = _state()  # call_amount/min_raise allow raises -> raise indices legal
+        expected = legal_action_indices_ext(s, bot.stack)
+        assert max(expected) == 6 and 4 in expected  # raise_two_thirds is ext-only
+        bot.decide(s)
+        _feat, _idx, logged_legal = bot._episode_log[-1]
+        assert logged_legal == expected
+
+    def test_extended_training_uses_full_grid(self):
+        """Training an extended trainer fills the buffer with action indices in
+        range(7), including ext-only raise sizings (quarter/two-thirds)."""
+        import torch
+        torch.manual_seed(0)
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="fixed",
+                                mc_sims=100, extended_actions=True,
+                                epsilon_start=1.0, epsilon_end=0.2)
+        tr.train(30, batch_size=16)
+        idxs = set(t[1] for t in tr.buffer._buf)
+        assert idxs and max(idxs) < N_EXTENDED_ACTIONS
+        assert idxs & {2, 4}, "no ext-only raise sizing (quarter/two-thirds) used"
+
+    def test_extended_training_chip_conservation(self):
+        """Chips are conserved every hand under extended_actions training."""
+        tr = rl.SelfPlayTrainer(n_players=2, seed=3, opponent_mode="fixed",
+                                mc_sims=100, extended_actions=True)
+        total = len(tr.players) * tr.stack0
+        orig = tr.engine.play_hand
+        bad = []
+
+        def checked():
+            r = orig()
+            if sum(p.stack for p in tr.players) != total:
+                bad.append(sum(p.stack for p in tr.players))
+            return r
+
+        tr.engine.play_hand = checked
+        tr.train(20, batch_size=16)
+        assert not bad, f"chip conservation violated: {bad}"
+
+    def test_extended_eval_and_checkpoint_roundtrip(self):
+        """evaluate_vs_baseline(extended_actions=True) runs on a 7-output net,
+        and a trainer checkpoint round-trips n_actions=7."""
+        import torch
+        torch.manual_seed(0)
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="fixed",
+                                mc_sims=100, extended_actions=True)
+        tr.train(15, batch_size=16)
+        res = rl.evaluate_vs_baseline(tr.qnet, n_seeds=3, n_hands=30,
+                                      mc_sims=100, seed_start=900,
+                                      extended_actions=True)
+        assert res["n_seeds"] == 3 and "per_seed_diffs" in res
+
+        path = os.path.join(os.path.dirname(__file__), "_tmp_ext_ckpt.pt")
+        try:
+            rl.save_trainer_checkpoint(tr, path)
+            qnet, ckpt = rl.load_checkpoint(path)
+            assert ckpt["n_actions"] == 7
+            assert qnet.net[-1].out_features == 7
+        finally:
+            if os.path.exists(path):
+                os.remove(path)

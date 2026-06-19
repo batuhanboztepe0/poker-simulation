@@ -223,10 +223,16 @@ class RLBotPlayer(BotPlayer):
     """
 
     def __init__(self, *args, qnet=None, epsilon=0.1, training=False,
-                 feature_mode='base', **kwargs):
+                 feature_mode='base', extended_actions=False, **kwargs):
         _require_torch()
         super().__init__(*args, **kwargs)
-        self.qnet = qnet if qnet is not None else QNetwork()
+        # extended_actions switches the discrete action set from the 5-action
+        # grid (ACTION_NAMES) to the finer 7-action grid (EXTENDED_ACTION_NAMES:
+        # raise_quarter/half/two_thirds/pot + all-in). The qnet must output the
+        # matching number of actions; a default-constructed net is sized to fit.
+        self.extended_actions = extended_actions
+        _n_actions = N_EXTENDED_ACTIONS if extended_actions else N_ACTIONS
+        self.qnet = qnet if qnet is not None else QNetwork(n_actions=_n_actions)
         self.epsilon = epsilon
         self.training = training
         self.feature_mode = feature_mode
@@ -246,12 +252,16 @@ class RLBotPlayer(BotPlayer):
 
         if self.feature_mode == 'base':
             features = featurize(game_state, self, equity=equity)
-            legal = legal_action_indices(game_state, self.stack)
         else:
             horizon = self._horizon_info if self.feature_mode in ('horizon', 'full') else None
             belief = self._belief if self.feature_mode in ('belief', 'full') else None
             features = featurize_extended(game_state, self, equity=equity,
                                           horizon=horizon, belief=belief)
+
+        # The action grid is orthogonal to the feature mode.
+        if self.extended_actions:
+            legal = legal_action_indices_ext(game_state, self.stack)
+        else:
             legal = legal_action_indices(game_state, self.stack)
 
         with torch.no_grad():
@@ -267,12 +277,14 @@ class RLBotPlayer(BotPlayer):
             # over the legal actions of this state when it becomes a "next
             # state" for the preceding decision.
             self._episode_log.append((features, idx, legal))
-        return map_action_index(idx, game_state, self.stack)
+        _map = map_action_index_ext if self.extended_actions else map_action_index
+        return _map(idx, game_state, self.stack)
 
 
 def evaluate_vs_baseline(qnet, n_seeds=50, n_hands=200, mc_sims=100,
                          stack0=1000, small_blind=10, big_blind=20,
-                         tight_threshold=0.2, aggression=0.5, seed_start=0):
+                         tight_threshold=0.2, aggression=0.5, seed_start=0,
+                         extended_actions=False):
     """
     Headline metric: play a greedy `RLBotPlayer(qnet)` heads-up against the
     myopic EV `BotPlayer` over `n_seeds` seeded bankroll matches.
@@ -301,6 +313,8 @@ def evaluate_vs_baseline(qnet, n_seeds=50, n_hands=200, mc_sims=100,
         seed_start (int): First match seed (matches use seeds
             seed_start..seed_start+n_seeds-1). Use a non-zero start to evaluate
             on a held-out seed range disjoint from any earlier measurement.
+        extended_actions (bool): If True, the greedy RL bot uses the 7-action
+            grid (the qnet must have 7 outputs). Default False = 5-action grid.
 
     Returns:
         dict: {
@@ -320,7 +334,8 @@ def evaluate_vs_baseline(qnet, n_seeds=50, n_hands=200, mc_sims=100,
         rng = _random.Random(seed)
         mc = MonteCarloEngine(n_simulations=mc_sims, rng=rng)
         rl_bot = RLBotPlayer(1, "RL", stack0, qnet=qnet, epsilon=0.0,
-                             training=False, mc_engine=mc, rng=rng)
+                             training=False, mc_engine=mc, rng=rng,
+                             extended_actions=extended_actions)
         myopic = BotPlayer(2, "Myopic", stack0, tight_threshold=tight_threshold,
                            aggression=aggression, mc_engine=mc, rng=rng)
         engine = GameEngine([rl_bot, myopic], small_blind, big_blind,
@@ -412,7 +427,8 @@ class SelfPlayTrainer:
                  icm_prize_structure=None, extended_features=False,
                  feature_mode='base', opponent_factory=None,
                  reward_mode='log', learner_belief_factory=None,
-                 opponent_factories=None, tilt_reward_bonus=0.0):
+                 opponent_factories=None, tilt_reward_bonus=0.0,
+                 extended_actions=False):
         _require_torch()
         import random as _random
         from src.game import GameEngine
@@ -447,6 +463,9 @@ class SelfPlayTrainer:
         # Extended feature mode.
         self.extended_features = extended_features
         self.feature_mode = feature_mode
+        # Extended (7-action) grid: orthogonal to the feature mode. Default off
+        # -> the 5-action grid and a 5-output qnet (byte-identical baseline).
+        self.extended_actions = extended_actions
         # Multi-hand reward_mode: 'log' = per-hand log-utility change (risk-averse,
         # default), 'chips' = normalized chip delta (RISK-NEUTRAL, so the agent
         # gambles into a spewing opponent), 'icm' implied when icm_prize_structure
@@ -493,11 +512,14 @@ class SelfPlayTrainer:
         else:
             _input_dim = FEATURE_DIM
 
-        self.qnet = QNetwork(input_dim=_input_dim, hidden=hidden)
+        _n_actions = N_EXTENDED_ACTIONS if extended_actions else N_ACTIONS
+        self.qnet = QNetwork(input_dim=_input_dim, hidden=hidden,
+                             n_actions=_n_actions)
         # Target network for the TD bootstrap (frozen between periodic syncs);
         # gives a stable regression target so the value estimates don't chase
         # their own tail.
-        self.target_qnet = QNetwork(input_dim=_input_dim, hidden=hidden)
+        self.target_qnet = QNetwork(input_dim=_input_dim, hidden=hidden,
+                                    n_actions=_n_actions)
         self.target_qnet.load_state_dict(self.qnet.state_dict())
         self.gamma = gamma
         self.target_update_every = target_update_every
@@ -525,7 +547,8 @@ class SelfPlayTrainer:
             return RLBotPlayer(i, f"RL{i}", stack0, qnet=self.qnet,
                                epsilon=self.epsilon_start, training=True,
                                mc_engine=self.mc, rng=_random.Random(seed + i),
-                               feature_mode=_fm, belief_state=belief)
+                               feature_mode=_fm, belief_state=belief,
+                               extended_actions=extended_actions)
 
         if opponent_mode == "self":
             self.learners = [_learner(i) for i in range(1, n_players + 1)]
@@ -561,9 +584,11 @@ class SelfPlayTrainer:
             # never train and their logs are discarded.
             self.opponents = [
                 RLBotPlayer(i, f"Snap{i}", stack0,
-                            qnet=QNetwork(input_dim=_input_dim, hidden=hidden),
+                            qnet=QNetwork(input_dim=_input_dim, hidden=hidden,
+                                          n_actions=_n_actions),
                             epsilon=0.05, training=False, mc_engine=self.mc,
-                            rng=_random.Random(seed + i))
+                            rng=_random.Random(seed + i),
+                            extended_actions=extended_actions)
                 for i in range(2, n_players + 1)
             ]
             self.snapshot_pool = [copy.deepcopy(self.qnet.state_dict())]
@@ -828,7 +853,8 @@ class SelfPlayTrainer:
             if eval_every and (step + 1) % eval_every == 0:
                 snap = evaluate_vs_baseline(
                     self.qnet, n_seeds=eval_seeds, n_hands=eval_hands,
-                    mc_sims=eval_mc_sims, seed_start=eval_seed_start)
+                    mc_sims=eval_mc_sims, seed_start=eval_seed_start,
+                    extended_actions=self.extended_actions)
                 snap["step"] = step + 1
                 self.history.append(snap)
         return losses
@@ -857,6 +883,7 @@ def save_checkpoint(qnet, path, hidden=64, input_dim=None, feature_mode="base",
         "state_dict": qnet.state_dict(),
         "input_dim": int(input_dim),
         "hidden": int(hidden),
+        "n_actions": int(qnet.net[-1].out_features),
         "feature_mode": feature_mode,
         "history": list(history or []),
         "meta": dict(meta or {}),
@@ -873,7 +900,8 @@ def load_checkpoint(path):
     """
     _require_torch()
     ckpt = torch.load(path, map_location="cpu", weights_only=False)
-    qnet = QNetwork(input_dim=ckpt["input_dim"], hidden=ckpt["hidden"])
+    qnet = QNetwork(input_dim=ckpt["input_dim"], hidden=ckpt["hidden"],
+                    n_actions=ckpt.get("n_actions", N_ACTIONS))
     qnet.load_state_dict(ckpt["state_dict"])
     qnet.eval()
     return qnet, ckpt
