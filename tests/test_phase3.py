@@ -477,3 +477,117 @@ class TestRespectPotOdds:
             engine.play_hand()
         total_after = sum(p.stack for p in engine.players)
         assert total_before == total_after
+
+
+# ===========================================================================
+# A2: street_aware flag — modulate tightness/aggression by betting round
+# ===========================================================================
+
+class TestStreetAware:
+    """
+    The opt-in `street_aware` flag shifts the base tight_threshold / aggression
+    by a per-street offset: tighter pre-flop, looser and more aggressive on
+    later streets. Default-off keeps the baseline byte-identical.
+    """
+
+    def _make_bot(self, equity, tight_threshold, aggression, street_aware):
+        mc = MagicMock()
+        mc.estimate_equity_unknown_opponents.return_value = equity
+        bot = BotPlayer(
+            player_id=1, name="StreetBot", stack=1000,
+            tight_threshold=tight_threshold,
+            aggression=aggression,
+            mc_engine=mc,
+            street_aware=street_aware,
+        )
+        bot.receive_cards([Card("A", "s"), Card("K", "h")])
+        return bot
+
+    def _gs(self, round_name, call_amount=100, pot=200, min_raise=40):
+        return {
+            "round_name": round_name,
+            "pot": pot,
+            "call_amount": call_amount,
+            "min_raise": min_raise,
+            "current_bet": call_amount,
+            "community_cards": [],
+            "active_player_count": 2,
+        }
+
+    # --- pure _street_style mapping -------------------------------------
+
+    def test_street_style_off_returns_base(self):
+        bot = self._make_bot(0.5, tight_threshold=0.4, aggression=0.3,
+                             street_aware=False)
+        for rn in ("Pre-Flop", "Flop", "Turn", "River"):
+            assert bot._street_style(self._gs(rn)) == (0.4, 0.3)
+
+    def test_street_style_tightens_preflop_loosens_river(self):
+        bot = self._make_bot(0.5, tight_threshold=0.4, aggression=0.3,
+                             street_aware=True)
+        pre_t, _ = bot._street_style(self._gs("Pre-Flop"))
+        flop_t, _ = bot._street_style(self._gs("Flop"))
+        river_t, river_a = bot._street_style(self._gs("River"))
+        assert pre_t > 0.4              # tighter pre-flop
+        assert flop_t == 0.4            # flop unchanged
+        assert river_t < 0.4            # looser on the river
+        assert river_a > 0.3            # more aggressive on the river
+
+    def test_street_style_clamps_to_unit_interval(self):
+        # Extreme base knobs must stay in [0, 1] after the offset.
+        hi = self._make_bot(0.5, tight_threshold=0.99, aggression=0.97,
+                            street_aware=True)
+        lo = self._make_bot(0.5, tight_threshold=0.02, aggression=0.0,
+                            street_aware=True)
+        for rn in ("Pre-Flop", "Flop", "Turn", "River"):
+            t_hi, a_hi = hi._street_style(self._gs(rn))
+            t_lo, a_lo = lo._street_style(self._gs(rn))
+            assert 0.0 <= t_hi <= 1.0 and 0.0 <= a_hi <= 1.0
+            assert 0.0 <= t_lo <= 1.0 and 0.0 <= a_lo <= 1.0
+
+    # --- behavioral fold/call gate --------------------------------------
+
+    def test_tighter_preflop_folds_hand_flop_would_play(self):
+        # equity=0.42 clears base tight_threshold=0.40 (and pot odds 0.333), so
+        # it plays on the flop; the pre-flop tightening lifts the gate above
+        # 0.42, so the same hand is folded pre-flop. (Asserting fold-vs-play:
+        # the post-flop aggression bump can turn the play into a raise.)
+        bot = self._make_bot(equity=0.42, tight_threshold=0.40,
+                             aggression=0.0, street_aware=True)
+        assert bot.decide(self._gs("Flop"))[0] != "fold"
+        assert bot.decide(self._gs("Pre-Flop"))[0] == "fold"
+
+    def test_looser_river_plays_hand_flop_would_fold(self):
+        # equity=0.37 is below base tight_threshold=0.40 -> folded on the flop;
+        # the river loosening drops the gate below 0.37 and pot odds (0.333) are
+        # met, so the same hand is now played (called or raised) on the river.
+        bot = self._make_bot(equity=0.37, tight_threshold=0.40,
+                             aggression=0.0, street_aware=True)
+        assert bot.decide(self._gs("Flop"))[0] == "fold"
+        assert bot.decide(self._gs("River"))[0] != "fold"
+
+    def test_default_off_ignores_street(self):
+        # With the flag off, round_name has no effect on the gate.
+        bot = self._make_bot(equity=0.42, tight_threshold=0.40,
+                             aggression=0.0, street_aware=False)
+        actions = {rn: bot.decide(self._gs(rn))[0]
+                   for rn in ("Pre-Flop", "Flop", "Turn", "River")}
+        assert set(actions.values()) == {"call"}
+
+    def test_chip_conservation_with_street_aware(self):
+        from src.monte_carlo import MonteCarloEngine
+        mc = MonteCarloEngine(n_simulations=200)
+        players = [
+            BotPlayer(i, f"SA{i}", 500,
+                      tight_threshold=0.4, aggression=0.4,
+                      mc_engine=mc, street_aware=True)
+            for i in range(1, 3)
+        ]
+        engine = GameEngine(players, small_blind=5, big_blind=10, verbose=False)
+        total_before = sum(p.stack for p in engine.players)
+        for _ in range(10):
+            if sum(1 for p in engine.players if p.stack > 0) < 2:
+                break
+            engine.play_hand()
+        total_after = sum(p.stack for p in engine.players)
+        assert total_before == total_after

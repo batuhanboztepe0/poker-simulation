@@ -52,6 +52,30 @@ RANGE_SAMPLE_SIZE = 200
 # clear edge. This is a deliberate semantic change for fold-equity-aware raising.
 FOLD_EQUITY_MARGIN_SCALE = 0.05
 
+# Phase A2 (opt-in): per-street offsets applied to the base tight_threshold /
+# aggression when `street_aware=True`. Rationale: tighten pre-flop (most streets
+# still to navigate, equity least realized), loosen on later streets (pot odds
+# improve and equity is more certain), and bet more aggressively post-flop
+# (polarized value/bluff betting). The shifted knobs are clamped to [0, 1].
+# Default off -> the base knobs are used unchanged and the bot is byte-identical.
+STREET_TIGHT_DELTA = {
+    "Pre-Flop": +0.05,
+    "Flop":      0.00,
+    "Turn":     -0.03,
+    "River":    -0.05,
+}
+STREET_AGGR_DELTA = {
+    "Pre-Flop":  0.00,
+    "Flop":     +0.05,
+    "Turn":     +0.05,
+    "River":    +0.10,
+}
+
+
+def _clamp01(x):
+    """Clamp a float to the closed interval [0, 1]."""
+    return max(0.0, min(1.0, x))
+
 
 class Player:
     """
@@ -313,7 +337,8 @@ class BotPlayer(Player):
                  tight_threshold=DEFAULT_TIGHT_THRESHOLD,
                  aggression=DEFAULT_AGGRESSION,
                  mc_engine=None, rng=None, belief_state=None,
-                 fold_equity_model=None, respect_pot_odds=False):
+                 fold_equity_model=None, respect_pot_odds=False,
+                 street_aware=False):
         """
         Initialize a bot player.
 
@@ -336,11 +361,21 @@ class BotPlayer(Player):
                 sub-threshold hand is only style-folded if calling is ALSO -EV
                 (equity < pot_odds), closing the +EV-fold leak. Opt-in so the
                 baseline bot stays byte-identical.
+            street_aware (bool): When True, shift tight_threshold/aggression by
+                a per-street offset (tighter pre-flop, looser/more aggressive on
+                later streets; see STREET_TIGHT_DELTA / STREET_AGGR_DELTA).
+                Opt-in (default False) so the baseline bot stays byte-identical.
         """
         super().__init__(player_id, name, stack)
         self.tight_threshold = tight_threshold
         self.aggression      = aggression
         self.respect_pot_odds = respect_pot_odds
+        self.street_aware    = street_aware
+        # Per-decision effective knobs (street-modulated when street_aware).
+        # Set each decide(); initialized to the base values so the decision
+        # helpers are correct even if called before a decide() (e.g. in tests).
+        self._eff_tight      = tight_threshold
+        self._eff_aggr       = aggression
         self.mc_engine       = mc_engine
         self._rng            = rng if rng is not None else random
         # Most recent decision-time equity estimate, surfaced on the action
@@ -386,6 +421,11 @@ class BotPlayer(Player):
 
         equity = self._estimate_equity(game_state)
         self.last_equity = equity
+
+        # Phase A2: resolve the per-decision effective knobs (street-modulated
+        # when street_aware, else the base values). The decision helpers below
+        # read self._eff_tight / self._eff_aggr.
+        self._eff_tight, self._eff_aggr = self._street_style(game_state)
 
         # Phase A: fold-equity path is a strict EV gate that can value a bluff.
         # OFF by default (fold_equity_model is None) -> baseline flow below.
@@ -484,11 +524,28 @@ class BotPlayer(Player):
 
         ev_call_val = ev_call(equity, pot, call_amount) if call_amount > 0 else 0.0
         baseline = max(ev_call_val, 0.0)
-        margin = (1.0 - self.aggression) * pot * FOLD_EQUITY_MARGIN_SCALE
+        margin = (1.0 - self._eff_aggr) * pot * FOLD_EQUITY_MARGIN_SCALE
 
         if ev_raise_fe > baseline + margin:
             return best_size
         return None
+
+    def _street_style(self, game_state):
+        """
+        Return the (tight_threshold, aggression) to use for this decision.
+
+        With `street_aware=True` the base knobs are shifted by a per-street
+        offset (STREET_TIGHT_DELTA / STREET_AGGR_DELTA) and clamped to [0, 1]:
+        tighter pre-flop, looser and more aggressive on later streets. With the
+        flag off (default) the base knobs are returned unchanged, so the
+        baseline bot is byte-identical.
+        """
+        if not self.street_aware:
+            return self.tight_threshold, self.aggression
+        rn = game_state.get("round_name")
+        tight = _clamp01(self.tight_threshold + STREET_TIGHT_DELTA.get(rn, 0.0))
+        aggr  = _clamp01(self.aggression + STREET_AGGR_DELTA.get(rn, 0.0))
+        return tight, aggr
 
     def _tight_fold(self, equity, pot, call_amount):
         """
@@ -501,7 +558,7 @@ class BotPlayer(Player):
         ALSO -EV (`equity < pot_odds`), so a marginal +EV call is no longer
         auto-folded. Returns False when there is nothing to call (free action).
         """
-        if call_amount <= 0 or equity >= self.tight_threshold:
+        if call_amount <= 0 or equity >= self._eff_tight:
             return False
         if self.respect_pot_odds and equity >= pot_odds(call_amount, pot):
             return False
@@ -543,7 +600,7 @@ class BotPlayer(Player):
         additional = max(1, raise_size - hero_bet)
         if ev_raise(equity, pot, additional) <= 0:
             return False
-        return self._rng.random() < self.aggression
+        return self._rng.random() < self._eff_aggr
 
     def _estimate_equity(self, game_state):
         """
