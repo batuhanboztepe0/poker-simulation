@@ -74,6 +74,10 @@ def _mc(sims):
 
 
 def train_config(config, init_seed, steps, mc_sims):
+    # init_seed varies the network weight-init (torch seed); the trainer RNG is
+    # held at seed=1 (the rl_multihand_sweep convention), so decks/opponents are
+    # common across cells -> the config A/B is PAIRED per init_seed and cross-seed
+    # spread reflects weight-init sensitivity, not fully-independent reseeds.
     use_pnl, bonus, decouple = CONFIGS[config]
     torch.manual_seed(init_seed)
 

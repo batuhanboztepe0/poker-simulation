@@ -74,16 +74,24 @@ def bust_rate(qnet, n_seeds=50, n_hands=200, mc_sims=100, seed_start=0,
 
 
 def _resolve_clip(clip):
-    """clip is 'old' (3.0), 'wide' (new default, None), or a float string."""
+    """clip is 'old' (3.0), 'wide' (the full ruin range), or a float string.
+    'wide' is the explicit -log(stack0/util_floor) ~ 6.9 (NOT None: the trainer's
+    None-default is now 3.0 after B3 reverted, so None would silently == 'old')."""
     if clip == "old":
         return 3.0
     if clip == "wide":
-        return None  # None -> new wide default = log(stack0/util_floor)
+        return math.log(1000 / 1.0)  # stack0=1000, util_floor=1.0 -> ~6.9
     return float(clip)
 
 
 def run_cell(clip, init_seed, steps, hpe):
-    """Train one log-mode multi-hand agent and evaluate it on held-out seeds."""
+    """Train one log-mode multi-hand agent and evaluate it on held-out seeds.
+
+    init_seed varies the network weight-init (torch seed); the trainer RNG is held
+    at seed=1 (the rl_multihand_sweep convention), so the decks/opponents are
+    common across cells. The A/B is therefore PAIRED per init_seed, and cross-seed
+    spread reflects weight-init sensitivity (not fully-independent training runs).
+    """
     torch.manual_seed(init_seed)
     reward_clip = _resolve_clip(clip)
     tr = SelfPlayTrainer(seed=1, opponent_mode="fixed", mc_sims=100,

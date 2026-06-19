@@ -32,7 +32,13 @@ from src.rl_agent import SelfPlayTrainer, evaluate_vs_baseline, paired_t_test
 
 
 def run_cell(grid, init_seed, steps):
-    """Train one agent with the chosen action grid; eval it vs myopic."""
+    """Train one agent with the chosen action grid; eval it vs myopic.
+
+    init_seed varies the network weight-init (torch seed); the trainer RNG is held
+    at seed=1 (the rl_multihand_sweep convention), so the decks/opponents are
+    common across cells -> the five-vs-seven A/B is PAIRED per init_seed and the
+    cross-seed spread reflects weight-init sensitivity, not independent reseeds.
+    """
     torch.manual_seed(init_seed)
     ext = (grid == "seven")
     tr = SelfPlayTrainer(seed=1, opponent_mode="fixed", mc_sims=100,

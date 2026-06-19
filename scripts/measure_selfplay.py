@@ -45,7 +45,14 @@ def _mc(sims):
 
 
 def train_config(config, init_seed, steps, mc_sims):
-    """config 'fixed' = train vs the myopic baseline; 'snapshot' = self-play."""
+    """config 'fixed' = train vs the myopic baseline; 'snapshot' = self-play.
+
+    init_seed varies the network weight-init (torch seed); the trainer RNG is held
+    at seed=1 (the rl_multihand_sweep convention), so decks/opponents are common
+    across cells. The fixed-vs-snapshot A/B is PAIRED per init_seed; the reported
+    cross-seed variance is therefore WEIGHT-INIT sensitivity (a real robustness
+    axis for self-play) rather than independent-reseed variance.
+    """
     torch.manual_seed(init_seed)
     tr = rl.SelfPlayTrainer(
         n_players=2, seed=1, opponent_mode=config, mc_sims=mc_sims,
