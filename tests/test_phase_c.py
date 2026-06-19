@@ -533,3 +533,60 @@ class TestRLBeatsBaseline:
         assert trained["wins"] >= 22, (   # > 55% of 40 held-out matches
             f"trained won only {trained['wins']}/40 held-out matches")
         assert trained["mean_chip_diff"] > base["mean_chip_diff"]
+
+
+@pytest.mark.skipif(not rl._HAVE_TORCH, reason="torch not installed")
+class TestSnapshotSelfPlay:
+    """opponent_mode='snapshot' (B4): the learner trains vs frozen past snapshots
+    of itself (fictitious self-play). Previously untested infrastructure."""
+
+    def test_pool_grows_and_opponents_are_frozen(self):
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="snapshot",
+                                mc_sims=100, snapshot_every=10)
+        assert len(tr.snapshot_pool) == 1   # seeded with the init weights
+        assert tr.opponents and all(not o.training for o in tr.opponents)
+        assert all(isinstance(o, rl.RLBotPlayer) for o in tr.opponents)
+        tr.train(30, batch_size=16, refresh_every=5)
+        assert len(tr.snapshot_pool) > 1    # snapshots accumulated during training
+
+    def test_snapshot_training_chip_conservation(self):
+        tr = rl.SelfPlayTrainer(n_players=2, seed=2, opponent_mode="snapshot",
+                                mc_sims=100, snapshot_every=10)
+        total = len(tr.players) * tr.stack0
+        orig = tr.engine.play_hand
+        bad = []
+
+        def checked():
+            r = orig()
+            if sum(p.stack for p in tr.players) != total:
+                bad.append(sum(p.stack for p in tr.players))
+            return r
+
+        tr.engine.play_hand = checked
+        tr.train(20, batch_size=16, refresh_every=5)
+        assert not bad, f"chip conservation violated: {bad}"
+
+    def test_snapshot_opponents_reload_from_pool(self):
+        import torch
+        tr = rl.SelfPlayTrainer(n_players=2, seed=3, opponent_mode="snapshot",
+                                mc_sims=100, snapshot_every=10)
+        tr._take_snapshot()
+        tr._reseat_snapshot_opponents()
+        opp_sd = tr.opponents[0].qnet.state_dict()
+
+        def eq(a, b):
+            return a.keys() == b.keys() and all(torch.equal(a[k], b[k]) for k in a)
+
+        assert any(eq(opp_sd, snap) for snap in tr.snapshot_pool)
+
+    def test_snapshot_trains_and_is_evaluable(self):
+        import torch
+        torch.manual_seed(0)
+        tr = rl.SelfPlayTrainer(n_players=2, seed=1, opponent_mode="snapshot",
+                                mc_sims=100, epsilon_start=1.0, epsilon_end=0.05,
+                                snapshot_every=20)
+        losses = tr.train(40, batch_size=32, refresh_every=5, hands_per_refresh=12)
+        assert len(losses) == 40
+        r = rl.evaluate_vs_baseline(tr.qnet, n_seeds=4, n_hands=40, mc_sims=100,
+                                    seed_start=900)
+        assert r["n_seeds"] == 4 and "per_seed_diffs" in r
