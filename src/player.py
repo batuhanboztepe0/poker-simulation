@@ -338,7 +338,7 @@ class BotPlayer(Player):
                  aggression=DEFAULT_AGGRESSION,
                  mc_engine=None, rng=None, belief_state=None,
                  fold_equity_model=None, respect_pot_odds=False,
-                 street_aware=False):
+                 street_aware=False, belief_factory=None):
         """
         Initialize a bot player.
 
@@ -365,6 +365,15 @@ class BotPlayer(Player):
                 a per-street offset (tighter pre-flop, looser/more aggressive on
                 later streets; see STREET_TIGHT_DELTA / STREET_AGGR_DELTA).
                 Opt-in (default False) so the baseline bot stays byte-identical.
+            belief_factory (callable | None): `belief_factory(opponent_id) ->
+                BeliefState`. When provided, the bot keeps a PER-OPPONENT belief
+                dict (`self.beliefs`, lazily populated): observe_action routes by
+                actor_id and observe_hand_result by player_id, and equity is
+                conditioned on each opponent's own range. This unblocks 3+ player
+                modeling. When None (default) the single `belief_state` heads-up
+                path is used, so the baseline is unchanged. The one-arg signature
+                lets a caller seed per opponent (e.g. `lambda oid:
+                ParticleBelief(rng=random.Random(seed + oid))`).
         """
         super().__init__(player_id, name, stack)
         self.tight_threshold = tight_threshold
@@ -384,9 +393,16 @@ class BotPlayer(Player):
         # Optional static Bayesian opponent model (Phase 3). When present and
         # warmed up, equity is conditioned on the modeled opponent range.
         self.belief_state    = belief_state
+        # Optional per-opponent belief dict (Phase A4). When belief_factory is
+        # set, observe_action/observe_hand_result route by id into self.beliefs
+        # (lazily created) instead of the single belief_state above. OFF by
+        # default -> the single-belief heads-up path is byte-identical.
+        self.belief_factory  = belief_factory
+        self.beliefs         = {}
         # Dedupe the per-hand PnL->tilt belief transition: the engine notifies
         # observe_hand_result once per OTHER player, but a single belief models
         # one (blended) opponent, so observe_pnl must fire at most once per hand.
+        # (The per-opponent dict needs no dedupe: each id routes to its own belief.)
         self._last_pnl_hand_id = None
         # Optional fold-equity model (Phase A). When present, raising becomes a
         # strict EV gate including fold equity (enables EV-driven bluffing).
@@ -628,11 +644,37 @@ class BotPlayer(Player):
         else:
             n_opponents = max(1, game_state.get("active_player_count", 2) - 1)
 
+        use_belief = getattr(self, "use_belief_equity", True)
+
+        # Per-opponent belief path (Phase A4): condition on EACH opponent's own
+        # range. Used only when every current opponent has a warmed belief (same
+        # warm-up gate as the single-belief path); if any is cold we fall back to
+        # the uniform unknown-opponents estimate below.
+        if (self.belief_factory is not None and use_belief
+                and opponent_ids and n_opponents >= 1):
+            obeliefs = [self.beliefs.get(oid) for oid in opponent_ids]
+            if all(b is not None and b.n_observations >= MIN_HANDS_FOR_BELIEF
+                   for b in obeliefs):
+                try:
+                    exclude = list(self.hole_cards) + list(community)
+                    opponent_ranges = [
+                        b.range_sample(RANGE_SAMPLE_SIZE, exclude, self._rng)
+                        for b in obeliefs
+                    ]
+                    return self.mc_engine.estimate_equity_vs_range(
+                        self.hole_cards, opponent_ranges, community
+                    )
+                except Exception as exc:
+                    print(
+                        f"  [Belief Warning] Per-opponent range equity failed "
+                        f"for {self.name}: {exc}. Falling back to unknown opponents."
+                    )
+
         # Belief-conditioned path (Phase 3). `use_belief_equity` (default True)
         # lets a subclass keep equity vanilla while still carrying a belief model
         # for other purposes (the RL agent uses belief as a feature only).
         if (self.belief_state is not None
-                and getattr(self, "use_belief_equity", True)
+                and use_belief
                 and self.belief_state.n_observations >= MIN_HANDS_FOR_BELIEF
                 and n_opponents >= 1):
             try:
@@ -663,15 +705,42 @@ class BotPlayer(Player):
             )
             return self._rng.random()
 
+    def _belief_for(self, opponent_id):
+        """
+        Return the per-opponent belief for `opponent_id`, creating it lazily via
+        belief_factory on first sight. Only called when belief_factory is set.
+        """
+        b = self.beliefs.get(opponent_id)
+        if b is None:
+            b = self.belief_factory(opponent_id)
+            self.beliefs[opponent_id] = b
+        return b
+
     def observe_action(self, observation):
         """
         Update the belief model from an observed opponent action (Phase 3).
 
-        No-op when no belief model is attached, preserving baseline behavior.
+        With a per-opponent belief_factory (Phase A4) the update is routed by
+        actor_id into that opponent's own belief; otherwise it folds into the
+        single belief_state. No-op when no belief model is attached, preserving
+        baseline behavior.
         """
+        n_aggressive = 1 if observation.get("is_aggressive") else 0
+
+        if self.belief_factory is not None:
+            actor_id = observation.get("actor_id")
+            if actor_id is None:
+                return
+            self._belief_for(actor_id).update(
+                action=observation.get("action"),
+                n_aggressive=n_aggressive,
+                n_actions=1,
+                delta_stack=0,
+            )
+            return
+
         if self.belief_state is None:
             return
-        n_aggressive = 1 if observation.get("is_aggressive") else 0
         self.belief_state.update(
             action=observation.get("action"),
             n_aggressive=n_aggressive,
@@ -692,8 +761,17 @@ class BotPlayer(Player):
         In a 3+ player game the engine calls this once per other player; a single
         belief models one blended opponent, so the transition is applied AT MOST
         ONCE per hand (deduped by hand_id) to avoid compounding it N-1 times.
-        (True multi-opponent tracking would need a per-opponent belief dict.)
+        With a per-opponent belief_factory (Phase A4) the delta is routed by
+        player_id into that opponent's own belief, so each opponent's PnL fires
+        exactly once and no dedupe is needed — true multi-opponent tracking.
         """
+        if self.belief_factory is not None:
+            pid = observation.get("player_id")
+            if pid is None:
+                return
+            self._belief_for(pid).observe_pnl(observation.get("delta_stack", 0))
+            return
+
         if self.belief_state is None:
             return
         hid = observation.get("hand_id")
