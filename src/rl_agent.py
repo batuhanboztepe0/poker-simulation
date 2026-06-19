@@ -436,6 +436,14 @@ class SelfPlayTrainer:
         # ICM reward mode: per-hand reward is change in ICM equity (prize-pool
         # weighted by stack shares). Requires multi_hand=True.
         self.icm_prize_structure = icm_prize_structure
+        # Normalize the per-hand ICM-equity delta to the SAME O(1) scale the
+        # chips reward uses (delta / stack0). ICM equity is in PRIZE units
+        # (hundreds), so the raw delta is ~13x the reward_clip (3.0) and ~all of
+        # it gets clobbered to the clip -> a sign-only signal that cripples
+        # training. The prize pool equals the chip pool, so sum(prizes)/n_players
+        # == stack0; dividing by it restores a graded, chips-comparable reward.
+        if icm_prize_structure is not None:
+            self.icm_reward_scale = sum(icm_prize_structure) / n_players
         # Extended feature mode.
         self.extended_features = extended_features
         self.feature_mode = feature_mode
@@ -693,8 +701,9 @@ class SelfPlayTrainer:
                 # log-utility change (self.reward_mode).
                 if self.reward_mode == 'icm':
                     all_after = [p.stack for p in self.players]
-                    d_util = (self._icm_utility(all_after)
-                              - self._icm_utility(all_before))
+                    d_util = ((self._icm_utility(all_after)
+                               - self._icm_utility(all_before))
+                              / self.icm_reward_scale)
                 elif self.reward_mode == 'chips':
                     d_util = ((b.stack - before_stacks[b.player_id])
                               / self.reward_scale)

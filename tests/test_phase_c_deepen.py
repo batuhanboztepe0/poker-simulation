@@ -255,6 +255,34 @@ class TestICMRewardMode:
         for t in trainer.buffer._buf:
             assert abs(t[2]) <= clip + 1e-9, f"reward {t[2]} exceeds clip {clip}"
 
+    def test_icm_reward_scale_matches_chip_scale(self):
+        """
+        The ICM-equity delta is normalized by sum(prizes)/n_players, which equals
+        stack0 because the prize pool equals the chip pool -> the same O(1) scale
+        the chips reward uses. (Without this the prize-unit delta saturates the
+        clip into a sign-only signal; see test below.)
+        """
+        trainer = self._trainer()
+        assert trainer.icm_reward_scale == pytest.approx(trainer.stack0)
+
+    def test_icm_rewards_not_saturated_by_clip(self):
+        """
+        Regression for the reward-scaling bug: un-normalized ICM rewards (prize
+        units, ~13x the clip) clobbered ~all rewards to +/-clip, training a
+        sign-only policy. With normalization the graded signal survives, so only
+        a small fraction of nonzero rewards sit at the clip boundary.
+        """
+        trainer = self._trainer()
+        trainer.train(60, batch_size=16, hands_per_refresh=10)
+        clip = trainer.reward_clip
+        nonzero = [abs(t[2]) for t in trainer.buffer._buf if t[2] != 0.0]
+        assert nonzero, "expected some nonzero ICM rewards"
+        saturated = sum(1 for r in nonzero if r >= clip - 1e-9)
+        # The bug produced >90% saturation; the fix keeps it well below half.
+        assert saturated / len(nonzero) < 0.5, (
+            f"{saturated}/{len(nonzero)} ICM rewards saturate the clip "
+            f"({clip}) -> signal is being clobbered")
+
     def test_icm_trainer_chip_conservation(self):
         """
         Total chips across all players must be constant after every hand in
