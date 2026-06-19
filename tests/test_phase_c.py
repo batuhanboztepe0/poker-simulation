@@ -463,7 +463,9 @@ class TestRLTorch:
         tr = rl.SelfPlayTrainer(
             n_players=2, seed=1, opponent_mode="fixed", mc_sims=100,
             multi_hand=True, hands_per_episode=20, gamma=0.99)
-        # Looser clip is auto-selected for log-utility rewards.
+        # Looser clip (3.0) is auto-selected for log-utility rewards. (B3 tested
+        # widening this to un-truncate the ruin signal; it regressed -> kept 3.0.
+        # See scripts/measure_bust_clip.py and SelfPlayTrainer.__init__.)
         assert tr.reward_clip == 3.0
 
         orig = tr.engine.play_hand

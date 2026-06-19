@@ -463,8 +463,16 @@ class SelfPlayTrainer:
         # to press its edge against a spewing opponent. 0.0 = off (no shaping).
         self.tilt_reward_bonus = tilt_reward_bonus
         # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
-        # so log-mode multi-hand wants a looser clip; 'chips' stays on the tight
-        # chip-delta scale like single-hand.
+        # so log-mode multi-hand uses a looser clip (3.0) than the tight 1.0
+        # chip-delta scale; 'chips' stays on the tight scale like single-hand.
+        # 3.0 truncates ~57% of a full bust's ~-6.9 ruin penalty, but WIDENING it
+        # to the true range -log(stack0/util_floor) was measured to REGRESS the
+        # bankroll headline and NOT reduce bust rate: the larger terminal targets
+        # destabilize training on some inits, and in this winner-take-all bust
+        # match bust rate ~= 1 - win rate (no independent risk lever to recover).
+        # So the truncation is the deliberate stability price, kept on purpose.
+        # (Repro: scripts/measure_bust_clip.py.) ICM deltas are separately
+        # normalized to O(1) by icm_reward_scale, well under 3.0.
         if reward_clip is None:
             loose = multi_hand and self.reward_mode != 'chips'
             reward_clip = 3.0 if loose else 1.0
