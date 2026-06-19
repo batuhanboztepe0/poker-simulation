@@ -313,7 +313,7 @@ class BotPlayer(Player):
                  tight_threshold=DEFAULT_TIGHT_THRESHOLD,
                  aggression=DEFAULT_AGGRESSION,
                  mc_engine=None, rng=None, belief_state=None,
-                 fold_equity_model=None):
+                 fold_equity_model=None, respect_pot_odds=False):
         """
         Initialize a bot player.
 
@@ -330,10 +330,17 @@ class BotPlayer(Player):
                 coin-flip and the no-MC equity proxy. When None, the
                 module-level `random` is used (unseeded). Inject a seeded
                 `random.Random(seed)` for reproducible sessions.
+            respect_pot_odds (bool): When False (default) the tight_threshold
+                style filter hard-folds every sub-threshold hand facing a bet,
+                even +EV ones (the historical behavior). When True, a
+                sub-threshold hand is only style-folded if calling is ALSO -EV
+                (equity < pot_odds), closing the +EV-fold leak. Opt-in so the
+                baseline bot stays byte-identical.
         """
         super().__init__(player_id, name, stack)
         self.tight_threshold = tight_threshold
         self.aggression      = aggression
+        self.respect_pot_odds = respect_pot_odds
         self.mc_engine       = mc_engine
         self._rng            = rng if rng is not None else random
         # Most recent decision-time equity estimate, surfaced on the action
@@ -388,7 +395,7 @@ class BotPlayer(Player):
             )
 
         # Style filter: tight players fold marginal hands
-        if equity < self.tight_threshold and call_amount > 0:
+        if self._tight_fold(equity, pot, call_amount):
             return ACTION_FOLD, 0
 
         # Free action (no bet to call): check or consider raising
@@ -441,7 +448,7 @@ class BotPlayer(Player):
             return ACTION_RAISE, raise_size
 
         # No profitable raise -> call vs fold on edge filter + pot odds.
-        if equity < self.tight_threshold:
+        if self._tight_fold(equity, pot, call_amount):
             return ACTION_FOLD, 0
         if not should_call(equity, pot, call_amount):
             return ACTION_FOLD, 0
@@ -482,6 +489,23 @@ class BotPlayer(Player):
         if ev_raise_fe > baseline + margin:
             return best_size
         return None
+
+    def _tight_fold(self, equity, pot, call_amount):
+        """
+        Whether the tight_threshold style filter folds this hand.
+
+        Baseline (`respect_pot_odds=False`): fold any sub-threshold hand facing
+        a bet, even one the pot prices in as a +EV call -- the historical
+        behavior (an exploitable +EV-fold leak). `respect_pot_odds=True` closes
+        that leak: a sub-threshold hand is only style-folded when calling is
+        ALSO -EV (`equity < pot_odds`), so a marginal +EV call is no longer
+        auto-folded. Returns False when there is nothing to call (free action).
+        """
+        if call_amount <= 0 or equity >= self.tight_threshold:
+            return False
+        if self.respect_pot_odds and equity >= pot_odds(call_amount, pot):
+            return False
+        return True
 
     def _should_raise(self, equity, pot, min_raise, max_raise, hero_bet=0):
         """

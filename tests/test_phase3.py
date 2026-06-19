@@ -379,3 +379,101 @@ class TestPhase3GameIntegration:
             engine.play_hand()
         total_after = sum(p.stack for p in players)
         assert total_before == total_after
+
+
+# ===========================================================================
+# A1: respect_pot_odds flag — close the +EV-fold leak in the tight gate
+# ===========================================================================
+
+class TestRespectPotOdds:
+    """
+    The tight_threshold style filter normally hard-folds every sub-threshold
+    hand facing a bet, even one the pot prices in as a +EV call. The opt-in
+    `respect_pot_odds` flag folds such a hand only when calling is ALSO -EV.
+    Default-off keeps the baseline byte-identical.
+    """
+
+    def _make_bot(self, equity, tight_threshold, respect_pot_odds,
+                  aggression=0.0):
+        mc = MagicMock()
+        mc.estimate_equity_unknown_opponents.return_value = equity
+        bot = BotPlayer(
+            player_id=1, name="PotOddsBot", stack=1000,
+            tight_threshold=tight_threshold,
+            aggression=aggression,
+            mc_engine=mc,
+            respect_pot_odds=respect_pot_odds,
+        )
+        bot.receive_cards([Card("A", "s"), Card("K", "h")])
+        return bot
+
+    def _game_state(self, call_amount=100, pot=200, min_raise=40):
+        return {
+            "round_name": "Flop",
+            "pot": pot,
+            "call_amount": call_amount,
+            "min_raise": min_raise,
+            "current_bet": call_amount,
+            "community_cards": [Card("Q", "h"), Card("J", "d"), Card("2", "c")],
+            "active_player_count": 2,
+        }
+
+    def test_default_off_hard_folds_plus_ev_marginal(self):
+        # equity=0.4 > pot_odds=0.333 (a +EV call) but < tight_threshold=0.5.
+        # Default behavior: the style filter still hard-folds it (the leak).
+        bot = self._make_bot(equity=0.4, tight_threshold=0.5,
+                             respect_pot_odds=False)
+        action, _ = bot.decide(self._game_state(call_amount=100, pot=200))
+        assert action == "fold"
+
+    def test_respect_pot_odds_calls_plus_ev_marginal(self):
+        # Same spot, flag on: the +EV marginal it used to fold is now called.
+        bot = self._make_bot(equity=0.4, tight_threshold=0.5,
+                             respect_pot_odds=True)
+        action, amount = bot.decide(self._game_state(call_amount=100, pot=200))
+        assert action == "call"
+        assert amount == 100
+
+    def test_respect_pot_odds_still_folds_junk(self):
+        # equity=0.2 < pot_odds=0.333 and < tight_threshold: calling is -EV,
+        # so junk below the pot-odds line is still folded with the flag on.
+        bot = self._make_bot(equity=0.2, tight_threshold=0.5,
+                             respect_pot_odds=True)
+        action, _ = bot.decide(self._game_state(call_amount=100, pot=200))
+        assert action == "fold"
+
+    def test_respect_pot_odds_boundary_calls(self):
+        # equity exactly at pot_odds (break-even) and below tight_threshold:
+        # equity >= pot_odds, so the flag lets it call rather than hard-fold.
+        call, pot = 100, 200
+        eq = pot_odds(call, pot)  # ~0.3333
+        bot = self._make_bot(equity=eq, tight_threshold=0.5,
+                             respect_pot_odds=True)
+        action, _ = bot.decide(self._game_state(call_amount=call, pot=pot))
+        assert action == "call"
+
+    def test_flag_does_not_affect_free_action(self):
+        # No bet to call: the tight gate never applied; flag is a no-op here.
+        bot = self._make_bot(equity=0.2, tight_threshold=0.5,
+                             respect_pot_odds=True)
+        action, _ = bot.decide(self._game_state(call_amount=0, pot=200))
+        assert action == "check"
+
+    def test_chip_conservation_with_flag_on(self):
+        # The flag only changes fold/call routing, never chip accounting.
+        from src.monte_carlo import MonteCarloEngine
+        mc = MonteCarloEngine(n_simulations=200)
+        players = [
+            BotPlayer(i, f"PO{i}", 500,
+                      tight_threshold=0.5, aggression=0.4,
+                      mc_engine=mc, respect_pot_odds=True)
+            for i in range(1, 3)
+        ]
+        engine = GameEngine(players, small_blind=5, big_blind=10, verbose=False)
+        total_before = sum(p.stack for p in engine.players)
+        for _ in range(10):
+            if sum(1 for p in engine.players if p.stack > 0) < 2:
+                break
+            engine.play_hand()
+        total_after = sum(p.stack for p in engine.players)
+        assert total_before == total_after
