@@ -83,6 +83,11 @@ def main():
     ap.add_argument("--tilt-bonus", type=float, default=0.0,
                     help="gain-only reward multiplier (1 + tilt_bonus*p_tilted) to "
                          "press the edge vs a detected-tilted opponent (needs --belief)")
+    ap.add_argument("--tilt-bonus-decouple", action="store_true",
+                    help="B5: scale the tilt-bonus by p_tilted ENTERING the hand "
+                         "(before this hand's PnL feed) so it is not contaminated "
+                         "by the learner's own result -- lets --tilt-bonus coexist "
+                         "with the PnL->tilt feed instead of collapsing the policy")
     args = ap.parse_args()
 
     torch.manual_seed(args.torch_seed)
@@ -134,18 +139,25 @@ def main():
         extra_kwargs["reward_mode"] = args.reward_mode
     if args.tilt_bonus:
         extra_kwargs["tilt_reward_bonus"] = args.tilt_bonus
-        # FOOTGUN: the PnL->tilt belief feed and the gain-only tilt-bonus are
-        # SUBSTITUTES for the tilt edge, not complements. Poker is zero-sum, so a
-        # learner win == the opponent's loss spikes p_tilted exactly when the
+        if args.tilt_bonus_decouple:
+            extra_kwargs["tilt_bonus_decouple"] = True
+        # FOOTGUN: the PnL->tilt belief feed and the NAIVE gain-only tilt-bonus
+        # are SUBSTITUTES for the tilt edge, not complements. Poker is zero-sum,
+        # so a learner win == the opponent's loss spikes p_tilted exactly when the
         # learner just won big; the bonus then amplifies the learner's OWN big
         # wins (a reward distortion) and the policy collapses to ~break-even.
         # Measured: PnL+bonus tilt +34 vs PnL+no-bonus +533 / no-PnL+bonus +567.
-        # Use one or the other.
-        if args.belief and not args.no_belief_pnl:
+        # B5: --tilt-bonus-decouple (p_tilted ENTERING the hand) makes the two
+        # SAFE to stack -- it removes the collapse -- but measured it still does
+        # NOT beat the PnL feed ALONE (the bonus only adds variance, esp. vs a
+        # non-tilting opponent), so the PnL feed with no bonus stays the recipe.
+        # Warn only when stacking them WITHOUT the decouple (the destructive case).
+        if args.belief and not args.no_belief_pnl and not args.tilt_bonus_decouple:
             print("  [WARN] --tilt-bonus with the PnL->tilt belief feed live is "
-                  "DESTRUCTIVE (zero-sum coupling corrupts the reward). Use "
-                  "EITHER --tilt-bonus (add --no-belief-pnl) OR the PnL feed "
-                  "with no --tilt-bonus.")
+                  "DESTRUCTIVE (zero-sum coupling corrupts the reward). Add "
+                  "--tilt-bonus-decouple to make it safe (though the PnL feed "
+                  "alone is still the strongest recipe), or use EITHER "
+                  "--tilt-bonus (add --no-belief-pnl) OR the PnL feed alone.")
 
     if args.opponent_mix:
         if args.mode != "fixed":

@@ -428,7 +428,7 @@ class SelfPlayTrainer:
                  feature_mode='base', opponent_factory=None,
                  reward_mode='log', learner_belief_factory=None,
                  opponent_factories=None, tilt_reward_bonus=0.0,
-                 extended_actions=False):
+                 extended_actions=False, tilt_bonus_decouple=False):
         _require_torch()
         import random as _random
         from src.game import GameEngine
@@ -481,6 +481,16 @@ class SelfPlayTrainer:
         # hands where the opponent is detected as tilted more heavily — it learns
         # to press its edge against a spewing opponent. 0.0 = off (no shaping).
         self.tilt_reward_bonus = tilt_reward_bonus
+        # B5: decouple the tilt-bonus from the learner's OWN realised PnL. With
+        # the PnL->tilt belief feed live, a learner win == the opponent's loss,
+        # which spikes p_tilted on the SAME hand the bonus then amplifies (the
+        # zero-sum footgun: PnL-feed + naive bonus collapses the policy). When
+        # True, the bonus uses p_tilted ENTERING the hand (snapshotted before the
+        # hand's PnL feed), so it rewards winning against an opponent that was
+        # ALREADY tilting (a legitimate, learner-PnL-independent edge) rather than
+        # mechanically amplifying the learner's own wins. Default False = the
+        # original same-hand behavior (byte-identical).
+        self.tilt_bonus_decouple = tilt_bonus_decouple
         # Log-utility per-hand deltas span a wide range (a bust is ~-log(stack0)),
         # so log-mode multi-hand uses a looser clip (3.0) than the tight 1.0
         # chip-delta scale; 'chips' stays on the tight scale like single-hand.
@@ -727,6 +737,14 @@ class SelfPlayTrainer:
                 if self.extended_features and self.feature_mode in ('horizon', 'full'):
                     b._horizon_info = (self.hands_per_episode - hand_num,
                                        self.hands_per_episode)
+            # B5: snapshot the tilt belief ENTERING the hand (before this hand's
+            # PnL feed / actions) so a decoupled tilt-bonus is not contaminated by
+            # the learner's own realised result for this same hand.
+            pre_tilt = None
+            if self.tilt_reward_bonus and self.tilt_bonus_decouple:
+                pre_tilt = {b.player_id: (b.belief_state.p_tilted()
+                                          if b.belief_state is not None else 0.0)
+                            for b in self.learners}
             self.engine.play_hand()
 
             for b in self.learners:
@@ -744,9 +762,12 @@ class SelfPlayTrainer:
                             and d_util > 0):
                         # Up-weight WINS against a detected-tilted opponent (press
                         # the edge). Gains only: amplifying losses too makes the
-                        # agent cautious exactly when it should attack.
-                        d_util *= (1.0 + self.tilt_reward_bonus
-                                   * b.belief_state.p_tilted())
+                        # agent cautious exactly when it should attack. pre_tilt is
+                        # the belief ENTERING the hand (B5 decouple); else the
+                        # post-hand p_tilted (original same-hand behavior).
+                        p_t = (pre_tilt[b.player_id] if pre_tilt is not None
+                               else b.belief_state.p_tilted())
+                        d_util *= (1.0 + self.tilt_reward_bonus * p_t)
                 else:
                     d_util = (self._utility(b.stack)
                               - self._utility(before_stacks[b.player_id]))

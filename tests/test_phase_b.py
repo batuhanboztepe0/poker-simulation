@@ -406,3 +406,105 @@ class TestPnLBeliefFeed:
         engine = GameEngine([hero] + villains, 10, 20, verbose=False, rng=rng)
         engine.play_hand()
         assert len(calls) == 1   # one transition for the hand, not 2 opponents
+
+
+class TestTiltBonusDecouple:
+    """B5: decouple the gain-only tilt-bonus from the learner's OWN realised PnL.
+
+    With the PnL->tilt feed live, a learner win == the opponent's loss spikes
+    p_tilted on the SAME hand the bonus then amplifies (the zero-sum footgun that
+    collapses PnL-feed + naive bonus). The decouple scales the bonus by p_tilted
+    ENTERING the hand instead, so the two can coexist.
+    """
+
+    def _torch_or_skip(self):
+        import src.rl_agent as rl
+        if not rl._HAVE_TORCH:
+            pytest.skip("torch not installed")
+        return rl
+
+    def test_flag_stored_and_default_off(self):
+        rl = self._torch_or_skip()
+        tr = rl.SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                                reward_mode="chips", tilt_reward_bonus=0.6,
+                                tilt_bonus_decouple=True, seed=0)
+        assert tr.tilt_bonus_decouple is True
+        assert rl.SelfPlayTrainer(opponent_mode="fixed", multi_hand=True,
+                                  seed=0).tilt_bonus_decouple is False
+
+    def test_decouple_uses_pre_hand_tilt(self):
+        """A winning hand whose belief spikes to tilted on its OWN PnL feed gets a
+        SMALLER bonus when decoupled (uses pre-hand p_tilted=0) than coupled (uses
+        post-hand p_tilted=1) -- exactly the contamination B5 removes."""
+        rl = self._torch_or_skip()
+
+        class SpyBelief:
+            # 0 entering the hand; spikes to 1 when the hand's PnL is fed
+            # (the zero-sum mirror: learner win -> opponent loss -> "tilt").
+            def __init__(self):
+                self.pt = 0.0
+
+            def p_tilted(self):
+                return self.pt
+
+            def posterior_mean(self):
+                return 0.5
+
+            def observe_action(self, *a, **k):
+                pass
+
+            def observe_pnl(self, d):
+                self.pt = 1.0
+
+            def observe_hand_result(self, *a, **k):
+                pass
+
+        def reward_for(decouple):
+            tr = rl.SelfPlayTrainer(
+                opponent_mode="fixed", multi_hand=True, hands_per_episode=1,
+                reward_mode="chips", tilt_reward_bonus=0.6, seed=0,
+                learner_belief_factory=SpyBelief,
+                tilt_bonus_decouple=decouple)
+            learner = tr.learners[0]
+
+            def fake_play():
+                # a winning hand (+100) + the PnL spike on the learner's belief
+                learner.stack = tr.stack0 + 100
+                learner._episode_log = [([0.0] * 18, 1, [0, 1])]
+                learner.belief_state.observe_pnl(-100)  # spike to tilted
+
+            tr.engine.play_hand = fake_play
+            tr._collect_episode()
+            rewards = [t[2] for t in tr.buffer._buf]
+            assert len(rewards) == 1
+            return rewards[0]
+
+        base = 100 / 1000  # d_util before the bonus
+        coupled = reward_for(False)
+        decoupled = reward_for(True)
+        assert coupled == pytest.approx(base * (1 + 0.6 * 1.0))   # post tilt=1
+        assert decoupled == pytest.approx(base * (1 + 0.6 * 0.0))  # pre tilt=0
+        assert decoupled < coupled
+
+    def test_decouple_trains_and_conserves_chips(self):
+        """Decoupled bonus + real HMM PnL feed trains and conserves chips."""
+        rl = self._torch_or_skip()
+        tr = rl.SelfPlayTrainer(
+            opponent_mode="fixed", multi_hand=True, hands_per_episode=8,
+            mc_sims=100, seed=0, extended_features=True, feature_mode="belief",
+            learner_belief_factory=lambda: HMMBeliefState(
+                mu_tilted=0.92, recover=0.05),
+            reward_mode="chips", tilt_reward_bonus=0.6, tilt_bonus_decouple=True)
+        total = len(tr.players) * tr.stack0
+        orig = tr.engine.play_hand
+        bad = []
+
+        def checked():
+            r = orig()
+            if sum(p.stack for p in tr.players) != total:
+                bad.append(sum(p.stack for p in tr.players))
+            return r
+
+        tr.engine.play_hand = checked
+        losses = tr.train(10, hands_per_refresh=16)
+        assert len(losses) == 10 and not bad
