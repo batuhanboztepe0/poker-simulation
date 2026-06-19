@@ -54,3 +54,6 @@ checkpoints/
 # Local build scaffolding / handoff notes — intentionally untracked (kept on disk only)
 CLAUDE.md
 docs/
+
+# Private/original source notebook — kept local only (repo goes public)
+notebooks/00_origin.ipynb
