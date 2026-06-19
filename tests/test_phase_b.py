@@ -3,7 +3,7 @@ test_phase_b.py
 ---------------
 Tests for Phase B: stochastic / adaptive opponent modeling.
 
-DoD (ROADMAP §10):
+DoD:
     - discounted-Beta recency,
     - HMM recovers an injected regime switch (P(tilted) > 0.8 after switch),
     - particle filter tracks a synthetic OU path within an RMSE bound,

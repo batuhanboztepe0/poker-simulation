@@ -3,7 +3,7 @@ train_rl.py
 -----------
 Train the Phase C RL agent and report whether it beats the myopic EV baseline.
 
-This is the demo/report driver for docs/RL_HANDOFF.md: it trains an
+This is the demo/report driver for the RL agent: it trains an
 `RLBotPlayer` (DQN over the 18-dim featurization, TD(0) targets, MC equity),
 prints the learning curve, and prints the headline `evaluate_vs_baseline`
 number (wins/N and mean chip diff + a paired t-test).
@@ -140,7 +140,7 @@ def main():
             print("  [WARN] --tilt-bonus with the PnL->tilt belief feed live is "
                   "DESTRUCTIVE (zero-sum coupling corrupts the reward). Use "
                   "EITHER --tilt-bonus (add --no-belief-pnl) OR the PnL feed "
-                  "with no --tilt-bonus. See RL_HANDOFF §10.")
+                  "with no --tilt-bonus.")
 
     if args.opponent_mix:
         if args.mode != "fixed":

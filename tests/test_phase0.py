@@ -4,7 +4,7 @@ test_phase0.py
 Tests for Phase 0: Foundation (seeding, events/observers, opponent-observable
 state, and the correctness fixes).
 
-Definition of Done (ROADMAP §5):
+Definition of Done:
     - same seed -> identical hand-by-hand outcomes,
     - event_log populated,
     - chip conservation over 50 seeded hands at 2/4/6/9 players.

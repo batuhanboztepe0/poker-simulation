@@ -3,7 +3,7 @@ test_phase3_belief.py
 ---------------------
 Tests for Phase 3: the static Bayesian opponent model.
 
-DoD (ROADMAP §8):
+DoD:
     - prior init sane,
     - updates move the posterior in the right direction,
     - range_sample excludes known cards,

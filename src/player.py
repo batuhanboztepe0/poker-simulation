@@ -49,7 +49,7 @@ RANGE_SAMPLE_SIZE = 200
 # raise *probability* into an EV-*margin* / risk-aversion threshold. The
 # required raise margin over the next-best action is (1 - aggression) scaled
 # by the pot: aggression=1 raises on any +EV edge, aggression=0 demands a
-# clear edge. This is the deliberate semantic change documented in ROADMAP §9.
+# clear edge. This is a deliberate semantic change for fold-equity-aware raising.
 FOLD_EQUITY_MARGIN_SCALE = 0.05
 
 
@@ -611,8 +611,7 @@ class BotPlayer(Player):
         In a 3+ player game the engine calls this once per other player; a single
         belief models one blended opponent, so the transition is applied AT MOST
         ONCE per hand (deduped by hand_id) to avoid compounding it N-1 times.
-        (True multi-opponent tracking needs a per-opponent belief dict — see
-        RL_HANDOFF §10 "Still open".)
+        (True multi-opponent tracking would need a per-opponent belief dict.)
         """
         if self.belief_state is None:
             return

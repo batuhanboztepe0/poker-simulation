@@ -131,7 +131,7 @@ class RolloutBotPlayer(BotPlayer):
         # If the bot carries a fold-equity model but the policy wasn't given one,
         # forward it so the rollout can value fold equity (and thus semi-bluff /
         # bet thin) instead of the no-fold-equity p_fold=0 default that leaves it
-        # unable to bluff (RL_HANDOFF §10 residual vs-myopic -660).
+        # unable to bluff (a known residual weakness of the value-only rollout).
         if (rollout_policy.fold_equity_model is None
                 and self.fold_equity_model is not None):
             rollout_policy.fold_equity_model = self.fold_equity_model

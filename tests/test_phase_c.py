@@ -4,7 +4,7 @@ test_phase_c.py
 Tests for Phase C: bankroll-aware stochastic control (Kelly -> ICM -> rollout
 -> RL).
 
-DoD (ROADMAP §11):
+DoD:
     - Kelly sizing matches the analytic toy bet (+/-5%),
     - ICM matches a known 3-player example,
     - marginal chip value strictly decreasing,
@@ -422,7 +422,7 @@ class TestRLTorch:
 @pytest.mark.skipif(not rl._HAVE_TORCH, reason="torch not installed")
 class TestRLBeatsBaseline:
     """
-    Phase C RL deliverable (docs/RL_HANDOFF.md): a self-trained agent that
+    Phase C RL deliverable: a self-trained agent that
     measurably beats the myopic EV baseline.
 
     Bounded so it runs in the suite: a short fixed-baseline training run, then
@@ -431,7 +431,7 @@ class TestRLBeatsBaseline:
     asserts a robust cluster: the random-init net is a *losing* baseline, and
     the trained policy is +EV, wins a clear majority of held-out matches, and
     improves over its own random init. The headline "X/50 wins, +Y mean chips"
-    number is produced by `scripts/train_rl.py` and recorded in docs/PHASES.md.
+    number is produced by `scripts/train_rl.py`.
     Fully seeded -> deterministic, not flaky (measured: random-init 2/40 vs
     trained 27/40 on these seeds).
     """

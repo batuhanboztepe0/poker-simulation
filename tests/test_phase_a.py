@@ -3,7 +3,7 @@ test_phase_a.py
 ---------------
 Tests for Phase A: fold equity & strategic bluffing.
 
-DoD (ROADMAP §9):
+DoD:
     - pure-bluff break-even matches b/(pot+b) to 1e-6,
     - p_fold=0 path is byte-identical to the baseline,
     - the fold-equity bot picks LARGER raises than a p_fold=0 bot,

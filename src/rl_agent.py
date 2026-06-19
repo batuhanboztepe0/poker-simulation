@@ -346,8 +346,7 @@ def paired_t_test(diffs):
     One-sample (paired) t-test of per-seed chip diffs against 0.
 
     Each diff is already a paired observation (rl_stack - myopic_stack on the
-    same seed), so testing the diffs against 0 is the paired test the handoff
-    asks for. Uses scipy (exact t-distribution) when available, else a normal
+    same seed), so testing the diffs against 0 is the appropriate paired test. Uses scipy (exact t-distribution) when available, else a normal
     approximation — which is anti-conservative for small df (it understates p
     by ~2x near t=3 at n=50), so trust the scipy path for reported p-values.
 
@@ -390,9 +389,9 @@ class SelfPlayTrainer:
             hands, reward = per-hand change in log-utility of the stack
             (log(S'/S)), or in ICM prize equity when icm_prize_structure is set;
             decisions chain into one episode-long TD sequence. The agent
-            optimizes long-run log-bankroll-growth (Kelly / ROADMAP s11).
+            optimizes long-run log-bankroll-growth (Kelly / growth-optimal).
 
-    Opponent modes (the M1->M4 progression in docs/RL_HANDOFF.md):
+    Opponent modes:
         "self"     - all n_players bots are learners sharing the live net
                      (non-stationary; the original scaffold behavior).
         "fixed"    - one learner vs frozen myopic `BotPlayer`s (a STATIONARY
@@ -428,7 +427,7 @@ class SelfPlayTrainer:
         self.reward_scale = float(stack0)
         # Multi-hand (bankroll) episodes: stacks PERSIST across hands_per_episode
         # hands and the reward is the per-hand change in log-utility of the
-        # stack (the log-utility Bellman of ROADMAP s11) -> growth-optimal,
+        # stack (the log-utility Bellman) -> growth-optimal,
         # risk-averse near bust. Single-hand mode (default) keeps the original
         # i.i.d. per-hand chip-delta reward and is unchanged.
         self.multi_hand = multi_hand
