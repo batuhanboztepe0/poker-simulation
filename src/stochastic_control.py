@@ -135,6 +135,17 @@ class RolloutBotPlayer(BotPlayer):
         if (rollout_policy.fold_equity_model is None
                 and self.fold_equity_model is not None):
             rollout_policy.fold_equity_model = self.fold_equity_model
+        # B1: when the bot keeps an engine-updated per-opponent belief dict
+        # (A4's belief_factory), SHARE that SAME dict into the policy and its
+        # fold-equity model, so equity and p_fold become opponent-specific as
+        # observe_action warms the beliefs. Without this the rollout's beliefs
+        # stay cold / GTO-neutral and it over-bluffs foes that don't fold at
+        # b/(pot+b) -- the measured cold-FE loss. Opt-in: only when a
+        # belief_factory is set, so the default rollout is byte-identical.
+        if self.belief_factory is not None:
+            rollout_policy.beliefs = self.beliefs
+            if rollout_policy.fold_equity_model is not None:
+                rollout_policy.fold_equity_model.beliefs = self.beliefs
         self.rollout_policy = rollout_policy
 
     def decide(self, game_state):

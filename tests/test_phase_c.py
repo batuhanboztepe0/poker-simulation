@@ -325,6 +325,71 @@ class TestRollout:
             engine.play_hand()
         assert sum(p.stack for p in players) == total
 
+    # -- B1: warmed-belief rollout fold-equity --------------------------------
+
+    def test_belief_factory_shares_beliefs_into_policy_and_fe(self):
+        """With a belief_factory the bot's engine-updated per-opponent belief
+        dict is the SAME object the policy and the fold-equity model read."""
+        from src.opponent_model import BeliefState
+        mc = MonteCarloEngine(n_simulations=100, rng=random.Random(0))
+        fem = FoldEquityModel()
+        bot = RolloutBotPlayer(1, "R", 1000, mc_engine=mc, fold_equity_model=fem,
+                               belief_factory=lambda oid: BeliefState(),
+                               rollout_policy=RolloutPolicy(mc))
+        assert bot.rollout_policy.beliefs is bot.beliefs
+        assert bot.rollout_policy.fold_equity_model.beliefs is bot.beliefs
+
+    def test_default_rollout_does_not_share_beliefs(self):
+        """Without a belief_factory the policy/FE keep their own (cold) belief
+        dicts — the default rollout is byte-identical."""
+        mc = MonteCarloEngine(n_simulations=100, rng=random.Random(0))
+        bot = RolloutBotPlayer(1, "R", 1000, mc_engine=mc,
+                               fold_equity_model=FoldEquityModel(),
+                               rollout_policy=RolloutPolicy(mc))
+        assert bot.rollout_policy.beliefs is not bot.beliefs
+        assert bot.rollout_policy.fold_equity_model.beliefs is not bot.beliefs
+
+    def test_warmed_belief_makes_p_fold_opponent_specific(self):
+        """As the engine warms the shared belief, fold-equity p_fold moves off
+        the GTO-neutral prior: a loose (calling) opponent folds LESS than
+        b/(pot+b), a tight (folding) one folds MORE — so the rollout stops
+        over-bluffing foes that don't fold (the cold-FE loss)."""
+        from src.opponent_model import BeliefState
+        mc = MonteCarloEngine(n_simulations=100, rng=random.Random(0))
+        fem = FoldEquityModel()
+        bot = RolloutBotPlayer(1, "R", 1000, mc_engine=mc, fold_equity_model=fem,
+                               belief_factory=lambda oid: BeliefState(),
+                               rollout_policy=RolloutPolicy(mc, rng=random.Random(0)))
+        for _ in range(10):   # opponent 2 is loose (voluntary actions)
+            bot.observe_action({"actor_id": 2, "action": "call",
+                                "is_aggressive": False})
+        for _ in range(10):   # opponent 3 is tight (folds)
+            bot.observe_action({"actor_id": 3, "action": "fold",
+                                "is_aggressive": False})
+        pot, b = 100, 50
+        x = b / (pot + b)                       # GTO-neutral p_fold ~0.333
+        assert fem.estimate_p_fold([2], b, pot) < x   # loose -> bluff less
+        assert fem.estimate_p_fold([3], b, pot) > x   # tight -> bluff more
+
+    def test_chip_conservation_warmed_belief_rollout(self):
+        """A table of warmed-belief fold-equity rollouts conserves chips while
+        the beliefs warm during real play."""
+        from src.opponent_model import BeliefState
+        rng = random.Random(6)
+        mc = MonteCarloEngine(n_simulations=100, rng=rng)
+        players = [RolloutBotPlayer(i, f"R{i}", 1000, mc_engine=mc, rng=rng,
+                                    fold_equity_model=FoldEquityModel(),
+                                    belief_factory=lambda oid: BeliefState(),
+                                    rollout_policy=RolloutPolicy(mc, rng=rng))
+                   for i in range(1, 4)]
+        engine = GameEngine(players, 10, 20, verbose=False, rng=rng)
+        total = sum(p.stack for p in players)
+        for _ in range(25):
+            if sum(1 for p in players if p.stack > 0) < 2:
+                break
+            engine.play_hand()
+        assert sum(p.stack for p in players) == total
+
 
 # ===========================================================================
 # RL agent (torch-free parts always; torch parts guarded)
