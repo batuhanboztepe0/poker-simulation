@@ -50,3 +50,7 @@ data/
 checkpoints/
 *.pt
 *.ckpt
+
+# Local build scaffolding / handoff notes — intentionally untracked (kept on disk only)
+CLAUDE.md
+docs/
