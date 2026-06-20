@@ -110,18 +110,26 @@ def fig_pool(index):
                if any(e["name"] == "RL" for e in lb) else None)
     lb_pos = ("tops the leaderboard" if lb_rank == 1
               else f"ranks #{lb_rank}/{len(lb)}")
-    cap_lb = (f"§10 generalist (RL = belief + opponent-mix + PnL feed, "
-              f"{d.get('steps')} steps): cross-agent leaderboard over "
-              f"{d.get('n_seeds')} held-out seeds × {d.get('n_hands')} hands. RL "
-              f"{lb_pos} vs the {{myopic, tilt, random}} pool + Kelly — it "
-              f"generalises and beats the whole adaptive pool (the §10 win).")
+    wm = d.get("win_matrix", {})
+
+    def _h2h(opp):  # RL's head-to-head record vs opp, from the committed matrix
+        return f"{wm.get('RL', {}).get(opp, 0)}-{wm.get(opp, {}).get('RL', 0)}"
+
+    cap_lb = (f"§10 generalist (RL = belief + sharp HMM + PnL feed + "
+              f"opponent-mix, multi-hand chips, {d.get('steps')} steps): "
+              f"cross-agent leaderboard over {d.get('n_seeds')} held-out seeds × "
+              f"{d.get('n_hands')} hands. RL {lb_pos} and beats each of the "
+              f"{{myopic, tilt, random}} adaptive opponents head-to-head "
+              f"({_h2h('Myopic')} / {_h2h('Tilt')} / {_h2h('Random')}); it "
+              f"loses H2H to the analytic Kelly ({_h2h('Kelly')}) but still "
+              f"leads on mean chips (Kelly is crushed by the adaptive foes). The "
+              f"§10 win = leaderboard + adaptive pool, not Kelly H2H.")
     index.append(("pool_leaderboard.png", "§10",
                   _save(tournament_leaderboard_figure(lb),
                         "pool_leaderboard", cap_lb)))
 
     bs = d.get("best_static", {})
     rank, n_sw = d.get("rl_rank"), d.get("n_agents_in_sweep")
-    clears = d.get("rl_mean", 0) >= bs.get("mean_net_chips", 0)
     verdict = ("and tops it" if rank == 1 else
                f"and does NOT top it (the round-robin rewards farming the "
                f"weakest static cells, not RL's vs-adaptive-pool objective)")
@@ -166,12 +174,14 @@ def fig_icm(index):
             verdict = "no robust edge — within per-seed noise"
         else:
             verdict = "ICM-reward UNDERPERFORMING the chip reward here"
+        tail = ("so ICM UNDERPERFORMS the chip reward on average at this scale"
+                if mean < 0 else
+                "so per-seed variance (±300+) dominates any concavity edge")
         cap = (f"§13 ICM edge ({npl}-player, ladder {label}): per-init-seed "
                f"ICM-reward minus chip-reward mean tournament prize over {n} "
                f"reproducible seeds — {verdict} (mean {mean:+.0f}, {n_pos}/{n} "
                f"seeds ICM>chips). The earlier §13 small-positive estimate came "
-               f"from 3 noisier unseeded inits; at this scale per-seed variance "
-               f"(±300+) dominates, so there is no robust concavity edge.")
+               f"from 3 noisier unseeded inits; {tail}.")
         index.append((f"icm_edge_{tag}.png", "§13",
                       _save(icm_edge_figure(
                           lrows, title=f"ICM − chips prize edge — ladder "
@@ -205,8 +215,10 @@ def fig_block_b(index):
         index.append(("blockB_bust_clip.png", "§15",
                       _save(ab_grouped_bar_figure(
                           rows, group_key="clip", value_key="mean",
+                          group_order=["old", "4.6", "wide"],
                           yaxis_title="mean chip diff vs myopic (avg over seeds)",
-                          title="B3: bust-clip mean chip diff vs myopic"),
+                          title="B3: bust-clip mean chip diff vs myopic "
+                                "(tight 3.0 → wide 6.9)"),
                           "blockB_bust_clip", cap)))
         cap2 = ("B3 (§15): bust rate per clip (avg over seeds). The tight 3.0 "
                 "clip also has the lowest bust rate — in this heads-up "
@@ -215,8 +227,9 @@ def fig_block_b(index):
         index.append(("blockB_bust_rate.png", "§15",
                       _save(ab_grouped_bar_figure(
                           rows, group_key="clip", value_key="bust_rate",
+                          group_order=["old", "4.6", "wide"],
                           yaxis_title="bust rate (avg over seeds)",
-                          title="B3: bust rate by clip"),
+                          title="B3: bust rate by clip (tight 3.0 → wide 6.9)"),
                           "blockB_bust_rate", cap2)))
 
     # B4 — snapshot self-play (config × opponent mean net chips).
@@ -237,9 +250,12 @@ def fig_block_b(index):
     rows = _load_jsonl("tilt_decouple.jsonl")
     if rows:
         cap = ("B5 (§17): tilt-bonus configurations, mean RL net chips vs each "
-               "opponent. The PnL feature ALONE (pnl_nobonus) is best; the "
-               "naive bonus collapses (footgun), and the decouple is safe but "
-               "no net gain. The feature and the bonus are substitutes.")
+               "opponent (avg over seeds). The PnL feature ALONE (pnl_nobonus, "
+               "+249) is best; adding the naive bonus drags it down (pnl_naive "
+               "+46 — the footgun, worse than the feature alone); the decouple "
+               "(pnl_decouple +138) is safe but no net gain; the bonus WITHOUT "
+               "the PnL feature (nopnl_bonus −159) collapses. Feature and bonus "
+               "are substitutes, not complements.")
         index.append(("blockB_tilt_decouple.png", "§17",
                       _save(ab_heatmap_figure(
                           _melt_opponents(rows), row_key="config",
@@ -256,9 +272,11 @@ def fig_rollout_fe(index):
     h = rows[0].get("n_hands", "?")
     cap = (f"B1 (§14): warmed-belief rollout fold-equity, net chips of the "
            f"rollout vs each opponent ({n} paired seeds × {h} hands). Warming "
-           f"FIXES the cold-FE over-bluff disaster vs call-happy foes (myopic/"
-           f"tilt), but FE still isn't a uniform win (the nit punishes it), so "
-           f"fold-equity stays OFF by default. Blue = rollout wins chips.")
+           f"LARGELY fixes the cold-FE over-bluff disaster vs myopic/tilt "
+           f"(cold_fe → warm_fe rows: myopic −1133→−67, tilt flips positive), "
+           f"but it is NOT a uniform win — it is worse vs random and the nit "
+           f"punishes it — so fold-equity stays OFF by default. Blue = rollout "
+           f"wins chips.")
     index.append(("rollout_fe.png", "§14",
                   _save(ab_heatmap_figure(
                       rows, row_key="config", col_key="opponent",

@@ -59,8 +59,8 @@ class TestResultsSchema(unittest.TestCase):
             self.skipTest("no results/headline_history.json present")
         with open(path) as f:
             d = json.load(f)
-        self.assertIn("history", d)
-        self.assertIn("final", d)
+        self.assertLessEqual({"history", "final", "torch_seed", "steps",
+                              "eval_seeds", "eval_hands"}, set(d))
         self.assertTrue(d["history"], "history is empty")
         for snap in d["history"]:
             self.assertLessEqual(

@@ -15,7 +15,7 @@
 #
 # Usage:  PY=python3.11 PAR=8 bash scripts/run_measurements.sh
 #
-set -u
+set -euo pipefail
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
 PAR="${PAR:-8}"
@@ -45,15 +45,22 @@ for seed in 0 1 2; do
   done
 done
 
-# --- whole-sweep jobs (ICM mild+bubble ladders, rollout-FE, headline curve) ---
-echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 --prize-fracs 0.5 0.3 0.2 --out results/_parts/icm_mild.jsonl" >> "$JOBS"
-echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 --prize-fracs 0.65 0.35 0.0 --out results/_parts/icm_bubble.jsonl" >> "$JOBS"
+# --- whole-sweep jobs (ICM mild+bubble ladders, rollout-FE, headline curve,
+#     and the §10 belief+mix generalist pool/sweep) ------------------------------
+echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 4 5 6 --prize-fracs 0.5 0.3 0.2 --out results/_parts/icm_mild.jsonl" >> "$JOBS"
+echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 4 5 6 --prize-fracs 0.65 0.35 0.0 --out results/_parts/icm_bubble.jsonl" >> "$JOBS"
 echo "$PY -m scripts.measure_rollout_fe --seeds 60 --hands 200 --out results/_parts/rollout_fe.jsonl" >> "$JOBS"
 echo "$PY -m scripts.measure_headline --steps 1500 --eval-every 250 --eval-seeds 50 --eval-hands 150 --out results/_parts/headline_history.json" >> "$JOBS"
+# The §10 generalist is a single heavy 12k-step train + roster + MC sweep (~20 min).
+echo "$PY -m scripts.measure_pool --steps 12000 --seeds 16 --hands 100 --out results/_parts/pool.json" >> "$JOBS"
 
 echo "Launching $(wc -l < "$JOBS") jobs, $PAR at a time (thread-pinned)..."
 # shellcheck disable=SC2002
-cat "$JOBS" | xargs -P "$PAR" -I CMD bash -c CMD
+if ! cat "$JOBS" | xargs -P "$PAR" -I CMD bash -c CMD; then
+  echo "ERROR: one or more measurement cells failed; results/ NOT updated" >&2
+  rm -f "$JOBS"
+  exit 1
+fi
 rm -f "$JOBS"
 
 # --- concatenate parts into the committed per-metric files --------------------
@@ -64,6 +71,7 @@ cat results/_parts/tilt_decouple_*.jsonl > results/tilt_decouple.jsonl
 cat results/_parts/icm_*.jsonl           > results/icm.jsonl
 cp  results/_parts/rollout_fe.jsonl      results/rollout_fe.jsonl
 cp  results/_parts/headline_history.json results/headline_history.json
+cp  results/_parts/pool.json             results/pool.json
 rm -rf results/_parts
 
 echo "DONE -> results/"

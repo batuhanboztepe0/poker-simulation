@@ -280,8 +280,10 @@ def learning_curve_figure(history, ribbon=True):
             if not diffs:
                 continue
             n = len(diffs)
+            if n < 2:
+                continue
             mean = sum(diffs) / n
-            var = sum((d - mean) ** 2 for d in diffs) / n
+            var = sum((d - mean) ** 2 for d in diffs) / (n - 1)  # sample variance
             sem = (var ** 0.5) / (n ** 0.5)
             xs.append(h["step"])
             upper.append(mean + sem)
@@ -394,7 +396,7 @@ def parameter_heatmap_figure(grid, value="mean_net_chips"):
 # ---------------------------------------------------------------------------
 
 def ab_grouped_bar_figure(rows, group_key, value_key, by_key=None,
-                          title=None, yaxis_title=None):
+                          title=None, yaxis_title=None, group_order=None):
     """
     Grouped bar chart of an A/B metric. x = distinct `group_key` values; one bar
     series per distinct `by_key` value (a single series if `by_key` is None).
@@ -407,8 +409,12 @@ def ab_grouped_bar_figure(rows, group_key, value_key, by_key=None,
         group_key (str): x-axis category key.
         value_key (str): metric to plot (averaged per cell).
         by_key (str | None): series key, or None for a single series.
+        group_order (list | None): explicit x-axis order for the groups (e.g. a
+            monotone clip order 'old'/'4.6'/'wide'); defaults to a string sort.
     """
-    groups = sorted({r[group_key] for r in rows}, key=str)
+    present = {r[group_key] for r in rows}
+    groups = ([g for g in group_order if g in present] if group_order
+              else sorted(present, key=str))
     series = (sorted({r[by_key] for r in rows}, key=str) if by_key else [None])
     fig = go.Figure()
     for s in series:
