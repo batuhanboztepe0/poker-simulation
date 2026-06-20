@@ -466,6 +466,44 @@ def ab_heatmap_figure(rows, row_key, col_key, value_key, title=None,
     return fig
 
 
+def forest_plot_figure(rows, title=None,
+                       xaxis_title="Mean net chips (95% bootstrap CI)"):
+    """
+    Forest plot of estimated effects with 95% confidence intervals — the
+    glanceable "is the edge real?" summary. Each row {label, mean, lo, hi} is a
+    point at the mean with whiskers to [lo, hi]; a dotted line marks 0. Green =
+    CI excludes 0 above (a real positive edge), red = excludes 0 below, gray = CI
+    straddles 0 (effect is within per-seed noise).
+
+    Args:
+        rows (list[dict]): each has keys 'label', 'mean', 'lo', 'hi'.
+    """
+    def _color(r):
+        if r["lo"] > 0:
+            return "#2ca02c"
+        if r["hi"] < 0:
+            return "#d62728"
+        return "#888888"
+    fig = go.Figure()
+    for r in rows:
+        c = _color(r)
+        fig.add_trace(go.Scatter(
+            x=[r["mean"]], y=[r["label"]], mode="markers",
+            marker=dict(color=c, size=11),
+            error_x=dict(type="data", symmetric=False,
+                         array=[r["hi"] - r["mean"]],
+                         arrayminus=[r["mean"] - r["lo"]],
+                         color=c, thickness=2, width=7),
+            showlegend=False))
+    fig.add_vline(x=0, line=dict(color="gray", dash="dot"))
+    fig.update_layout(
+        title=title or "Effect sizes with 95% bootstrap CIs",
+        xaxis_title=xaxis_title, yaxis_title="",
+        yaxis=dict(autorange="reversed"),
+    )
+    return fig
+
+
 def icm_edge_figure(rows, title=None):
     """
     Per-init-seed ICM-minus-chips prize edge (measure_icm rows). Green = the

@@ -25,6 +25,7 @@ import json
 import torch
 
 from src.rl_agent import SelfPlayTrainer, evaluate_vs_baseline, paired_t_test
+from src.evaluation import bootstrap_ci
 
 
 def main():
@@ -66,6 +67,7 @@ def main():
             "n_hands": args.final_hands,
             "mean_chip_diff": final["mean_chip_diff"],
             "p_value": tt["p_value"],
+            "ci95": bootstrap_ci(final["per_seed_diffs"]),
             "per_seed_diffs": final["per_seed_diffs"],
         },
     }

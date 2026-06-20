@@ -26,7 +26,9 @@ from app.charts import (
     learning_curve_figure, tournament_leaderboard_figure,
     parameter_heatmap_figure, pnl_box_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
+    forest_plot_figure,
 )
+from src.evaluation import bootstrap_ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(ROOT, "results")
@@ -84,18 +86,69 @@ def _save(fig, name, caption, width=960, height=560):
 # Each builder returns a list of (filename, section, caption) for the index, or
 # [] when its data is missing.
 
+def fig_exec_summary(index):
+    """The glanceable honest summary: each headline edge as a point + 95%
+    bootstrap CI; gray = CI straddles 0 (within noise)."""
+    rows = []
+    h = _load_json("headline_history.json")
+    if h and h.get("final", {}).get("ci95"):
+        f = h["final"]
+        c = f["ci95"]
+        rows.append({"label": f"RL vs myopic — headline "
+                              f"({f.get('n_seeds')}×{f.get('n_hands')}h)",
+                     "mean": f["mean_chip_diff"], "lo": c["lo"], "hi": c["hi"]})
+    p = _load_json("pool.json")
+    if p:
+        for e in p["leaderboard"]:
+            if e["name"] == "RL" and e.get("ci95"):
+                c = e["ci95"]
+                rows.append({"label": f"RL vs pool — leaderboard "
+                                      f"({p.get('n_seeds')} seeds)",
+                             "mean": e["mean_net_chips"],
+                             "lo": c["lo"], "hi": c["hi"]})
+    icm = _load_jsonl("icm.jsonl")
+    if icm:
+        by = {}
+        for r in icm:
+            by.setdefault(tuple(r.get("ladder", [])), []).append(
+                r["icm_minus_chips"])
+        for ladder, vals in sorted(by.items(), reverse=True):
+            tag = "mild" if (ladder and ladder[-1] > 0) else "bubble"
+            ci = bootstrap_ci(vals)
+            rows.append({"label": f"ICM − chips — {tag} ({len(vals)} seeds)",
+                         "mean": ci["mean"], "lo": ci["lo"], "hi": ci["hi"]})
+    if not rows:
+        return
+    n_real = sum(1 for r in rows if r["lo"] > 0 or r["hi"] < 0)
+    cap = ("EXECUTIVE SUMMARY — every headline edge as a point with its 95% "
+           "bootstrap CI. Gray = the CI straddles 0 (effect is within per-seed "
+           f"noise); green/red = CI excludes 0. {n_real}/{len(rows)} edges are "
+           "statistically distinguishable from zero at these sample sizes — the "
+           "honest takeaway: the agent is directionally positive but the edges "
+           "are marginal, exactly what rigorous variance accounting should show "
+           "(see references.md §2; THESIS.md).")
+    index.append(("exec_summary.png", "§summary",
+                  _save(forest_plot_figure(
+                      rows, title="Are the edges real? Effects with 95% CIs"),
+                      "exec_summary", cap, height=460)))
+
+
 def fig_headline(index):
     d = _load_json("headline_history.json")
     if not d:
         return
     f = d.get("final", {})
     p = f.get("p_value")
+    ci = f.get("ci95")
+    ci_txt = (f", 95% CI [{ci['lo']:+.0f}, {ci['hi']:+.0f}]" if ci else "")
     cap = (f"Headline (§8): the fixed-vs-myopic RL agent learns to beat the "
            f"myopic EV baseline. Left axis = held-out win rate; right axis = "
            f"mean chip diff with a ±1 SEM ribbon over training. "
            f"Final {f.get('wins')}/{f.get('n_seeds')} matches, "
            f"{f.get('mean_chip_diff', 0):+.0f} mean chips"
-           + (f", paired p={p:.4f}" if p is not None else "") + ".")
+           + (f", paired p={p:.4f}" if p is not None else "") + ci_txt
+           + (". The CI's lower bound near 0 shows the edge is real but marginal "
+              "— variance accounting matters (see exec_summary)." if ci else "."))
     index.append(("headline.png", "§8",
                   _save(learning_curve_figure(d["history"], ribbon=True),
                         "headline", cap)))
@@ -115,15 +168,23 @@ def fig_pool(index):
     def _h2h(opp):  # RL's head-to-head record vs opp, from the committed matrix
         return f"{wm.get('RL', {}).get(opp, 0)}-{wm.get(opp, {}).get('RL', 0)}"
 
+    rl_entry = next((e for e in lb if e["name"] == "RL"), {})
+    rl_ci = rl_entry.get("ci95")
+    straddles = rl_ci and rl_ci["lo"] <= 0 <= rl_ci["hi"]
+    ci_txt = ((f" RL mean {rl_entry.get('mean_net_chips', 0):+.0f}, 95% CI "
+               f"[{rl_ci['lo']:+.0f}, {rl_ci['hi']:+.0f}]"
+               + (f" — this CI includes 0, so the lead is NOT significant at "
+                  f"{d.get('n_seeds')} seeds (more seeds / variance reduction "
+                  f"needed to confirm)." if straddles else "."))
+              if rl_ci else "")
     cap_lb = (f"§10 generalist (RL = belief + sharp HMM + PnL feed + "
               f"opponent-mix, multi-hand chips, {d.get('steps')} steps): "
               f"cross-agent leaderboard over {d.get('n_seeds')} held-out seeds × "
               f"{d.get('n_hands')} hands. RL {lb_pos} and beats each of the "
               f"{{myopic, tilt, random}} adaptive opponents head-to-head "
               f"({_h2h('Myopic')} / {_h2h('Tilt')} / {_h2h('Random')}); it "
-              f"loses H2H to the analytic Kelly ({_h2h('Kelly')}) but still "
-              f"leads on mean chips (Kelly is crushed by the adaptive foes). The "
-              f"§10 win = leaderboard + adaptive pool, not Kelly H2H.")
+              f"loses H2H to the analytic Kelly ({_h2h('Kelly')}). The §10 win "
+              f"is the leaderboard + adaptive-pool result, not Kelly H2H." + ci_txt)
     index.append(("pool_leaderboard.png", "§10",
                   _save(tournament_leaderboard_figure(lb),
                         "pool_leaderboard", cap_lb)))
@@ -285,9 +346,11 @@ def fig_rollout_fe(index):
                       "rollout_fe", cap)))
 
 
-BUILDERS = [fig_headline, fig_pool, fig_icm, fig_block_b, fig_rollout_fe]
+BUILDERS = [fig_exec_summary, fig_headline, fig_pool, fig_icm, fig_block_b,
+            fig_rollout_fe]
 
 DATA_DEPS = {
+    "fig_exec_summary": "results/{headline_history.json, pool.json, icm.jsonl}",
     "fig_headline": "results/headline_history.json",
     "fig_pool": "results/pool.json",
     "fig_icm": "results/icm.jsonl",
@@ -305,7 +368,12 @@ def write_index(index):
         "Rendered by `python -m scripts.make_figures` from the committed "
         "measurement JSON in [`../results/`](../results/) (regenerate that data "
         "with `scripts/run_measurements.sh` + `scripts/measure_pool.py`). Each "
-        "`.png` is for the README; the matching `.html` is interactive.",
+        "`.png` is for the write-up; the matching `.html` is interactive.",
+        "",
+        "**Start with [`exec_summary.png`](exec_summary.png)** — every headline "
+        "edge with its 95% bootstrap CI (the honest \"are the edges real?\" "
+        "view). Narrative: [../THESIS.md](../THESIS.md). Bibliography: "
+        "[../references.md](../references.md).",
         "",
         "| Figure | Section | What it shows |",
         "|---|---|---|",

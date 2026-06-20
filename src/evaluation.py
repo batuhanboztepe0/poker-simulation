@@ -79,42 +79,97 @@ class RosterResult:
     n_seeds: int = 0
 
 
+def bootstrap_ci(values, n_resamples: int = 10000, ci: float = 0.95,
+                 seed: int = 12345) -> dict:
+    """
+    Percentile bootstrap confidence interval for the MEAN of `values`.
+
+    Resamples `values` with replacement `n_resamples` times (seeded, so the CI is
+    reproducible) and returns the empirical CI of the resample means. A
+    distribution-free complement to the paired t-test: if the CI excludes 0, the
+    mean effect is significant at the (1-ci) level without assuming normality —
+    the right uncertainty statement for heavy-tailed per-seed poker PnL.
+
+    Returns {mean, lo, hi, ci, n}.
+    """
+    n = len(values)
+    if n == 0:
+        return {"mean": 0.0, "lo": 0.0, "hi": 0.0, "ci": ci, "n": 0}
+    mean = sum(values) / n
+    if n == 1:
+        return {"mean": float(mean), "lo": float(values[0]),
+                "hi": float(values[0]), "ci": ci, "n": 1}
+    rng = random.Random(seed)
+    means = []
+    for _ in range(n_resamples):
+        total = 0.0
+        for _ in range(n):
+            total += values[rng.randrange(n)]
+        means.append(total / n)
+    means.sort()
+    lo_idx = int((1 - ci) / 2 * n_resamples)
+    hi_idx = min(n_resamples - 1, int((1 + ci) / 2 * n_resamples))
+    return {"mean": float(mean), "lo": float(means[lo_idx]),
+            "hi": float(means[hi_idx]), "ci": ci, "n": n}
+
+
+def _play_match(factory_seat1, factory_seat2, name_a, name_b, seed, n_hands,
+                small_blind, big_blind, starting_stack, fast_mode):
+    """Play one seeded heads-up match; return (net_seat1, net_seat2). Card luck is
+    fixed by the deck seed (independent of actions), so swapping the two factories
+    on the same seed gives a true duplicate/mirror of the deal."""
+    p1 = factory_seat1(1, starting_stack)
+    p2 = factory_seat2(2, starting_stack)
+    total_before = p1.stack + p2.stack
+    shared_rng = random.Random(seed)
+    for p in (p1, p2):
+        _wire_rng(p, shared_rng)
+    result = simulate_session(
+        [p1, p2], n_hands=n_hands, small_blind=small_blind,
+        big_blind=big_blind, seed=seed, fast_mode=fast_mode)
+    total_after = sum(result.final_stacks.values())
+    assert total_after == total_before, (
+        f"Chip conservation violated ({name_a} vs {name_b}, seed={seed}): "
+        f"{total_before} -> {total_after}")
+    return result.net_chips(1), result.net_chips(2)
+
+
 def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
                      name_a: str, name_b: str, seeds: List[int],
                      n_hands: int = 200, small_blind: int = DEFAULT_SMALL_BLIND,
                      big_blind: int = DEFAULT_BIG_BLIND,
                      starting_stack: int = 1000,
-                     fast_mode: bool = False) -> MatchupResult:
+                     fast_mode: bool = False,
+                     mirror: bool = False) -> MatchupResult:
     """
     Play one seeded heads-up bankroll match per seed and collect the PnL diffs.
 
     For each seed, A is seated as player_id=1 and B as player_id=2 over the same
     deck (paired). Chip conservation is asserted per match. Returns the per-seed
     diffs plus their paired t-test against 0.
+
+    With ``mirror=True`` each seed is played as a DUPLICATE/mirror match: the same
+    deck is dealt a second time with the agents in swapped seats, and A's per-seed
+    result is averaged over both orientations. Because the deal is fixed by the
+    seed (independent of actions), this cancels the deck-luck that favours one
+    seat — a standard variance-reduction protocol for high-variance games (the
+    duplicate-match idea behind DIVAT/AIVAT; see references.md §2). Default off →
+    the single-orientation path is byte-identical.
     """
     diffs, net_a, net_b = [], [], []
     wins_a = wins_b = ties = 0
     for seed in seeds:
-        pa = factory_a(1, starting_stack)
-        pb = factory_b(2, starting_stack)
-        total_before = pa.stack + pb.stack
-
-        shared_rng = random.Random(seed)
-        for p in (pa, pb):
-            _wire_rng(p, shared_rng)
-
-        result = simulate_session(
-            [pa, pb], n_hands=n_hands,
-            small_blind=small_blind, big_blind=big_blind,
-            seed=seed, fast_mode=fast_mode,
-        )
-        total_after = sum(result.final_stacks.values())
-        assert total_after == total_before, (
-            f"Chip conservation violated ({name_a} vs {name_b}, seed={seed}): "
-            f"{total_before} -> {total_after}"
-        )
-
-        na, nb = result.net_chips(1), result.net_chips(2)
+        na1, nb1 = _play_match(factory_a, factory_b, name_a, name_b, seed,
+                               n_hands, small_blind, big_blind, starting_stack,
+                               fast_mode)
+        if mirror:
+            # Replay the same deck with seats swapped; A now sits in seat 2.
+            nb2, na2 = _play_match(factory_b, factory_a, name_b, name_a, seed,
+                                   n_hands, small_blind, big_blind,
+                                   starting_stack, fast_mode)
+            na, nb = (na1 + na2) / 2, (nb1 + nb2) / 2
+        else:
+            na, nb = na1, nb1
         net_a.append(na)
         net_b.append(nb)
         diffs.append(na - nb)

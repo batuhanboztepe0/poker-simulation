@@ -33,7 +33,7 @@ from src.adaptive_agent import AdaptiveBotPlayer
 from src.player import BotPlayer
 from src.kelly_agent import KellyBotPlayer
 from src.monte_carlo import MonteCarloEngine
-from src.evaluation import evaluate_roster, parameter_sweep
+from src.evaluation import evaluate_roster, parameter_sweep, bootstrap_ci
 
 SHARP = dict(mu_normal=0.25, mu_tilted=0.92, recover=0.05)
 
@@ -109,6 +109,10 @@ def main():
     roster = {"RL": rl_f, "Myopic": myo_f, "Tilt": tlt_f, "Random": rnd_f,
               "Kelly": kel_f}
     rr = evaluate_roster(roster, seeds, n_hands=args.hands)
+    # Attach a bootstrap 95% CI of each agent's mean net chips (the honest
+    # uncertainty band behind the leaderboard means).
+    for entry in rr.leaderboard:
+        entry["ci95"] = bootstrap_ci(rr.per_agent_nets[entry["name"]])
 
     # Static-personality fitness landscape; RL added as an extra (forces MC).
     tights = [0.2, 0.4, 0.6, 0.8]

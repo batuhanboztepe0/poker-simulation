@@ -67,7 +67,9 @@ class TestResultsSchema(unittest.TestCase):
                 {"step", "wins", "n_seeds", "mean_chip_diff", "per_seed_diffs"},
                 set(snap))
         self.assertLessEqual(
-            {"wins", "n_seeds", "mean_chip_diff", "p_value"}, set(d["final"]))
+            {"wins", "n_seeds", "mean_chip_diff", "p_value", "ci95"},
+            set(d["final"]))
+        self.assertLessEqual({"lo", "hi", "mean"}, set(d["final"]["ci95"]))
 
     def test_pool_schema(self):
         path = os.path.join(RESULTS, "pool.json")
@@ -79,7 +81,8 @@ class TestResultsSchema(unittest.TestCase):
             {"leaderboard", "per_agent_nets", "win_matrix", "grid", "rl_rank",
              "n_agents_in_sweep", "best_static"}, set(d))
         for entry in d["leaderboard"]:
-            self.assertLessEqual({"name", "mean_net_chips"}, set(entry))
+            self.assertLessEqual({"name", "mean_net_chips", "ci95"}, set(entry))
+            self.assertLessEqual({"lo", "hi", "mean"}, set(entry["ci95"]))
         for cell in d["grid"]:
             self.assertLessEqual({"tight", "aggr", "mean_net_chips"}, set(cell))
 

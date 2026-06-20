@@ -24,13 +24,14 @@ from src.simulation import simulate_session
 from src.adaptive_agent import AdaptiveBotPlayer
 from src.evaluation import (
     evaluate_matchup, evaluate_roster, parameter_sweep,
-    MatchupResult, RosterResult,
+    MatchupResult, RosterResult, bootstrap_ci,
 )
 from src.analytics import drawdown_curve, max_drawdown
 from app.charts import (
     pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
     equity_drawdown_figure, pnl_box_figure, parameter_heatmap_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
+    forest_plot_figure,
 )
 
 
@@ -68,6 +69,44 @@ class TestMatchup(unittest.TestCase):
                               n_hands=_N_HANDS, fast_mode=True)
         self.assertEqual(m1.diffs, m2.diffs)
         self.assertEqual(m1.net_a, m2.net_a)
+
+
+class TestVarianceReduction(unittest.TestCase):
+    def test_bootstrap_ci_deterministic_and_brackets_mean(self):
+        vals = [10, -5, 3, 0, 8, -2, 12, 4]
+        c1 = bootstrap_ci(vals, n_resamples=2000, seed=1)
+        c2 = bootstrap_ci(vals, n_resamples=2000, seed=1)
+        self.assertEqual(c1, c2)  # seeded -> reproducible
+        self.assertAlmostEqual(c1["mean"], sum(vals) / len(vals))
+        self.assertLessEqual(c1["lo"], c1["mean"])
+        self.assertLessEqual(c1["mean"], c1["hi"])
+
+    def test_bootstrap_ci_degenerate_and_significance(self):
+        # All-equal -> zero-width CI at the value.
+        deg = bootstrap_ci([7, 7, 7, 7], n_resamples=500, seed=0)
+        self.assertEqual((deg["lo"], deg["hi"]), (7.0, 7.0))
+        # A clearly-positive sample's 95% CI excludes 0.
+        pos = bootstrap_ci([100] * 15 + [60, 140], n_resamples=3000, seed=0)
+        self.assertGreater(pos["lo"], 0)
+        # Higher spread -> wider CI for the same mean ~0.
+        tight = bootstrap_ci([-1, 1] * 10, n_resamples=3000, seed=0)
+        wide = bootstrap_ci([-100, 100] * 10, n_resamples=3000, seed=0)
+        self.assertGreater(wide["hi"] - wide["lo"], tight["hi"] - tight["lo"])
+
+    def test_mirror_zero_sum_deterministic_antisymmetric(self):
+        seeds = [0, 1, 2, 3]
+        m1 = evaluate_matchup(_myopic, _kelly, "M", "K", seeds,
+                              n_hands=_N_HANDS, fast_mode=True, mirror=True)
+        m2 = evaluate_matchup(_myopic, _kelly, "M", "K", seeds,
+                              n_hands=_N_HANDS, fast_mode=True, mirror=True)
+        self.assertEqual(m1.diffs, m2.diffs)  # deterministic
+        for a, b in zip(m1.net_a, m1.net_b):  # duplicate still chip-conserving
+            self.assertAlmostEqual(a + b, 0.0)
+        # Swapping A/B negates every per-seed diff exactly (mirror is symmetric).
+        swapped = evaluate_matchup(_kelly, _myopic, "K", "M", seeds,
+                                   n_hands=_N_HANDS, fast_mode=True, mirror=True)
+        for d, ds in zip(m1.diffs, swapped.diffs):
+            self.assertAlmostEqual(d, -ds)
 
 
 class TestRoster(unittest.TestCase):
@@ -175,6 +214,11 @@ class TestCharts(unittest.TestCase):
             {"init_seed": 3, "icm_minus_chips": 120.0},
         ]
         self.assertIsInstance(icm_edge_figure(icm_rows), go.Figure)
+        # Forest plot: rows with mean + 95% CI bounds (one CI excludes 0, one not).
+        self.assertIsInstance(forest_plot_figure([
+            {"label": "A vs B", "mean": 560.0, "lo": 0.0, "hi": 1040.0},
+            {"label": "C vs D", "mean": -120.0, "lo": -350.0, "hi": 90.0},
+        ]), go.Figure)
 
     def test_drawdown_chart(self):
         players = [
