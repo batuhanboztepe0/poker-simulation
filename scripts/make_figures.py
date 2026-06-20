@@ -372,6 +372,74 @@ def fig_block_b(index):
                           "blockB_tilt_decouple", cap)))
 
 
+def fig_tilt_realdata(index):
+    """Real-data tilt validation: post-loss aggression/VPIP shift + the project's
+    HMM detector separation on real human hands, each against a shuffled-label
+    placebo."""
+    d = _load_json("tilt_realdata.json")
+    if not d:
+        return
+    ph, det, reg, cfg = d["phenomenon"], d["detector"], d["regime"], d["config"]
+
+    def _row(label, ci):
+        return {"label": label, "mean": ci["mean"], "lo": ci["lo"],
+                "hi": ci["hi"]}
+
+    rows = [
+        _row("VPIP Δ post-loss — real humans", ph["real"]["vpip"]),
+        _row("VPIP Δ — shuffled-label placebo", ph["placebo"]["vpip"]),
+        _row("Aggression Δ post-loss — real humans", ph["real"]["aggr"]),
+        _row("Aggression Δ — placebo", ph["placebo"]["aggr"]),
+        _row("HMM P(tilted) separation — real", det["real"]["separation"]),
+        _row("HMM P(tilted) separation — placebo",
+             det["placebo"]["separation"]),
+    ]
+    lb = int(cfg["loss_bb"])
+    npl = ph["real"]["n_players"]
+    bic = reg.get("bic_gain")
+    if reg.get("two_state_found") and bic and bic > 0:
+        ratio = (reg["p_loss_given_high"] / reg["p_loss_base"]
+                 if reg.get("p_loss_base") else 0.0)
+        regime_txt = (f"A separate Baum-Welch HMM (distinct from the forward-filter "
+                      f"detector) corroborates the phenomenon — it beats a "
+                      f"1-state model out-of-sample (held-out LL "
+                      f"{reg['heldout_ll_gain']:+.0f}; held-out ΔBIC {bic:+.0f}) "
+                      f"with a calm (P[aggr]={reg['p_aggr_low']:.2f}) and an active "
+                      f"(P[aggr]={reg['p_aggr_high']:.2f}) regime, and the active "
+                      f"regime is {ratio:.1f}× enriched for a recent big loss "
+                      f"({reg['p_loss_given_high']:.1%} vs {reg['p_loss_base']:.1%} "
+                      f"base).")
+    else:
+        regime_txt = ("A 2-state HMM does not beat a 1-state model on per-hand "
+                      "aggression, so the tilt here is a conditional shift rather "
+                      "than a persistent regime.")
+    cap = (f"Real-data tilt validation ({d['n_sequences']:,} sessions, "
+           f"{d['n_rows']:,} hand-rows from {cfg['n_files']} PokerStars 25NL "
+           f"files; PHH/Kim 2024, CC-BY-4.0 — used for OPPONENT-MODEL "
+           f"validation ONLY, never the policy). After a ≥{lb}bb loss, "
+           f"{npl} real 2009 online players play looser "
+           f"(VPIP {ph['real']['vpip']['mean']*100:+.1f}pp) and more aggressively "
+           f"(rate {ph['real']['aggr']['mean']*100:+.1f}pp) — both 95% CIs exclude "
+           f"0 — and the project's emission-only forward-filter HMM detector "
+           f"(tilted-state emission means μ_normal={cfg['mu_normal']}, "
+           f"μ_tilted={cfg['mu_tilted']} fixed from the population before "
+           f"measuring, not tuned) registers a small but resolved P(tilted) "
+           f"separation ({det['real']['separation']['mean']:+.3f}, CI excludes 0); "
+           f"each effect's shuffled-label placebo collapses to ~0 (gray). "
+           f"{regime_txt} Honest scale: the shifts are small (1-3pp) — real but "
+           f"marginal, the project's signature. This predictable, post-loss "
+           f"deviation is the adverse-selection signal of references.md §3 (Kyle; "
+           f"Glosten-Milgrom); the human-vs-bot contrast is corroborated by Haaf "
+           f"et al. 2021 (§6).")
+    index.append(("tilt_realdata.png", "§real-data",
+                  _save(forest_plot_figure(
+                      rows, title="Is tilt detectable in real hands? "
+                      "(effects vs shuffled-label placebo)",
+                      xaxis_title="Post-loss effect (probability units; "
+                                  "95% bootstrap CI)"),
+                      "tilt_realdata", cap, height=480)))
+
+
 def fig_rollout_fe(index):
     rows = _load_jsonl("rollout_fe.jsonl")
     if not rows:
@@ -394,7 +462,8 @@ def fig_rollout_fe(index):
 
 
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
-            fig_headline, fig_pool, fig_icm, fig_block_b, fig_rollout_fe]
+            fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
+            fig_rollout_fe]
 
 DATA_DEPS = {
     "fig_exec_summary": "results/{headline_history.json, pool.json, icm.jsonl}",
@@ -404,6 +473,7 @@ DATA_DEPS = {
     "fig_pool": "results/pool.json",
     "fig_icm": "results/icm.jsonl",
     "fig_block_b": "results/{action_grid,bust_clip,selfplay,tilt_decouple}.jsonl",
+    "fig_tilt_realdata": "results/tilt_realdata.json",
     "fig_rollout_fe": "results/rollout_fe.jsonl",
 }
 

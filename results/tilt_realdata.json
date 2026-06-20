@@ -1,0 +1,123 @@
+{
+  "source": {
+    "dataset": "A Dataset of Poker Hand Histories (Kim, J., 2024)",
+    "doi": "10.5281/zenodo.13997158",
+    "license": "CC-BY-4.0",
+    "subset": "PokerStars 25NL (2009 HandHQ scrape)",
+    "provenance": "NLHE hands originate from a July 2009 HandHQ scrape, redistributed under CC-BY-4.0; see references.md",
+    "use": "opponent-model validation only \u2014 these hands never train the self-play DQN policy",
+    "parser": "pokerkit (canonical PHH replayer; chip-conserving net)"
+  },
+  "config": {
+    "n_files": 120,
+    "loss_bb": 10.0,
+    "min_len": 20,
+    "max_gap_s": 3600,
+    "mu_normal": 0.11,
+    "mu_tilted": 0.643,
+    "recover": 0.15,
+    "emission_calibration_note": "mu_normal = global mean per-hand aggression rate; mu_tilted = mean rate over AGGRESSIVE hands only (rate>0), used as the detector's tilted-state emission anchor \u2014 NOT a regime mean. Both are population descriptive statistics fixed BEFORE the separation is measured, not tuned to the outcome (the post-hoc-tuning footgun, references.md \u00a72).",
+    "session_note": "all hands carry one placeholder date (2009-07-01); sessions are split by the within-day time-of-day gap (max_gap_s), which reproduces PokerStars hand-id order on ~99.9% of adjacent pairs."
+  },
+  "n_rows": 777687,
+  "n_sequences": 12320,
+  "global_mean_rate": 0.11,
+  "frac_aggressive_hands": 0.17,
+  "phenomenon": {
+    "real": {
+      "aggr": {
+        "mean": 0.016487169569838856,
+        "lo": 0.00849498032914728,
+        "hi": 0.024851644368146814,
+        "ci": 0.95,
+        "n": 873
+      },
+      "vpip": {
+        "mean": 0.027866673077688715,
+        "lo": 0.01658047942560928,
+        "hi": 0.039365388389467286,
+        "ci": 0.95,
+        "n": 873
+      },
+      "n_players": 873,
+      "n_post": 8976,
+      "n_base": 382597,
+      "loss_bb": 10.0,
+      "placebo": false
+    },
+    "placebo": {
+      "aggr": {
+        "mean": -0.0003545103894862488,
+        "lo": -0.0074996565003418785,
+        "hi": 0.0069116886790131565,
+        "ci": 0.95,
+        "n": 873
+      },
+      "vpip": {
+        "mean": 0.00248544405454774,
+        "lo": -0.008470584862348085,
+        "hi": 0.013904168639360125,
+        "ci": 0.95,
+        "n": 873
+      },
+      "n_players": 873,
+      "n_post": 8976,
+      "n_base": 382597,
+      "loss_bb": 10.0,
+      "placebo": true
+    }
+  },
+  "detector": {
+    "real": {
+      "separation": {
+        "mean": 0.01120495351709096,
+        "lo": 0.00829708974498074,
+        "hi": 0.014341720426448408,
+        "ci": 0.95,
+        "n": 873
+      },
+      "n_players": 873,
+      "mu_normal": 0.11,
+      "mu_tilted": 0.643,
+      "recover": 0.15,
+      "loss_bb": 10.0,
+      "placebo": false
+    },
+    "placebo": {
+      "separation": {
+        "mean": -0.00047387775115026817,
+        "lo": -0.003005110990470416,
+        "hi": 0.0021139085671216086,
+        "ci": 0.95,
+        "n": 873
+      },
+      "n_players": 873,
+      "mu_normal": 0.11,
+      "mu_tilted": 0.643,
+      "recover": 0.15,
+      "loss_bb": 10.0,
+      "placebo": true
+    }
+  },
+  "regime": {
+    "ok": true,
+    "two_state_found": true,
+    "heldout_ll_1state": -22267.491554640375,
+    "heldout_ll_2state": -21586.932651528077,
+    "heldout_ll_gain": 680.5589031122981,
+    "bic_1state": 44546.62478849355,
+    "bic_2state": 43232.07369912017,
+    "bic_gain": 1314.5510893733808,
+    "p_aggr_low": 0.11514159615197159,
+    "p_aggr_high": 0.29681970467546004,
+    "n_sessions": 12320,
+    "sessions_available": 12320,
+    "sessions_used": 3000,
+    "max_sessions": 3000,
+    "n_train": 2100,
+    "n_test": 900,
+    "p_loss_given_high": 0.043041606886657105,
+    "p_loss_base": 0.022994764397905758,
+    "high_state": 1
+  }
+}

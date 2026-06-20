@@ -14,7 +14,15 @@ Definitions:
             aggressive = raise/all-in, passive = call/check (folds excluded).
     SD%   — showdown win rate: showdowns won / showdowns reached.
     chip EV/hand — net stack change divided by hands played.
+
+`bootstrap_ci` is the one general-purpose helper here (a percentile bootstrap CI
+for the mean of any value list); it lives in this torch-free, dependency-light
+module so analyses that must NOT pull the training path can import it without
+dragging in `evaluation` -> `rl_agent` (-> torch). `evaluation` re-exports it for
+backward compatibility.
 """
+
+import random
 
 from src.player import (
     ACTION_FOLD, ACTION_CHECK, ACTION_CALL, ACTION_RAISE, ACTION_ALL_IN,
@@ -162,3 +170,37 @@ def session_summary(session):
             "hands_played": hands_played(session, pid),
         }
     return summary
+
+
+def bootstrap_ci(values, n_resamples: int = 10000, ci: float = 0.95,
+                 seed: int = 12345) -> dict:
+    """
+    Percentile bootstrap confidence interval for the MEAN of `values`.
+
+    Resamples `values` with replacement `n_resamples` times (seeded, so the CI is
+    reproducible) and returns the empirical CI of the resample means. A
+    distribution-free complement to the paired t-test: if the CI excludes 0, the
+    mean effect is significant at the (1-ci) level without assuming normality —
+    the right uncertainty statement for heavy-tailed per-seed poker PnL.
+
+    Returns {mean, lo, hi, ci, n}.
+    """
+    n = len(values)
+    if n == 0:
+        return {"mean": 0.0, "lo": 0.0, "hi": 0.0, "ci": ci, "n": 0}
+    mean = sum(values) / n
+    if n == 1:
+        return {"mean": float(mean), "lo": float(values[0]),
+                "hi": float(values[0]), "ci": ci, "n": 1}
+    rng = random.Random(seed)
+    means = []
+    for _ in range(n_resamples):
+        total = 0.0
+        for _ in range(n):
+            total += values[rng.randrange(n)]
+        means.append(total / n)
+    means.sort()
+    lo_idx = int((1 - ci) / 2 * n_resamples)
+    hi_idx = min(n_resamples - 1, int((1 + ci) / 2 * n_resamples))
+    return {"mean": float(mean), "lo": float(means[lo_idx]),
+            "hi": float(means[hi_idx]), "ci": ci, "n": n}

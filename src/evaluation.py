@@ -28,6 +28,9 @@ from src.tournament import _wire_rng, _pair_seed
 from src.rl_agent import paired_t_test
 from src.player import BotPlayer
 from src.monte_carlo import MonteCarloEngine
+# bootstrap_ci lives in the dependency-light src.stats (no training-path imports)
+# so torch-free analyses can use it in isolation; re-exported here for back-compat.
+from src.stats import bootstrap_ci
 
 # A factory builds a FRESH player each call: factory(player_id, stack) -> Player.
 AgentFactory = Callable[[int, int], object]
@@ -77,40 +80,6 @@ class RosterResult:
     per_agent_nets: Dict[str, List[int]]
     pair_results: Dict[Tuple[str, str], MatchupResult]
     n_seeds: int = 0
-
-
-def bootstrap_ci(values, n_resamples: int = 10000, ci: float = 0.95,
-                 seed: int = 12345) -> dict:
-    """
-    Percentile bootstrap confidence interval for the MEAN of `values`.
-
-    Resamples `values` with replacement `n_resamples` times (seeded, so the CI is
-    reproducible) and returns the empirical CI of the resample means. A
-    distribution-free complement to the paired t-test: if the CI excludes 0, the
-    mean effect is significant at the (1-ci) level without assuming normality —
-    the right uncertainty statement for heavy-tailed per-seed poker PnL.
-
-    Returns {mean, lo, hi, ci, n}.
-    """
-    n = len(values)
-    if n == 0:
-        return {"mean": 0.0, "lo": 0.0, "hi": 0.0, "ci": ci, "n": 0}
-    mean = sum(values) / n
-    if n == 1:
-        return {"mean": float(mean), "lo": float(values[0]),
-                "hi": float(values[0]), "ci": ci, "n": 1}
-    rng = random.Random(seed)
-    means = []
-    for _ in range(n_resamples):
-        total = 0.0
-        for _ in range(n):
-            total += values[rng.randrange(n)]
-        means.append(total / n)
-    means.sort()
-    lo_idx = int((1 - ci) / 2 * n_resamples)
-    hi_idx = min(n_resamples - 1, int((1 + ci) / 2 * n_resamples))
-    return {"mean": float(mean), "lo": float(means[lo_idx]),
-            "hi": float(means[hi_idx]), "ci": ci, "n": n}
 
 
 def _play_match(factory_seat1, factory_seat2, name_a, name_b, seed, n_hands,

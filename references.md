@@ -145,8 +145,55 @@ verification. Status reflects that check honestly:
   signal than by documented firm policy — frame as "demonstrates rigor," not
   "firms prefer nulls."*
 
+## 6. Real-data tilt validation — dataset, parser & opponent modelling
+
+*Added for the real-data tilt validation
+([src/real_data_tilt.py](src/real_data_tilt.py),
+[figures/tilt_realdata.png](figures/tilt_realdata.png)) and put through the same
+3-vote adversarial verification; statuses are reported honestly.*
+
+- **Kim, J. (2024).** "Recording and Describing Poker Hands." *2024 IEEE
+  Conference on Games (CoG), Milan.* arXiv:2312.11753 / dataset
+  doi:10.5281/zenodo.13997158 (CC-BY-4.0) — **✓ confirmed (3-0):** defines the
+  PHH (Poker Hand History) format and the **pokerkit** library (its canonical
+  parser, used here to replay hands chip-conservingly for exact net results); the
+  Zenodo dataset holds **21,605,687 NLHE hands** plus WSOP and Pluribus hands.
+  **Provenance (surfaced for honesty):** those NLHE hands originate from a
+  **July 2009 HandHQ scrape** of six online networks, redistributed by Kim under
+  CC-BY-4.0. This project relies on the CC-BY-4.0 Zenodo redistribution
+  (attributed via the DOI), not on HandHQ directly, and uses the hands for
+  **opponent-model validation ONLY** — never to train the self-play policy
+  (human logs in the policy would make the agent exploitable).
+- **Haaf, Singh, Lin & Zou (2021).** "Rational AI: A comparison of human and AI
+  responses to triggers of economic irrationality in poker." *arXiv:2111.07295.*
+  — **✓ relevant finding (3-0) / ⚠ not an architecture source:** analyses 10,000
+  Pluribus hands and finds **humans become more risk-seeking after losses while
+  Pluribus becomes more risk-averse** — direct prior support for both this
+  project's post-loss tilt phenomenon and its bot-as-negative-control intuition.
+  ⚠ It contains no opponent-modelling or self-play *architecture*; a
+  characterisation of it as an architecture source was **refuted 3-0** — do not
+  cite it for that.
+- **Murgoci, Spaan & Oren (2026).** "AlphaExploitem: Going Beyond the Nash
+  Equilibrium in Poker by Learning to Exploit Suboptimal Play." *arXiv:2605.09150
+  (TU Delft).* — **✓ confirmed (3-0):** self-play against a diverse
+  exploitable-opponent pool plus a hierarchical (within-hand + across-hand)
+  transformer encoder for **session-level inference** exploits suboptimal
+  opponents on Kuhn / Leduc without substantial degradation vs Nash play.
+  Grounds this project's architecture: a self-play policy paired with a separate,
+  human-calibrated opponent model and session-level inference.
+- **Wei, Palomäki, Yan & Robinson (2016).** "The Science and Detection of
+  Tilting." *ACM ICMR 2016.* doi:10.1145/2911996.2912019 — **⚠ qualified
+  (3-0):** defines tilting (loss of emotional control after bad beats → erratic
+  play) and argues automated tilt detection is tractable. ⚠ Their detection
+  modality is **facial-expression computer vision, not in-game betting signals**
+  — so cite it for the definition / tractability only; this project's
+  behavioural-signal detection (aggression / VPIP from hand logs) is the
+  *complement* they did not pursue.
+
 ---
 
 *Compiled from a 26-source sweep (94 candidate claims, 25 adversarially
-verified: 12 confirmed, 13 refuted). The refuted items are kept visible above on
-purpose — knowing what does **not** hold up is part of the result.*
+verified: 12 confirmed, 13 refuted) plus a 4-source real-data-tilt sweep (§6,
+3-vote verified: 2 confirmed, 2 qualified). The refuted/qualified items are kept
+visible above on purpose — knowing what does **not** hold up is part of the
+result.*

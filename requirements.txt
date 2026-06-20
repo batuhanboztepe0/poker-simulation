@@ -17,3 +17,10 @@ scipy==1.11.4
 # Phase C — RL agent (OPTIONAL: rl_agent.py is torch-guarded; all other
 # Phase C modules import and run without torch). Uncomment to train the DQN:
 # torch>=2.0
+
+# Real-data tilt validation (ANALYSIS-ONLY, offline: src/real_data_tilt.py,
+# scripts/{fetch_phh,measure_tilt_realdata}.py). pokerkit is the canonical PHH
+# parser; hmmlearn fits the regime HMM. Not needed for the engine or training —
+# real hands feed the opponent-model validation only, never the policy.
+pokerkit>=0.5
+hmmlearn>=0.3

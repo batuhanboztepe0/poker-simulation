@@ -114,6 +114,25 @@ signal statistical maturity, references.md §5.)*
   time-AVERAGE strategy converges to the Nash equilibrium while the greedy
   LAST-ITERATE — the regime DQN self-play plays in — stays exploitable. This is
   the exact reason DQN self-play does not reach Nash and averaging methods do.
+- **Real-data tilt validation** ([`src/real_data_tilt.py`](src/real_data_tilt.py),
+  [`figures/tilt_realdata.png`](figures/tilt_realdata.png)) — the
+  exploit-predictable-deviations thesis tested on **777k hand-rows** of 2009
+  online play (PHH / Kim 2024, CC-BY-4.0; the NLHE hands are a redistributed
+  HandHQ scrape, used for the **opponent model ONLY, never the policy** — human
+  logs in the policy would make the agent exploitable). After a ≥10bb loss,
+  873 players play looser and more aggressively: **VPIP +2.8pp and aggression
+  +1.6pp, both 95% CIs exclude 0 — real but small.** The project's emission-only
+  forward-filter HMM detector (Test B) registers a small but resolved shift
+  (+0.011 in P(tilted), CI excludes 0; its emission means μ_normal=0.11,
+  μ_tilted=0.64 are population statistics fixed before the separation is measured,
+  not tuned to it). A **separate** Baum-Welch regime HMM (Test C, not the
+  detector) corroborates the phenomenon with a different method, beating a 1-state
+  model out-of-sample (held-out LL +681; held-out ΔBIC +1315) with its active
+  regime ~1.9× enriched for a recent big loss (4.3% vs 2.3% base). Each effect is
+  placebo-controlled (shuffled labels → ~0) and the shifts are honestly small
+  (1–3pp). This **post-loss** deviation (observational, not a causal claim) is the
+  adverse-selection signal of §1 (Kyle / Glosten-Milgrom), corroborated for the
+  human-vs-bot contrast by Haaf et al. 2021 (references.md §6).
 
 **Remaining (the genuine next steps):**
 - **Full decision-node AIVAT** — extend the chance-node (all-in) control variate
