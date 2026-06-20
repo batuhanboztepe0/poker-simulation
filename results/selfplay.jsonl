@@ -1,0 +1,6 @@
+{"config": "fixed", "init_seed": 0, "n": 40, "myopic": 400.0, "myopic_wins": 28, "tilt": 200.0, "tilt_wins": 24, "random": 300.0, "random_wins": 26}
+{"config": "fixed", "init_seed": 1, "n": 40, "myopic": 150.0, "myopic_wins": 23, "tilt": 150.0, "tilt_wins": 23, "random": -50.0, "random_wins": 19}
+{"config": "fixed", "init_seed": 2, "n": 40, "myopic": 200.0, "myopic_wins": 24, "tilt": 150.0, "tilt_wins": 23, "random": 450.0, "random_wins": 29}
+{"config": "snapshot", "init_seed": 0, "n": 40, "myopic": -50.0, "myopic_wins": 19, "tilt": 300.0, "tilt_wins": 26, "random": 300.0, "random_wins": 26}
+{"config": "snapshot", "init_seed": 1, "n": 40, "myopic": 600.0, "myopic_wins": 32, "tilt": 650.0, "tilt_wins": 33, "random": 450.0, "random_wins": 29}
+{"config": "snapshot", "init_seed": 2, "n": 40, "myopic": -200.0, "myopic_wins": 16, "tilt": 0.0, "tilt_wins": 20, "random": -100.0, "random_wins": 18}

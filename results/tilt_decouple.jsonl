@@ -1,0 +1,12 @@
+{"config": "nopnl_bonus", "init_seed": 0, "myopic": -614.0, "tilt": -832.0, "random": -919.0}
+{"config": "nopnl_bonus", "init_seed": 1, "myopic": -66.66666666666667, "tilt": 333.3333333333333, "random": 266.6666666666667}
+{"config": "nopnl_bonus", "init_seed": 2, "myopic": 200.0, "tilt": 133.33333333333334, "random": 66.66666666666667}
+{"config": "pnl_decouple", "init_seed": 0, "myopic": 334.5, "tilt": 66.66666666666667, "random": -28.666666666666668}
+{"config": "pnl_decouple", "init_seed": 1, "myopic": 66.66666666666667, "tilt": 200.0, "random": 133.33333333333334}
+{"config": "pnl_decouple", "init_seed": 2, "myopic": 337.2, "tilt": 225.26666666666668, "random": -96.33333333333333}
+{"config": "pnl_naive", "init_seed": 0, "myopic": 133.33333333333334, "tilt": 333.3333333333333, "random": -129.33333333333334}
+{"config": "pnl_naive", "init_seed": 1, "myopic": 66.66666666666667, "tilt": 266.6666666666667, "random": 400.0}
+{"config": "pnl_naive", "init_seed": 2, "myopic": -49.833333333333336, "tilt": -176.0, "random": -431.3333333333333}
+{"config": "pnl_nobonus", "init_seed": 0, "myopic": 133.33333333333334, "tilt": 200.0, "random": 333.3333333333333}
+{"config": "pnl_nobonus", "init_seed": 1, "myopic": 266.6666666666667, "tilt": 380.0, "random": 266.6666666666667}
+{"config": "pnl_nobonus", "init_seed": 2, "myopic": 200.0, "tilt": 163.0, "random": 299.6666666666667}

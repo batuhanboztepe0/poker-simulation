@@ -1,0 +1,12 @@
+{"grid": "five", "n_actions": 5, "init_seed": 0, "wins": 91, "n": 150, "mean": 426.6666666666667, "p_value": 0.008537282731183388}
+{"grid": "five", "n_actions": 5, "init_seed": 1, "wins": 85, "n": 150, "mean": 266.6666666666667, "p_value": 0.10265670235545415}
+{"grid": "five", "n_actions": 5, "init_seed": 2, "wins": 86, "n": 150, "mean": 293.3333333333333, "p_value": 0.07233176123237042}
+{"grid": "five", "n_actions": 5, "init_seed": 3, "wins": 98, "n": 150, "mean": 613.3333333333334, "p_value": 0.00012826592916009158}
+{"grid": "five", "n_actions": 5, "init_seed": 4, "wins": 98, "n": 150, "mean": 613.3333333333334, "p_value": 0.00012826592916009087}
+{"grid": "five", "n_actions": 5, "init_seed": 5, "wins": 96, "n": 150, "mean": 560.0, "p_value": 0.0004976423796606937}
+{"grid": "seven", "n_actions": 7, "init_seed": 0, "wins": 78, "n": 150, "mean": 80.0, "p_value": 0.6258056072232783}
+{"grid": "seven", "n_actions": 7, "init_seed": 1, "wins": 81, "n": 150, "mean": 160.0, "p_value": 0.32883977964289746}
+{"grid": "seven", "n_actions": 7, "init_seed": 2, "wins": 98, "n": 150, "mean": 613.3333333333334, "p_value": 0.00012826592916009087}
+{"grid": "seven", "n_actions": 7, "init_seed": 3, "wins": 86, "n": 150, "mean": 293.3333333333333, "p_value": 0.07233176123237042}
+{"grid": "seven", "n_actions": 7, "init_seed": 4, "wins": 94, "n": 150, "mean": 506.6666666666667, "p_value": 0.0016981259378050552}
+{"grid": "seven", "n_actions": 7, "init_seed": 5, "wins": 80, "n": 150, "mean": 133.33333333333334, "p_value": 0.4160394828450106}

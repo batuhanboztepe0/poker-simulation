@@ -1,0 +1,12 @@
+{"config": "no_fe", "opponent": "myopic", "mean_diff": 23.333333333333332, "p_value": 0.9210677936210708, "n_seeds": 60, "n_hands": 200}
+{"config": "no_fe", "opponent": "tilt", "mean_diff": 356.6666666666667, "p_value": 0.13465935719411778, "n_seeds": 60, "n_hands": 200}
+{"config": "no_fe", "opponent": "random", "mean_diff": 125.33333333333333, "p_value": 0.5821271089837192, "n_seeds": 60, "n_hands": 200}
+{"config": "no_fe", "opponent": "nit", "mean_diff": 1825.6666666666667, "p_value": 2.0475875281229453e-42, "n_seeds": 60, "n_hands": 200}
+{"config": "cold_fe", "opponent": "myopic", "mean_diff": -1133.3333333333333, "p_value": 1.9295041064823787e-06, "n_seeds": 60, "n_hands": 200}
+{"config": "cold_fe", "opponent": "tilt", "mean_diff": -333.3333333333333, "p_value": 0.19921915337875154, "n_seeds": 60, "n_hands": 200}
+{"config": "cold_fe", "opponent": "random", "mean_diff": -66.66666666666667, "p_value": 0.7987025578963625, "n_seeds": 60, "n_hands": 200}
+{"config": "cold_fe", "opponent": "nit", "mean_diff": 2000.0, "p_value": null, "n_seeds": 60, "n_hands": 200}
+{"config": "warm_fe(B1)", "opponent": "myopic", "mean_diff": -66.66666666666667, "p_value": 0.7987025578963625, "n_seeds": 60, "n_hands": 200}
+{"config": "warm_fe(B1)", "opponent": "tilt", "mean_diff": 133.33333333333334, "p_value": 0.6097152173238447, "n_seeds": 60, "n_hands": 200}
+{"config": "warm_fe(B1)", "opponent": "random", "mean_diff": -200.0, "p_value": 0.44320505561522594, "n_seeds": 60, "n_hands": 200}
+{"config": "warm_fe(B1)", "opponent": "nit", "mean_diff": -333.3333333333333, "p_value": 0.19921915337875168, "n_seeds": 60, "n_hands": 200}

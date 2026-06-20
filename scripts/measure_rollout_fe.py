@@ -30,6 +30,7 @@ import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import argparse
+import json
 import random
 
 from src.monte_carlo import MonteCarloEngine
@@ -46,6 +47,10 @@ def main():
     ap.add_argument("--seeds", type=int, default=60)
     ap.add_argument("--hands", type=int, default=200)
     ap.add_argument("--mc-sims", type=int, default=100)
+    ap.add_argument("--out", default=None,
+                    help="append one JSON line per (config, opponent) cell to "
+                         "this file (schema: config, opponent, mean_diff, "
+                         "p_value, n_seeds, n_hands) for the figure layer")
     args = ap.parse_args()
 
     seeds = list(range(args.seeds))
@@ -91,6 +96,17 @@ def main():
             p = mr.t_test["p_value"]
             ptxt = f"{p:.3f}" if p is not None else "n/a"
             cells.append(f"{mr.mean_diff:+7.0f}(p={ptxt})")
+            if args.out:
+                row = {
+                    "config": cname,
+                    "opponent": oname,
+                    "mean_diff": mr.mean_diff,
+                    "p_value": p,
+                    "n_seeds": len(seeds),
+                    "n_hands": args.hands,
+                }
+                with open(args.out, "a") as f:
+                    f.write(json.dumps(row) + "\n")
         print(f"{cname:14s}" + "".join(f"{c:>16s}" for c in cells))
 
 

@@ -25,6 +25,7 @@ import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import argparse
+import json
 
 import src.rl_agent as rl
 from src.icm_eval import evaluate_icm_tournament
@@ -57,6 +58,13 @@ def prize_ladder(n_players, stack0, fracs=None):
 
 
 def train_agent(reward, prize, args, seed):
+    # Seed the torch weight-init so the run is REPRODUCIBLE (the committed JSON /
+    # figure must redraw identically) and the icm-vs-chips A/B is PAIRED on
+    # init: both rewards share this seed's decks (trainer seed=seed) AND weight
+    # init, so the only difference is the reward shape. Each init_seed is an
+    # independent reseed of both (cf. the §20 measurement convention).
+    import torch
+    torch.manual_seed(seed)
     kw = dict(n_players=args.n_players, hidden=args.hidden, seed=seed,
               opponent_mode="fixed", multi_hand=True,
               hands_per_episode=args.hands_per_episode, mc_sims=args.mc_sims)
@@ -85,6 +93,11 @@ def main():
     ap.add_argument("--prize-fracs", type=float, nargs="+", default=None,
                     help="prize-pool fractions (1st, 2nd, ...); e.g. a 3-player "
                          "bubble is '0.65 0.35 0.0'. Defaults to 50/30/20.")
+    ap.add_argument("--out", default=None,
+                    help="append one JSON line per init seed to this file "
+                         "(schema: init_seed, n_players, ladder, icm_mean_prize, "
+                         "chips_mean_prize, myopic_mean_prize, icm_minus_chips, "
+                         "p_value) for the figure layer")
     args = ap.parse_args()
 
     if not rl._HAVE_TORCH:
@@ -112,6 +125,20 @@ def main():
         diffs = [a - b for a, b in zip(icm_ps, chips_ps)]
         tt = rl.paired_t_test(diffs)
         icm_minus_chips_means.append(tt["mean"])
+
+        if args.out:
+            row = {
+                "init_seed": seed,
+                "n_players": args.n_players,
+                "ladder": [round(p / sum(prize), 3) for p in prize],
+                "icm_mean_prize": res["icm"]["mean_prize"],
+                "chips_mean_prize": res["chips"]["mean_prize"],
+                "myopic_mean_prize": res["myopic"]["mean_prize"],
+                "icm_minus_chips": tt["mean"],
+                "p_value": tt["p_value"],
+            }
+            with open(args.out, "a") as f:
+                f.write(json.dumps(row) + "\n")
 
         print(f"[init seed {seed}] mean prize  "
               f"icm={res['icm']['mean_prize']:.2f}  "

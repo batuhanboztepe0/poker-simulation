@@ -1,0 +1,12 @@
+{"init_seed": 1, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 1040.0, "chips_mean_prize": 1030.0, "myopic_mean_prize": 930.0, "icm_minus_chips": 10.0, "p_value": 0.9063772956544233}
+{"init_seed": 2, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 925.0, "chips_mean_prize": 1049.8333333333333, "myopic_mean_prize": 1025.1666666666667, "icm_minus_chips": -124.83333333333333, "p_value": 0.17738733859574987}
+{"init_seed": 3, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 840.0, "chips_mean_prize": 1180.0, "myopic_mean_prize": 980.0, "icm_minus_chips": -340.0, "p_value": 8.448226175760734e-05}
+{"init_seed": 4, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 913.35, "chips_mean_prize": 1200.0, "myopic_mean_prize": 886.65, "icm_minus_chips": -286.65, "p_value": 0.0019193544446373053}
+{"init_seed": 5, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 980.0, "chips_mean_prize": 1050.0, "myopic_mean_prize": 970.0, "icm_minus_chips": -70.0, "p_value": 0.4523323530874509}
+{"init_seed": 6, "n_players": 3, "ladder": [0.5, 0.3, 0.2], "icm_mean_prize": 1013.3866666666668, "chips_mean_prize": 1076.6133333333332, "myopic_mean_prize": 910.0, "icm_minus_chips": -63.226666666666674, "p_value": 0.4213070049022323}
+{"init_seed": 1, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 1046.8300000000002, "chips_mean_prize": 955.5699999999999, "myopic_mean_prize": 997.6, "icm_minus_chips": 91.26, "p_value": 0.576812249463926}
+{"init_seed": 2, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 1077.5, "chips_mean_prize": 1325.0, "myopic_mean_prize": 597.5, "icm_minus_chips": -247.5, "p_value": 0.10213329076450217}
+{"init_seed": 3, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 797.5, "chips_mean_prize": 1147.5, "myopic_mean_prize": 1055.0, "icm_minus_chips": -350.0, "p_value": 0.06390767404897735}
+{"init_seed": 4, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 1171.35, "chips_mean_prize": 1304.025, "myopic_mean_prize": 524.625, "icm_minus_chips": -132.675, "p_value": 0.2884481476422932}
+{"init_seed": 5, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 810.0, "chips_mean_prize": 1167.5, "myopic_mean_prize": 1022.5, "icm_minus_chips": -357.5, "p_value": 0.0579632998855712}
+{"init_seed": 6, "n_players": 3, "ladder": [0.65, 0.35, 0.0], "icm_mean_prize": 1292.5, "chips_mean_prize": 1027.5, "myopic_mean_prize": 680.0, "icm_minus_chips": 265.0, "p_value": 0.1528783839674298}
