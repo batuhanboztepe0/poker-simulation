@@ -1,0 +1,152 @@
+# A guided tour of the results
+
+A five-minute, picture-first walkthrough of what this project found. For the
+full narrative and positioning see [THESIS.md](THESIS.md); for the literature
+see [references.md](references.md); for the raw figure index see
+[figures/README.md](figures/README.md).
+
+---
+
+## TL;DR (60 seconds)
+
+- **What it is:** a seeded Texas Hold'em engine + a self-play reinforcement-learning
+  agent (DQN) + an HMM "tilt" opponent model, evaluated like a **quant backtest**
+  (paired seeds, t-tests, bootstrap CIs, variance reduction).
+- **The thesis:** poker ↔ market microstructure — *predictable deviations are
+  exploitable, pure randomness is not* (the informed-vs-noise-trader distinction
+  of Kyle 1985 / Glosten-Milgrom 1985; SIG literally trains traders on poker).
+- **The honest headline:** the agent is **directionally positive but the edges
+  are marginal — mostly within per-seed noise.** That is not hidden; it is
+  *measured*, with confidence intervals, and reported as the result. In a
+  high-variance game with a single-developer DQN, that is the *correct* finding,
+  and the rigor + honesty is the point.
+
+> If you read one figure, read **[`figures/exec_summary.png`](figures/exec_summary.png)** below.
+
+---
+
+## The story in figures
+
+### 1. Are the edges real? — start here
+
+![exec summary](figures/exec_summary.png)
+
+**What you're looking at:** every headline edge as a point with its 95% bootstrap
+confidence interval. Gray = the interval straddles 0 (the effect is within
+per-seed noise); green/red = it excludes 0.
+
+**Takeaway:** the agent beats the myopic baseline (+560 chips) and tops the
+opponent pool (+209), but **3 of 4 intervals straddle 0** — and the ICM reward is
+significantly *negative*. Directionally positive, statistically marginal. This is
+the whole project in one chart.
+
+### 2. The agent does learn
+
+![learning curve](figures/headline.png)
+
+**What you're looking at:** held-out win rate (left) and mean chip diff with a ±1
+SEM ribbon (right) over training.
+
+**Takeaway:** the dip-then-climb is real — the agent first collapses into
+over-folding, then recovers to beat the baseline (32/50 matches, p≈0.05). The CI's
+lower bound near 0 is why figure 1 calls it "real but marginal."
+
+### 3. It generalizes to a whole opponent pool
+
+![pool leaderboard](figures/pool_leaderboard.png)
+
+**What you're looking at:** a belief + opponent-mix generalist (RL) against a pool
+of {myopic, tilt, random} + an analytic Kelly agent.
+
+**Takeaway:** RL **tops the leaderboard** and beats each adaptive opponent
+head-to-head (13-3 / 9-7 / 12-4) — but it **loses head-to-head to Kelly (5-11)**.
+Reported honestly: the win is the leaderboard + adaptive pool, not Kelly.
+
+![personality sweep](figures/pool_sweep.png)
+
+**What you're looking at:** the same RL agent dropped into a round-robin of static
+(tightness × aggression) personalities.
+
+**Takeaway:** RL ranks **#6/17** here (it does not top the static sweep) — because
+a round-robin rewards farming the weakest static cells, which is not what the
+agent was trained for. Another honest, contextualized number.
+
+### 4. The game theory is principled — and exact
+
+![exploitability](figures/exploitability.png)
+
+**What you're looking at:** exact exploitability (NashConv; 0 = exact Nash
+equilibrium) on Leduc Hold'em, log-log, over training.
+
+**Takeaway:** the **time-average strategy converges to Nash** (0.43 → 0.0014),
+but the **greedy last-iterate — the regime a DQN self-play agent plays in — stays
+exploitable (~0.35) and never converges.** This is the *exact, verifiable* reason
+DQN self-play does not reach equilibrium and averaging methods (CFR; NFSP at
+scale) do.
+
+### 5. Measured like a quant — variance reduction
+
+![variance reduction](figures/variance_reduction.png)
+
+**What you're looking at:** the *same* edge measured four ways, with its 95% CI.
+
+**Takeaway:** **duplicate/mirror matching cuts the CI to 65% of raw** (same
+conclusion from fewer matches); the all-in EV control variate is ~neutral *in this
+bust-match format* (match-outcome variance is dominated by bust path-dependence,
+not single-hand runout) — stated honestly rather than overclaimed.
+
+### 6. The honest negatives (a feature, not a bug)
+
+![ICM edge](figures/icm_edge_mild.png)
+
+**What you're looking at:** a concave ICM/Kelly reward vs a risk-neutral chip
+reward at a multi-prize table, per seed.
+
+**Takeaway:** the ICM "risk-aversion edge" **does not reproduce** at a properly
+seeded scale (mean −146, 1/6 seeds positive). And a whole sweep of RL-mechanics
+levers — finer action grid, un-truncated bust clip, tilt-bonus decoupling,
+snapshot self-play, warmed fold-equity (the `blockB_*` and `rollout_fe` panels in
+[figures/](figures/)) — each works mechanically but **none moves the headline.**
+Reported as a clean negative-results sweep, which is itself a result.
+
+---
+
+## How to reproduce (everything is seeded)
+
+```bash
+# tests (torch-free parts run anywhere; RL/torch tests skip without torch)
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 490 green
+
+# regenerate the committed measurement data under results/
+OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout + headline + pool
+OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
+OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json
+
+# redraw every figure from results/
+python -m scripts.make_figures                        # -> figures/*.png (+ .html)
+```
+
+---
+
+## What's honest about this (limitations, stated up front)
+
+- The agent's edges are **marginal / within noise** (figure 1); this is measured,
+  not spun.
+- **DQN is a deliberate baseline, not state of the art** — CFR-family methods
+  (DeepStack/Libratus/Pluribus/ReBeL) are 2–3 generations ahead (figure 4 shows
+  exactly why).
+- The **markets thesis is asserted, not yet validated on real market data** — the
+  rigorous anchor is Kyle / Glosten-Milgrom, not the (refuted) VPIN claims
+  (see references.md, where refuted claims are kept visible on purpose).
+- Opponents are currently **synthetic**; validating the tilt model on real human
+  hands is the clearest next step (see THESIS.md §6).
+
+---
+
+## Where to go next
+
+- **[THESIS.md](THESIS.md)** — the full narrative, SOTA placement, and the
+  prioritized next steps (full AIVAT, NFSP learner, real-data tilt validation).
+- **[references.md](references.md)** — every claim's source, with honest
+  verification flags.
+- **[figures/README.md](figures/README.md)** — the complete figure index.
