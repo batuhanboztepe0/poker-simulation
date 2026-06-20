@@ -9,6 +9,9 @@ pandas==2.2.2
 # Phase 2 — analytics dashboard
 streamlit==1.36.0
 pyarrow==16.1.0
+# Static figure export for scripts/make_figures.py (writes figures/*.png from
+# results/*.jsonl). Only needed to (re)render the committed figures.
+kaleido==0.2.1
 # Phase A — fold equity (pure-Python betainc fallback exists if absent)
 scipy==1.11.4
 # Phase C — RL agent (OPTIONAL: rl_agent.py is torch-guarded; all other
