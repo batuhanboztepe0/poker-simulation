@@ -30,6 +30,7 @@ from src.analytics import drawdown_curve, max_drawdown
 from app.charts import (
     pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
     equity_drawdown_figure, pnl_box_figure, parameter_heatmap_figure,
+    ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
 )
 
 
@@ -129,6 +130,51 @@ class TestCharts(unittest.TestCase):
             {"tight": 0.3, "aggr": 0.5, "mean_net_chips": 10.0},
             {"tight": 0.6, "aggr": 0.5, "mean_net_chips": -5.0},
         ]), go.Figure)
+
+    def test_learning_curve_ribbon(self):
+        # Snapshots carrying per_seed_diffs draw a SEM ribbon; the call must
+        # still return a Figure (and the no-diffs path stays backward-compatible).
+        hist = [
+            {"step": 100, "wins": 6, "n_seeds": 4, "mean_chip_diff": -500.0,
+             "per_seed_diffs": [-2000, 2000, -2000, 2000]},
+            {"step": 200, "wins": 14, "n_seeds": 4, "mean_chip_diff": 1500.0,
+             "per_seed_diffs": [2000, 2000, -2000, 2000]},
+        ]
+        self.assertIsInstance(learning_curve_figure(hist, ribbon=True), go.Figure)
+        self.assertIsInstance(learning_curve_figure(hist, ribbon=False), go.Figure)
+
+    def test_ab_measurement_charts(self):
+        # B2-style action-grid rows (grouped bars: five vs seven per init seed).
+        grid_rows = [
+            {"grid": "five", "init_seed": 0, "mean": 462.0},
+            {"grid": "seven", "init_seed": 0, "mean": 298.0},
+            {"grid": "five", "init_seed": 1, "mean": 267.0},
+            {"grid": "seven", "init_seed": 1, "mean": 80.0},
+        ]
+        self.assertIsInstance(
+            ab_grouped_bar_figure(grid_rows, group_key="init_seed",
+                                  value_key="mean", by_key="grid"), go.Figure)
+        # Single-series variant (no by_key).
+        self.assertIsInstance(
+            ab_grouped_bar_figure(grid_rows, group_key="grid",
+                                  value_key="mean"), go.Figure)
+        # Melted config×opponent rows for the heatmap.
+        melted = [
+            {"config": "fixed", "opponent": "myopic", "value": 250.0},
+            {"config": "fixed", "opponent": "tilt", "value": 167.0},
+            {"config": "snapshot", "opponent": "myopic", "value": 117.0},
+            {"config": "snapshot", "opponent": "tilt", "value": 317.0},
+        ]
+        self.assertIsInstance(
+            ab_heatmap_figure(melted, row_key="config", col_key="opponent",
+                              value_key="value"), go.Figure)
+        # ICM edge rows.
+        icm_rows = [
+            {"init_seed": 1, "icm_minus_chips": 85.0},
+            {"init_seed": 2, "icm_minus_chips": -30.0},
+            {"init_seed": 3, "icm_minus_chips": 120.0},
+        ]
+        self.assertIsInstance(icm_edge_figure(icm_rows), go.Figure)
 
     def test_drawdown_chart(self):
         players = [

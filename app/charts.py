@@ -258,17 +258,40 @@ def paired_diff_figure(diffs, name_a="A", name_b="B", seeds=None):
     return fig
 
 
-def learning_curve_figure(history):
+def learning_curve_figure(history, ribbon=True):
     """
     Dual-axis RL learning curve from `SelfPlayTrainer.history` snapshots (each
-    {step, wins, n_seeds, mean_chip_diff}): win rate (left) and mean chip diff
-    vs baseline (right) over training steps.
+    {step, wins, n_seeds, mean_chip_diff[, per_seed_diffs]}): win rate (left) and
+    mean chip diff vs baseline (right) over training steps.
+
+    When `ribbon` and the snapshots carry `per_seed_diffs`, a ±1 SEM band of the
+    per-seed chip diff is shaded around the mean-chip-diff line (the eval-seed
+    spread at each step) — the confidence ribbon for the headline figure.
     """
     steps = [h["step"] for h in history]
     win_rate = [h["wins"] / h["n_seeds"] if h.get("n_seeds") else 0.0
                 for h in history]
     mean_diff = [h["mean_chip_diff"] for h in history]
     fig = go.Figure()
+    if ribbon and any(h.get("per_seed_diffs") for h in history):
+        xs, upper, lower = [], [], []
+        for h in history:
+            diffs = h.get("per_seed_diffs")
+            if not diffs:
+                continue
+            n = len(diffs)
+            mean = sum(diffs) / n
+            var = sum((d - mean) ** 2 for d in diffs) / n
+            sem = (var ** 0.5) / (n ** 0.5)
+            xs.append(h["step"])
+            upper.append(mean + sem)
+            lower.append(mean - sem)
+        # Closed band (forward upper, reversed lower) on the chip-diff axis.
+        fig.add_trace(go.Scatter(
+            x=xs + xs[::-1], y=upper + lower[::-1], yaxis="y2",
+            fill="toself", fillcolor="rgba(44,160,44,0.15)",
+            line=dict(width=0), hoverinfo="skip", showlegend=False,
+        ))
     fig.add_trace(go.Scatter(x=steps, y=win_rate, mode="lines+markers",
                              name="win rate vs baseline", yaxis="y"))
     fig.add_trace(go.Scatter(x=steps, y=mean_diff, mode="lines+markers",
@@ -362,5 +385,100 @@ def parameter_heatmap_figure(grid, value="mean_net_chips"):
     fig.update_layout(
         title="Personality fitness landscape (mean net chips per match)",
         xaxis_title="aggression", yaxis_title="tight_threshold",
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# A/B measurement panels (the Block B / A5 results JSONs under results/)
+# ---------------------------------------------------------------------------
+
+def ab_grouped_bar_figure(rows, group_key, value_key, by_key=None,
+                          title=None, yaxis_title=None):
+    """
+    Grouped bar chart of an A/B metric. x = distinct `group_key` values; one bar
+    series per distinct `by_key` value (a single series if `by_key` is None).
+    Rows sharing a (group, series) cell are averaged. Drives the Block B A/B
+    JSONs (measure_action_grid / bust_clip / selfplay / tilt_decouple) — e.g.
+    group_key='init_seed', by_key='grid', value_key='mean'.
+
+    Args:
+        rows (list[dict]): measurement rows.
+        group_key (str): x-axis category key.
+        value_key (str): metric to plot (averaged per cell).
+        by_key (str | None): series key, or None for a single series.
+    """
+    groups = sorted({r[group_key] for r in rows}, key=str)
+    series = (sorted({r[by_key] for r in rows}, key=str) if by_key else [None])
+    fig = go.Figure()
+    for s in series:
+        ys = []
+        for g in groups:
+            vals = [r[value_key] for r in rows
+                    if r[group_key] == g and (by_key is None or r[by_key] == s)]
+            ys.append(sum(vals) / len(vals) if vals else None)
+        fig.add_trace(go.Bar(
+            name=str(s) if s is not None else value_key,
+            x=[str(g) for g in groups], y=ys))
+    fig.update_layout(
+        title=title or f"{value_key} by {group_key}",
+        xaxis_title=group_key, yaxis_title=yaxis_title or value_key,
+        barmode="group",
+    )
+    if by_key is None:
+        fig.update_layout(showlegend=False)
+    return fig
+
+
+def ab_heatmap_figure(rows, row_key, col_key, value_key, title=None,
+                      colorbar_title="Mean net chips", zmid=0):
+    """
+    Annotated heatmap of an A/B metric over (row_key × col_key); cells sharing a
+    (row, col) are averaged. For the config×opponent panels, melt the
+    per-config rows ({config, init_seed, myopic, tilt, random}) into
+    {config, opponent, value} rows first. Blue = positive, red = negative,
+    white ≈ zmid.
+    """
+    row_vals = sorted({r[row_key] for r in rows}, key=str)
+    col_vals = sorted({r[col_key] for r in rows}, key=str)
+    cell = {}
+    for rv in row_vals:
+        for cv in col_vals:
+            vals = [r[value_key] for r in rows
+                    if r[row_key] == rv and r[col_key] == cv]
+            cell[(rv, cv)] = (sum(vals) / len(vals)) if vals else None
+    z = [[cell[(rv, cv)] for cv in col_vals] for rv in row_vals]
+    text = [[(f"{cell[(rv, cv)]:+.0f}" if cell[(rv, cv)] is not None else "")
+             for cv in col_vals] for rv in row_vals]
+    fig = go.Figure(go.Heatmap(
+        z=z, x=[str(c) for c in col_vals], y=[str(r) for r in row_vals],
+        text=text, texttemplate="%{text}",
+        colorscale="RdBu", zmid=zmid, colorbar=dict(title=colorbar_title)))
+    fig.update_layout(
+        title=title or f"{value_key} by {row_key} × {col_key}",
+        xaxis_title=col_key, yaxis_title=row_key)
+    return fig
+
+
+def icm_edge_figure(rows, title=None):
+    """
+    Per-init-seed ICM-minus-chips prize edge (measure_icm rows). Green = the
+    concave ICM reward earned MORE tournament prize than the risk-neutral chip
+    reward at this multi-prize table; red = less. The RL_HANDOFF §13 story is the
+    SIGN consistency across seeds, not any single significant p-value.
+    """
+    ordered = sorted(rows, key=lambda r: r["init_seed"])
+    y = [r["icm_minus_chips"] for r in ordered]
+    colors = ["#2ca02c" if v > 0 else "#d62728" if v < 0 else "#888" for v in y]
+    mean = sum(y) / len(y) if y else 0.0
+    fig = go.Figure(go.Bar(
+        x=[f"seed {r['init_seed']}" for r in ordered], y=y,
+        marker_color=colors, text=[f"{v:+.0f}" for v in y],
+        textposition="outside"))
+    fig.add_hline(y=0, line=dict(color="gray"))
+    fig.update_layout(
+        title=title or f"ICM − chips prize edge (mean {mean:+.0f})",
+        xaxis_title="init seed", yaxis_title="ICM − chips mean prize",
+        showlegend=False,
     )
     return fig
