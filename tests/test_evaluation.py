@@ -108,6 +108,40 @@ class TestVarianceReduction(unittest.TestCase):
         for d, ds in zip(m1.diffs, swapped.diffs):
             self.assertAlmostEqual(d, -ds)
 
+    def test_luck_adjusted_conserves_engages_unbiased(self):
+        # Aggressive bots create all-in confrontations -> the all-in EV control
+        # variate engages; the luck-adjusted nets must still be zero-sum
+        # (conservation), and the adjusted mean must track the raw mean (the
+        # control variate is unbiased; raw and adj share the same realised game
+        # because the EV engine never touches the game deck).
+        def aggr(pid, s):
+            return BotPlayer(pid, "Ag", s, tight_threshold=0.1, aggression=0.9,
+                             mc_engine=MonteCarloEngine(100))
+        seeds = list(range(24))
+        raw = evaluate_matchup(_myopic, aggr, "M", "A", seeds, n_hands=40)
+        adj = evaluate_matchup(_myopic, aggr, "M", "A", seeds, n_hands=40,
+                               luck_adjusted=True)
+        for a, b in zip(adj.net_a, adj.net_b):       # zero-sum conservation
+            self.assertAlmostEqual(a + b, 0.0, places=6)
+        changed = sum(1 for r, a in zip(raw.diffs, adj.diffs)
+                      if abs(r - a) > 1e-6)
+        self.assertGreater(changed, 0)               # all-ins -> engaged
+        sd = (sum((d - raw.mean_diff) ** 2 for d in raw.diffs)
+              / len(raw.diffs)) ** 0.5
+        self.assertLess(abs(adj.mean_diff - raw.mean_diff), 0.5 * sd)  # unbiased
+
+    def test_luck_adjusted_default_off_identity(self):
+        # track_allin_ev=False (default) records no adjustment, so the
+        # luck-adjusted net equals the raw net exactly (byte-identical baseline).
+        from src.simulation import simulate_session
+        players = [BotPlayer(1, "A", 1000, mc_engine=MonteCarloEngine(100)),
+                   BotPlayer(2, "B", 1000, mc_engine=MonteCarloEngine(100))]
+        res = simulate_session(players, n_hands=40, seed=3)
+        self.assertEqual(res.allin_ev_adjust, {})
+        for pid in (1, 2):
+            self.assertEqual(res.net_chips_luck_adjusted(pid),
+                             res.net_chips(pid))
+
 
 class TestRoster(unittest.TestCase):
     def setUp(self):

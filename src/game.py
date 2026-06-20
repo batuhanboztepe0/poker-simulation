@@ -78,7 +78,8 @@ class GameEngine:
 
     def __init__(self, players, small_blind=DEFAULT_SMALL_BLIND,
                  big_blind=DEFAULT_BIG_BLIND, verbose=True,
-                 seed=None, rng=None, observers=None, prize_structure=None):
+                 seed=None, rng=None, observers=None, prize_structure=None,
+                 track_allin_ev=False, allin_ev_sims=200):
         """
         Initialize the game engine.
 
@@ -139,6 +140,21 @@ class GameEngine:
         # Optional tournament prize ladder (Phase C, ICM). None = cash game.
         self.prize_structure = prize_structure
 
+        # Opt-in all-in EV control variate (the AIVAT-family chance-node variance
+        # reduction, references.md §2): at an all-in showdown the remaining board
+        # is pure chance, so we record the equity-weighted EV of the pot and let
+        # the evaluator score by EV instead of the realised runout. This is
+        # OBSERVATION-ONLY -- the EV engine builds its own card pool with its own
+        # rng and never deals from the game deck, so the realised hands are
+        # byte-identical to track_allin_ev=False (default).
+        self.track_allin_ev = track_allin_ev
+        self.allin_ev_adjust = {}  # {player_id: sum(ev_winnings - realised)}
+        self._ev_engine = None
+        if track_allin_ev:
+            from src.monte_carlo import MonteCarloEngine
+            self._ev_engine = MonteCarloEngine(allin_ev_sims,
+                                               rng=random.Random(0xA111E7))
+
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
@@ -164,10 +180,22 @@ class GameEngine:
         self._post_blinds()
         self._deal_hole_cards()
 
+        # All-in EV control variate: snapshot the equity-weighted pot EV at the
+        # FIRST point betting becomes impossible because the contenders are
+        # all-in (the engine still deals the rest of the board, but from here it
+        # is pure chance). Heads-up, single pot only; see _allin_ev_winnings.
+        self._allin_ev_pending = None
         for round_name in BETTING_ROUNDS:
             if self._count_active() < 2:
                 break
             self._play_betting_round(round_name)
+            if (self.track_allin_ev and self._allin_ev_pending is None
+                    and len(self.community_cards) < 5):
+                not_folded = [p for p in self.players
+                              if not p.is_folded and len(p.hole_cards) == 2]
+                can_act = [p for p in not_folded if p.stack > 0]
+                if len(not_folded) == 2 and len(can_act) <= 1:
+                    self._allin_ev_pending = self._allin_equities(not_folded)
 
         winnings = self._showdown()
         self._distribute_winnings(winnings)
@@ -703,7 +731,32 @@ class GameEngine:
             )
             return winners
 
-        return self.pot_manager.distribute(resolver)
+        winnings = self.pot_manager.distribute(resolver)
+        pending = getattr(self, "_allin_ev_pending", None)
+        if pending is not None:
+            # Score the all-in pot by its EV (equity * the actually-distributed
+            # pot) instead of the realised runout. The control variate
+            # (ev - realised) has expectation 0 (equity is the conditional
+            # expectation of the runout), so subtracting it is unbiased and
+            # removes the runout variance; and since the equities sum to 1, the
+            # EVs sum to the distributed pot == sum of realised, so the
+            # luck-adjusted nets still conserve chips exactly.
+            pot_total = sum(winnings.values())
+            for pid, eq in pending.items():
+                ev = eq * pot_total
+                self.allin_ev_adjust[pid] = (self.allin_ev_adjust.get(pid, 0.0)
+                                             + ev - winnings.get(pid, 0))
+        return winnings
+
+    def _allin_equities(self, contenders):
+        """Each of two all-in contenders' equity given both hole cards and the
+        partial board (the remaining board is chance). Returns {player_id:
+        equity}; the two equities sum to 1 (ties count as 0.5 each), so weighting
+        the distributed pot by them conserves chips exactly."""
+        c1, c2 = contenders
+        eq1 = self._ev_engine.estimate_equity(
+            c1.hole_cards, [c2.hole_cards], self.community_cards)
+        return {c1.player_id: eq1, c2.player_id: 1.0 - eq1}
 
     def _distribute_winnings(self, winnings):
         """

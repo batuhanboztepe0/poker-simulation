@@ -67,6 +67,9 @@ class SessionResult:
     # Phase B: per-hand belief snapshots for bots that carry a belief model.
     # Each entry: {hand_number, player_id, posterior_mean, p_tilted}.
     opponent_belief_traces: List[Dict] = field(default_factory=list)
+    # All-in EV control variate (only populated when run with track_allin_ev):
+    # {player_id: sum over all-in showdowns of (ev_winnings - realised_winnings)}.
+    allin_ev_adjust: Dict[int, float] = field(default_factory=dict)
 
     @property
     def n_hands(self) -> int:
@@ -85,11 +88,19 @@ class SessionResult:
         return (self.final_stacks.get(player_id, 0)
                 - self.starting_stacks.get(player_id, 0))
 
+    def net_chips_luck_adjusted(self, player_id: int) -> float:
+        """Net chips with all-in runout luck removed: all-in pots are scored by
+        equity*pot (their EV) instead of the realised board. Requires the session
+        to have been run with track_allin_ev=True; equals net_chips otherwise."""
+        return (self.net_chips(player_id)
+                + self.allin_ev_adjust.get(player_id, 0.0))
+
 
 def simulate_session(players, n_hands,
                      small_blind=DEFAULT_SMALL_BLIND,
                      big_blind=DEFAULT_BIG_BLIND,
-                     seed=None, fast_mode=False, verbose=False):
+                     seed=None, fast_mode=False, verbose=False,
+                     track_allin_ev=False, allin_ev_sims=200):
     """
     Run a seeded self-play session and return a SessionResult.
 
@@ -119,7 +130,9 @@ def simulate_session(players, n_hands,
             mc._rng = rng
 
     engine = GameEngine(players, small_blind=small_blind, big_blind=big_blind,
-                        verbose=verbose, rng=rng)
+                        verbose=verbose, rng=rng,
+                        track_allin_ev=track_allin_ev,
+                        allin_ev_sims=allin_ev_sims)
 
     records = []
     belief_traces = []
@@ -168,4 +181,5 @@ def simulate_session(players, n_hands,
         small_blind=small_blind,
         big_blind=big_blind,
         opponent_belief_traces=belief_traces,
+        allin_ev_adjust=dict(engine.allin_ev_adjust),
     )

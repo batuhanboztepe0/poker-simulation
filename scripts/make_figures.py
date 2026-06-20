@@ -133,6 +133,33 @@ def fig_exec_summary(index):
                       "exec_summary", cap, height=460)))
 
 
+def fig_variance_reduction(index):
+    d = _load_json("variance_reduction.json")
+    if not d:
+        return
+    arms = d["arms"]
+    rows = [{"label": f"{a['arm']}  (CI width {a['ci_width']:.0f}, "
+                      f"{a['ci_width_vs_raw']:.0%} of raw)",
+             "mean": a["mean"], "lo": a["lo"], "hi": a["hi"]} for a in arms]
+    by = {a["arm"]: a for a in arms}
+    mir = by.get("mirror", {}).get("ci_width_vs_raw", 1.0)
+    luck = by.get("luck_adjusted", {}).get("ci_width_vs_raw", 1.0)
+    base = arms[0]
+    cap = (f"Variance reduction (references.md §2): the SAME Myopic-vs-Aggro edge "
+           f"({base['n_seeds']} seeds × {base['n_hands']} hands) measured four "
+           f"ways. Duplicate/mirror matching narrows the 95% CI to {mir:.0%} of "
+           f"raw (cancels seat/deck luck); the all-in EV control variate is "
+           f"~neutral here ({luck:.0%}) because in a multi-hand BUST match the "
+           f"variance is dominated by bust path-dependence, not single-hand "
+           f"runout luck (the big AIVAT gains are for per-hand win-rate "
+           f"estimation). Narrower CI = same conclusion from fewer matches.")
+    index.append(("variance_reduction.png", "§rigor",
+                  _save(forest_plot_figure(
+                      rows, title="Variance reduction: the same edge, four ways",
+                      xaxis_title="Mean edge (95% bootstrap CI)"),
+                      "variance_reduction", cap, height=440)))
+
+
 def fig_headline(index):
     d = _load_json("headline_history.json")
     if not d:
@@ -346,11 +373,12 @@ def fig_rollout_fe(index):
                       "rollout_fe", cap)))
 
 
-BUILDERS = [fig_exec_summary, fig_headline, fig_pool, fig_icm, fig_block_b,
-            fig_rollout_fe]
+BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_headline, fig_pool,
+            fig_icm, fig_block_b, fig_rollout_fe]
 
 DATA_DEPS = {
     "fig_exec_summary": "results/{headline_history.json, pool.json, icm.jsonl}",
+    "fig_variance_reduction": "results/variance_reduction.json",
     "fig_headline": "results/headline_history.json",
     "fig_pool": "results/pool.json",
     "fig_icm": "results/icm.jsonl",

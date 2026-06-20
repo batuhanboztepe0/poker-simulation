@@ -71,6 +71,18 @@ class TestResultsSchema(unittest.TestCase):
             set(d["final"]))
         self.assertLessEqual({"lo", "hi", "mean"}, set(d["final"]["ci95"]))
 
+    def test_variance_reduction_schema(self):
+        path = os.path.join(RESULTS, "variance_reduction.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/variance_reduction.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertIn("arms", d)
+        for arm in d["arms"]:
+            self.assertLessEqual(
+                {"arm", "mean", "lo", "hi", "ci_width", "ci_width_vs_raw"},
+                set(arm))
+
     def test_pool_schema(self):
         path = os.path.join(RESULTS, "pool.json")
         if not os.path.exists(path):

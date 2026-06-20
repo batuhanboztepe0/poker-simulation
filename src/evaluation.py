@@ -114,10 +114,13 @@ def bootstrap_ci(values, n_resamples: int = 10000, ci: float = 0.95,
 
 
 def _play_match(factory_seat1, factory_seat2, name_a, name_b, seed, n_hands,
-                small_blind, big_blind, starting_stack, fast_mode):
+                small_blind, big_blind, starting_stack, fast_mode,
+                luck_adjusted=False):
     """Play one seeded heads-up match; return (net_seat1, net_seat2). Card luck is
     fixed by the deck seed (independent of actions), so swapping the two factories
-    on the same seed gives a true duplicate/mirror of the deal."""
+    on the same seed gives a true duplicate/mirror of the deal. With
+    ``luck_adjusted`` the nets are all-in-EV adjusted (realised runouts replaced
+    by their equity-weighted EV)."""
     p1 = factory_seat1(1, starting_stack)
     p2 = factory_seat2(2, starting_stack)
     total_before = p1.stack + p2.stack
@@ -126,11 +129,15 @@ def _play_match(factory_seat1, factory_seat2, name_a, name_b, seed, n_hands,
         _wire_rng(p, shared_rng)
     result = simulate_session(
         [p1, p2], n_hands=n_hands, small_blind=small_blind,
-        big_blind=big_blind, seed=seed, fast_mode=fast_mode)
+        big_blind=big_blind, seed=seed, fast_mode=fast_mode,
+        track_allin_ev=luck_adjusted)
     total_after = sum(result.final_stacks.values())
     assert total_after == total_before, (
         f"Chip conservation violated ({name_a} vs {name_b}, seed={seed}): "
         f"{total_before} -> {total_after}")
+    if luck_adjusted:
+        return (result.net_chips_luck_adjusted(1),
+                result.net_chips_luck_adjusted(2))
     return result.net_chips(1), result.net_chips(2)
 
 
@@ -140,7 +147,8 @@ def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
                      big_blind: int = DEFAULT_BIG_BLIND,
                      starting_stack: int = 1000,
                      fast_mode: bool = False,
-                     mirror: bool = False) -> MatchupResult:
+                     mirror: bool = False,
+                     luck_adjusted: bool = False) -> MatchupResult:
     """
     Play one seeded heads-up bankroll match per seed and collect the PnL diffs.
 
@@ -148,25 +156,26 @@ def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
     deck (paired). Chip conservation is asserted per match. Returns the per-seed
     diffs plus their paired t-test against 0.
 
-    With ``mirror=True`` each seed is played as a DUPLICATE/mirror match: the same
-    deck is dealt a second time with the agents in swapped seats, and A's per-seed
-    result is averaged over both orientations. Because the deal is fixed by the
-    seed (independent of actions), this cancels the deck-luck that favours one
-    seat — a standard variance-reduction protocol for high-variance games (the
-    duplicate-match idea behind DIVAT/AIVAT; see references.md §2). Default off →
-    the single-orientation path is byte-identical.
+    Variance-reduction options (both opt-in, default off → byte-identical;
+    composable; references.md §2):
+    - ``mirror=True`` — DUPLICATE/mirror match: replay the same deck with the
+      agents in swapped seats and average A's result over both orientations,
+      cancelling the deck-luck that favours one seat.
+    - ``luck_adjusted=True`` — all-in EV control variate: score all-in pots by
+      their equity-weighted EV instead of the realised runout, removing the
+      board-runout chance variance (the AIVAT-family chance-node adjustment).
     """
     diffs, net_a, net_b = [], [], []
     wins_a = wins_b = ties = 0
     for seed in seeds:
         na1, nb1 = _play_match(factory_a, factory_b, name_a, name_b, seed,
                                n_hands, small_blind, big_blind, starting_stack,
-                               fast_mode)
+                               fast_mode, luck_adjusted)
         if mirror:
             # Replay the same deck with seats swapped; A now sits in seat 2.
             nb2, na2 = _play_match(factory_b, factory_a, name_b, name_a, seed,
                                    n_hands, small_blind, big_blind,
-                                   starting_stack, fast_mode)
+                                   starting_stack, fast_mode, luck_adjusted)
             na, nb = (na1 + na2) / 2, (nb1 + nb2) / 2
         else:
             na, nb = na1, nb1
