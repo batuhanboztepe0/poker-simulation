@@ -26,7 +26,7 @@ from app.charts import (
     learning_curve_figure, tournament_leaderboard_figure,
     parameter_heatmap_figure, pnl_box_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
-    forest_plot_figure,
+    forest_plot_figure, exploitability_curve_figure,
 )
 from src.evaluation import bootstrap_ci
 
@@ -158,6 +158,26 @@ def fig_variance_reduction(index):
                       rows, title="Variance reduction: the same edge, four ways",
                       xaxis_title="Mean edge (95% bootstrap CI)"),
                       "variance_reduction", cap, height=440)))
+
+
+def fig_exploitability(index):
+    d = _load_json("exploitability.json")
+    if not d:
+        return
+    curve = d["curve"]
+    avg0, avgN = curve[0]["avg_exploitability"], curve[-1]["avg_exploitability"]
+    lastN = curve[-1]["last_iterate_exploitability"]
+    cap = (f"Exact Leduc exploitability (NashConv; 0 = exact Nash). The CFR "
+           f"TIME-AVERAGE strategy converges toward the equilibrium "
+           f"({avg0:.2f} → {avgN:.3f}), but the greedy LAST-ITERATE — the regime "
+           f"a DQN self-play agent plays in — stays exploitable (~{lastN:.2f}) "
+           f"and does NOT converge. This is the rigorous, exact reason DQN "
+           f"self-play does not reach Nash while averaging methods do (CFR here; "
+           f"NFSP scales the same averaging to large games — references.md §1).")
+    index.append(("exploitability.png", "§rigor",
+                  _save(exploitability_curve_figure(
+                      curve, uniform=d.get("uniform_exploitability")),
+                      "exploitability", cap, height=480)))
 
 
 def fig_headline(index):
@@ -373,12 +393,13 @@ def fig_rollout_fe(index):
                       "rollout_fe", cap)))
 
 
-BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_headline, fig_pool,
-            fig_icm, fig_block_b, fig_rollout_fe]
+BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
+            fig_headline, fig_pool, fig_icm, fig_block_b, fig_rollout_fe]
 
 DATA_DEPS = {
     "fig_exec_summary": "results/{headline_history.json, pool.json, icm.jsonl}",
     "fig_variance_reduction": "results/variance_reduction.json",
+    "fig_exploitability": "results/exploitability.json",
     "fig_headline": "results/headline_history.json",
     "fig_pool": "results/pool.json",
     "fig_icm": "results/icm.jsonl",

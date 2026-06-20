@@ -504,6 +504,39 @@ def forest_plot_figure(rows, title=None,
     return fig
 
 
+def exploitability_curve_figure(rows, uniform=None, title=None):
+    """
+    Exploitability (NashConv) of two strategies over training, log-log: the
+    time-AVERAGE (which converges to the Nash equilibrium, exploitability -> 0)
+    vs the LAST-ITERATE greedy strategy (the regime a DQN self-play agent plays
+    in, which stays exploitable). An optional `uniform` reference line marks a
+    uniform-random baseline.
+
+    Args:
+        rows (list[dict]): each {iters, avg_exploitability,
+            last_iterate_exploitability}.
+        uniform (float | None): uniform-random baseline exploitability.
+    """
+    iters = [r["iters"] for r in rows]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=iters, y=[r["avg_exploitability"] for r in rows],
+        mode="lines+markers", name="time-average (→ Nash equilibrium)"))
+    fig.add_trace(go.Scatter(
+        x=iters, y=[r["last_iterate_exploitability"] for r in rows],
+        mode="lines+markers",
+        name="last-iterate (greedy / DQN-self-play regime)"))
+    if uniform is not None:
+        fig.add_hline(y=uniform, line=dict(color="gray", dash="dot"),
+                      annotation_text=f"uniform random ({uniform:.2f})")
+    fig.update_layout(
+        title=title or "Leduc exploitability: averaging converges, greedy doesn't",
+        xaxis_title="CFR iterations", xaxis_type="log",
+        yaxis_title="Exploitability (NashConv; 0 = exact Nash)",
+        yaxis_type="log", legend=dict(orientation="h"))
+    return fig
+
+
 def icm_edge_figure(rows, title=None):
     """
     Per-init-seed ICM-minus-chips prize edge (measure_icm rows). Green = the

@@ -125,3 +125,31 @@ class TestExploitability:
         cfr_short = LeducCFR()
         cfr_short.train(80)
         assert cfr_long.exploitability() < cfr_short.exploitability()
+
+
+class TestGeneralExploitability:
+    """src/leduc_eval: exact exploitability of an ARBITRARY strategy, and the
+    average-vs-last-iterate convergence contrast."""
+
+    def test_tool_matches_cfr_on_its_own_average(self, trained):
+        from src.leduc_eval import exploitability_of
+        cfr, _ = trained
+        # Scoring CFR's own average strategy via the general tool must reproduce
+        # CFR's internal exploitability exactly (validates the fake-node reuse).
+        assert abs(exploitability_of(cfr.strategy_table())
+                   - cfr.exploitability()) < 1e-9
+
+    def test_uniform_is_much_more_exploitable(self, trained):
+        from src.leduc_eval import (exploitability_of, uniform_strategy_table)
+        cfr, _ = trained
+        assert (exploitability_of(uniform_strategy_table())
+                > 10 * cfr.exploitability())
+
+    def test_last_iterate_stays_exploitable(self, trained):
+        # The greedy last-iterate (the DQN-self-play regime) is far more
+        # exploitable than the time-average even though both come from the SAME
+        # converged CFR run -- averaging is what reaches Nash.
+        from src.leduc_eval import exploitability_of, current_strategy_table
+        cfr, _ = trained
+        assert (exploitability_of(current_strategy_table(cfr))
+                > 5 * cfr.exploitability())

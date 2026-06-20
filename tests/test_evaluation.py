@@ -31,7 +31,7 @@ from app.charts import (
     pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
     equity_drawdown_figure, pnl_box_figure, parameter_heatmap_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
-    forest_plot_figure,
+    forest_plot_figure, exploitability_curve_figure,
 )
 
 
@@ -253,6 +253,13 @@ class TestCharts(unittest.TestCase):
             {"label": "A vs B", "mean": 560.0, "lo": 0.0, "hi": 1040.0},
             {"label": "C vs D", "mean": -120.0, "lo": -350.0, "hi": 90.0},
         ]), go.Figure)
+        # Exploitability curve: avg vs last-iterate over iterations.
+        self.assertIsInstance(exploitability_curve_figure([
+            {"iters": 10, "avg_exploitability": 0.43,
+             "last_iterate_exploitability": 1.27},
+            {"iters": 1000, "avg_exploitability": 0.007,
+             "last_iterate_exploitability": 0.40},
+        ], uniform=4.03), go.Figure)
 
     def test_drawdown_chart(self):
         players = [

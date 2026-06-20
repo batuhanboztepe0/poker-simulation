@@ -84,8 +84,13 @@ with the CFR family.** The superhuman poker AIs — DeepStack (2017), Libratus
 (2018), **Pluribus** (2019, first superhuman multiplayer, >30 mbb/g), ReBeL
 (2020) — are CFR / deep-RL-plus-search with game-theoretic grounding. Plain DQN
 self-play even **violates the stationarity assumption** Q-learning needs (the
-opponent moves while you learn). **NFSP** (Heinrich & Silver 2016) is the
-theoretically-grounded next step (references.md §1).
+opponent moves while you learn). This repo makes that concrete and *exact* on
+Leduc Hold'em ([`figures/exploitability.png`](figures/exploitability.png)): the
+time-AVERAGE strategy's exploitability falls toward 0 (Nash), but the greedy
+LAST-ITERATE — the regime DQN self-play plays in — stays exploitable and does not
+converge. **NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
+step: it brings exactly this averaging to large games via a neural average-policy
+network (references.md §1).
 
 ## 5. Honest-negative as a feature, not a bug
 
@@ -95,20 +100,32 @@ such. *(Caveat: that quant firms specifically reward null results is practitione
 signal, not documented policy — the defensible claim is that rigour + honesty
 signal statistical maturity, references.md §5.)*
 
-## 6. Concrete next steps (prioritized)
+## 6. What the rigor layer ships, and what remains
 
-- **Rigor (highest value).** Implement **full AIVAT** — a *pre-committed* equity
-  value function as a control variate at chance *and* decision nodes — to cut the
-  CIs by ~10–44× (references.md §2) and resolve whether the marginal edges are
-  real or zero. This repo already ships the first layer (bootstrap CIs +
-  duplicate/mirror matching); the AIVAT precondition is to **fix the heuristic
-  before seeing the evaluation data** (post-hoc tuning voids the guarantee — the
-  documented footgun).
-- **Method.** Swap DQN self-play for **NFSP/PSRO** (better-grounded) and add an
-  **exploitability / best-response** metric alongside raw win rate.
-- **Thesis.** Keep the markets connection strictly on **Kyle / Glosten-Milgrom**
-  (drop VPIN); if pursued, *test* the exploit-predictable-deviations idea on a
-  real order-flow dataset rather than asserting the analogy.
+**Shipped (the deep-research rigor recommendations, references.md §1–§2):**
+- **Variance reduction** — bootstrap CIs, duplicate/mirror matching (cuts the
+  heads-up CI to ~65% of raw), and the **all-in EV control variate** (the
+  AIVAT-family chance-node adjustment; unbiased, chip-conserving, opt-in). See
+  [`figures/variance_reduction.png`](figures/variance_reduction.png) and
+  [`figures/exec_summary.png`](figures/exec_summary.png).
+- **An exact exploitability metric** ([`src/leduc_eval.py`](src/leduc_eval.py))
+  for any Leduc strategy, and the verifiable demonstration
+  ([`figures/exploitability.png`](figures/exploitability.png)) that the
+  time-AVERAGE strategy converges to the Nash equilibrium while the greedy
+  LAST-ITERATE — the regime DQN self-play plays in — stays exploitable. This is
+  the exact reason DQN self-play does not reach Nash and averaging methods do.
+
+**Remaining (the genuine next steps):**
+- **Full decision-node AIVAT** — extend the chance-node (all-in) control variate
+  with a *pre-committed* value function at decision nodes for the ~10–44× CI
+  reduction; the precondition is to fix the heuristic before seeing the
+  evaluation data (the documented footgun).
+- **A neural NFSP learner on NLHE** — carry the averaging that reaches Nash on
+  Leduc to the large game via a neural average-policy network, evaluated with the
+  exploitability metric now in place. (DQN here stays a deliberate baseline.)
+- **Thesis** — keep the markets connection on **Kyle / Glosten-Milgrom** (drop
+  VPIN); if pursued, *test* the exploit-predictable-deviations idea on real
+  order-flow data rather than asserting the analogy.
 
 ---
 

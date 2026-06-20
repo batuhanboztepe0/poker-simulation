@@ -83,6 +83,18 @@ class TestResultsSchema(unittest.TestCase):
                 {"arm", "mean", "lo", "hi", "ci_width", "ci_width_vs_raw"},
                 set(arm))
 
+    def test_exploitability_schema(self):
+        path = os.path.join(RESULTS, "exploitability.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/exploitability.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertIn("curve", d)
+        for pt in d["curve"]:
+            self.assertLessEqual(
+                {"iters", "avg_exploitability", "last_iterate_exploitability"},
+                set(pt))
+
     def test_pool_schema(self):
         path = os.path.join(RESULTS, "pool.json")
         if not os.path.exists(path):
