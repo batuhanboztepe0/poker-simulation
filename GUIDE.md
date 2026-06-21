@@ -150,7 +150,8 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
   (see references.md, where refuted claims are kept visible on purpose).
 - The agent's training/eval opponents are **synthetic** (real human logs would
   make a learned policy exploitable, so they feed the opponent model ONLY); the
-  tilt opponent-model itself is now **validated on 777k real human hand-rows** —
+  tilt opponent-model itself is now **validated on 777k real human hand-rows**
+  (PHH / Kim 2024, CC-BY-4.0; doi:10.5281/zenodo.13997158) —
   post-loss VPIP +2.8pp and aggression +1.6pp, both 95% CIs exclude 0
   (`tilt_realdata.png`, THESIS.md §6) — real but small, like the rest.
 
