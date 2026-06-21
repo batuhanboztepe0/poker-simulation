@@ -69,10 +69,16 @@ def _melt_opponents(rows, opps=("myopic", "tilt", "random")):
 
 # --- rendering --------------------------------------------------------------
 
-def _save(fig, name, caption, width=960, height=560):
-    """Write figures/<name>.png + .html with a wrapped bottom caption."""
+def _save(fig, name, caption, width=960, height=560, subcaption=None):
+    """Write figures/<name>.png + .html with a wrapped bottom caption.
+
+    The figure renders `subcaption` when given (a short, legible in-image
+    label), otherwise the full `caption`. The full `caption` is always returned
+    for the figures/README.md index, so trimming the in-image text never drops
+    detail from the index — it just keeps dense figures readable standalone."""
     os.makedirs(FIGURES, exist_ok=True)
-    wrapped = "<br>".join(textwrap.wrap(caption, width=108))
+    shown = subcaption if subcaption is not None else caption
+    wrapped = "<br>".join(textwrap.wrap(shown, width=108))
     n_lines = wrapped.count("<br>") + 1
     fig.update_layout(margin=dict(b=70 + 24 * n_lines, t=70))
     # Anchored top-left in the bottom margin (below the x-axis title), grows down.
@@ -220,9 +226,16 @@ def fig_headline(index):
               "(lo > 0) this edge is within per-seed noise — directionally "
               "positive but not statistically resolved at this sample size."
               if ci else "."))
+    sub = ("The agent dips into over-folding, then recovers to beat the myopic "
+           f"baseline. Final {f.get('wins')}/{f.get('n_seeds')} held-out matches, "
+           f"{f.get('mean_chip_diff', 0):+.0f} mean chips"
+           + (f", 95% CI [{ci['lo']:+.0f}, {ci['hi']:+.0f}], p={p:.3f}"
+              if ci and p is not None else "")
+           + " — lower bound at 0, so directionally positive but marginal. "
+             "Full detail in figures/README.md.")
     index.append(("headline.png", "§8",
                   _save(learning_curve_figure(d["history"], ribbon=True),
-                        "headline", cap)))
+                        "headline", cap, subcaption=sub)))
 
 
 def fig_pool(index):
@@ -456,13 +469,18 @@ def fig_tilt_realdata(index):
            f"references.md §3 (Kyle; Glosten-Milgrom) — the cross-domain mapping "
            f"to real order flow remains an untested hypothesis; the human-vs-bot "
            f"contrast is corroborated by Haaf et al. 2021 (§6).")
+    sub = (f"After a ≥{lb}bb loss, {npl} real players play looser "
+           f"(VPIP {ph['real']['vpip']['mean']*100:+.1f}pp) and more aggressively "
+           f"({ph['real']['aggr']['mean']*100:+.1f}pp) — both 95% CIs exclude 0; the "
+           f"shuffled-label placebo collapses to ~0. Opponent-model validation only "
+           f"(PHH/Kim 2024, CC-BY-4.0). Full detail in figures/README.md.")
     index.append(("tilt_realdata.png", "§real-data",
                   _save(forest_plot_figure(
                       rows, title="Is tilt detectable in real hands? "
                       "(effects vs shuffled-label placebo)",
                       xaxis_title="Post-loss effect (probability units; "
                                   "95% bootstrap CI)"),
-                      "tilt_realdata", cap, height=480)))
+                      "tilt_realdata", cap, height=480, subcaption=sub)))
 
 
 def fig_rollout_fe(index):
