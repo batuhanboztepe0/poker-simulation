@@ -22,6 +22,8 @@ import json
 import os
 import textwrap
 
+import plotly.graph_objects as go
+
 from app.charts import (
     learning_curve_figure, tournament_leaderboard_figure,
     parameter_heatmap_figure, pnl_box_figure,
@@ -81,6 +83,26 @@ def _save(fig, name, caption, width=960, height=560):
                     width=width, height=height, scale=2)
     fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
     return caption
+
+
+def _save_plain(fig, name, title, takeaway, width=960, height=540):
+    """Plain-audience variant of `_save`: a big centered title and a single short
+    plain-language takeaway under the chart. For the simplified, one-message
+    figures (figures/plain_*.png) aimed at a general reader, not the dense
+    technical panels above."""
+    os.makedirs(FIGURES, exist_ok=True)
+    wrapped = "<br>".join(textwrap.wrap(takeaway, width=92))
+    n = wrapped.count("<br>") + 1
+    fig.update_layout(
+        title=dict(text=title, x=0.5, xanchor="center", font=dict(size=22)),
+        font=dict(size=15), margin=dict(t=80, b=80 + 26 * n, l=80, r=60))
+    fig.add_annotation(text=wrapped, xref="paper", yref="paper", x=0.5, y=-0.22,
+                       showarrow=False, align="center", xanchor="center",
+                       yanchor="top", font=dict(size=14, color="#333"))
+    fig.write_image(os.path.join(FIGURES, name + ".png"),
+                    width=width, height=height, scale=2)
+    fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
+    return takeaway
 
 
 # Each builder returns a list of (filename, section, caption) for the index, or
@@ -464,9 +486,105 @@ def fig_rollout_fe(index):
                       "rollout_fe", cap)))
 
 
+# ---------------------------------------------------------------------------
+# Plain, single-message figures for a general audience (figures/plain_*.png).
+# Same committed data, simplified to one chart + one plain-language takeaway.
+# ---------------------------------------------------------------------------
+
+def fig_plain_rl_edge(index):
+    d = _load_json("headline_history.json")
+    if not d or not d.get("final", {}).get("ci95"):
+        return
+    f = d["final"]
+    ci = f["ci95"]
+    mean = f["mean_chip_diff"]
+    straddles = ci["lo"] <= 0 <= ci["hi"]
+    color = "#888888" if straddles else "#2ca02c"
+    fig = go.Figure(go.Bar(
+        x=[mean], y=["trained bot vs simple baseline"], orientation="h",
+        marker_color=color, width=0.4,
+        error_x=dict(type="data", symmetric=False, array=[ci["hi"] - mean],
+                     arrayminus=[mean - ci["lo"]], thickness=3, width=12,
+                     color="#444")))
+    fig.add_vline(x=0, line=dict(color="#d62728", dash="dot"))
+    fig.update_layout(
+        xaxis_title=f"chips won vs the baseline over {f.get('n_hands','?')} hands "
+                    f"(bar = average, line = 95% range)",
+        yaxis_title="", showlegend=False)
+    take = (f"On average the trained bot wins (+{mean:.0f} chips), but the 95% "
+            f"range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it reaches back to 0, "
+            f"so the edge is real but marginal, not a sure thing.")
+    index.append(("plain_rl_edge.png", "§plain",
+                  _save_plain(fig, "plain_rl_edge",
+                              "Does the trained bot beat the simple baseline?",
+                              take, height=420)))
+
+
+def fig_plain_nash(index):
+    d = _load_json("exploitability.json")
+    if not d:
+        return
+    curve = d["curve"]
+    iters = [r["iters"] for r in curve]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=iters, y=[r["avg_exploitability"] for r in curve],
+        mode="lines+markers", name="averages its history",
+        line=dict(width=3, color="#2ca02c")))
+    fig.add_trace(go.Scatter(
+        x=iters, y=[r["last_iterate_exploitability"] for r in curve],
+        mode="lines+markers", name="plays latest only (DQN)",
+        line=dict(width=3, color="#d62728")))
+    fig.update_layout(
+        xaxis_title="training rounds (log scale)", xaxis_type="log",
+        yaxis_title="how beatable (0 = perfect play)",
+        legend=dict(x=0.98, y=0.95, xanchor="right", bgcolor="rgba(255,255,255,0.6)"))
+    a = curve[-1]["avg_exploitability"]
+    l = curve[-1]["last_iterate_exploitability"]
+    take = (f"A self-play bot that averages its whole history converges to "
+            f"near-perfect play ({a:.3f}); one that always uses its latest "
+            f"strategy — like a plain DQN — stays beatable ({l:.2f}).")
+    index.append(("plain_nash.png", "§plain",
+                  _save_plain(fig, "plain_nash",
+                              "Why 'averaging' matters when an AI learns by self-play",
+                              take)))
+
+
+def fig_plain_tilt(index):
+    d = _load_json("tilt_realdata.json")
+    if not d:
+        return
+    ph = d["phenomenon"]
+    real = ph["real"]["vpip"]
+    plac = ph["placebo"]["vpip"]
+    fig = go.Figure(go.Bar(
+        x=["after a big loss", "shuffled control"],
+        y=[real["mean"] * 100, plac["mean"] * 100],
+        marker_color=["#2ca02c", "#888888"],
+        error_y=dict(type="data", symmetric=False,
+                     array=[(real["hi"] - real["mean"]) * 100,
+                            (plac["hi"] - plac["mean"]) * 100],
+                     arrayminus=[(real["mean"] - real["lo"]) * 100,
+                                 (plac["mean"] - plac["lo"]) * 100],
+                     thickness=3, width=14, color="#444")))
+    fig.add_hline(y=0, line=dict(color="#444"))
+    fig.update_layout(
+        yaxis_title="extra hands played vs usual (VPIP, % points)",
+        xaxis_title="", showlegend=False)
+    lb = int(d["config"]["loss_bb"])
+    take = (f"Yes — after a {lb}bb+ loss, real online players voluntarily play "
+            f"~{real['mean']*100:.1f}% more hands than usual (95% bars exclude 0). "
+            f"A shuffled control collapses to ~0, so it is the loss, not chance.")
+    index.append(("plain_tilt.png", "§plain",
+                  _save_plain(fig, "plain_tilt",
+                              "Do real poker players 'tilt' after a loss?",
+                              take)))
+
+
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
-            fig_rollout_fe]
+            fig_rollout_fe,
+            fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
     "fig_exec_summary": "results/{headline_history.json, pool.json, icm.jsonl}",
@@ -478,6 +596,9 @@ DATA_DEPS = {
     "fig_block_b": "results/{action_grid,bust_clip,selfplay,tilt_decouple}.jsonl",
     "fig_tilt_realdata": "results/tilt_realdata.json",
     "fig_rollout_fe": "results/rollout_fe.jsonl",
+    "fig_plain_rl_edge": "results/headline_history.json",
+    "fig_plain_nash": "results/exploitability.json",
+    "fig_plain_tilt": "results/tilt_realdata.json",
 }
 
 
