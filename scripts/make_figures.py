@@ -19,14 +19,16 @@ Needs kaleido for PNG export (pip install kaleido; see requirements.txt).
 
 import argparse
 import json
+import math
 import os
+import statistics
 import textwrap
 
 import plotly.graph_objects as go
 
 from app.charts import (
     learning_curve_figure, tournament_leaderboard_figure,
-    parameter_heatmap_figure, pnl_box_figure,
+    parameter_heatmap_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
     forest_plot_figure, exploitability_curve_figure,
 )
@@ -109,6 +111,23 @@ def _save_plain(fig, name, title, takeaway, width=960, height=540):
                     width=width, height=height, scale=2)
     fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
     return takeaway
+
+
+def _attach_group_sem(fig, rows, group_key, value_key, group_order):
+    """Attach ±1 SEM error bars (over the rows in each group) to the single-series
+    grouped-bar figure from `ab_grouped_bar_figure` — so an ablation panel shows
+    whether the per-group differences are within seed-to-seed noise."""
+    present = {r[group_key] for r in rows}
+    groups = [g for g in group_order if g in present]
+    sems = []
+    for g in groups:
+        vals = [r[value_key] for r in rows if r[group_key] == g]
+        sems.append(statistics.stdev(vals) / math.sqrt(len(vals))
+                    if len(vals) >= 2 else 0.0)
+    if fig.data:
+        fig.data[0].error_y = dict(type="data", array=sems, visible=True,
+                                   thickness=1.5, width=6, color="#444")
+    return fig
 
 
 # Each builder returns a list of (filename, section, caption) for the index, or
@@ -288,11 +307,38 @@ def fig_pool(index):
                   _save(parameter_heatmap_figure(d["grid"]),
                         "pool_sweep", cap_sw)))
 
-    cap_box = ("§10: per-seed net-chip distribution per agent (the spread behind "
-               "the leaderboard means — poker variance is wide).")
+    # Per-match outcomes cluster hard at ±1000 (most matches are won/lost
+    # near-outright), so a box plot's quartiles span the whole range and every
+    # agent looks identical. A jittered strip + mean bar shows the real spread
+    # and the win-rate ranking honestly. Deterministic jitter keeps it
+    # byte-reproducible (no RNG).
+    nets = d["per_agent_nets"]
+    order = sorted(nets, key=lambda n: sum(nets[n]) / len(nets[n]) if nets[n] else 0.0,
+                   reverse=True)
+    box = go.Figure()
+    for i, name in enumerate(order):
+        ys = nets[name]
+        xs = [i + (((j * 5 + 2) % 11) / 10.0 - 0.5) * 0.55 for j in range(len(ys))]
+        box.add_trace(go.Scatter(x=xs, y=ys, mode="markers",
+                                 marker=dict(size=5, opacity=0.45)))
+        m = sum(ys) / len(ys)
+        box.add_trace(go.Scatter(x=[i - 0.3, i + 0.3], y=[m, m], mode="lines",
+                                 line=dict(color="#222", width=3)))
+    box.add_hline(y=0, line=dict(color="gray", dash="dot"))
+    box.update_layout(
+        title="Per-match net chips by agent (each dot = one match; bar = mean)",
+        yaxis_title="Net chips (per match)", showlegend=False,
+        xaxis=dict(tickmode="array", tickvals=list(range(len(order))),
+                   ticktext=[f"{n}<br>{sum(1 for v in nets[n] if v > 0) / len(nets[n]):.0%} won"
+                             for n in order]))
+    wr = ", ".join(f"{n} {sum(1 for v in nets[n] if v > 0) / len(nets[n]):.0%}"
+                   for n in order)
+    cap_box = (f"§10: per-match net chips per agent — each dot is one held-out match, the "
+               f"bar is the mean. Most matches are won or lost near-outright (clustered at "
+               f"±1000), so the per-match spread is wide; the agent ranking shows in the "
+               f"match win rate ({wr}).")
     index.append(("pool_pnl_box.png", "§10",
-                  _save(pnl_box_figure(d["per_agent_nets"]),
-                        "pool_pnl_box", cap_box)))
+                  _save(box, "pool_pnl_box", cap_box)))
 
 
 def fig_icm(index):
@@ -353,28 +399,33 @@ def fig_block_b(index):
     # two quantities the §15 claim rests on), averaged over the init seeds.
     rows = _load_jsonl("bust_clip.jsonl")
     if rows:
+        clip_order = ["old", "4.6", "wide"]
         cap = ("B3 (§15): widening the multi-hand bust clip does NOT help — the "
                "tight 3.0 ('old') clip has the best mean held-out chip diff vs "
                "myopic (averaged over 6 init seeds); '4.6' and 'wide' (≈6.9) "
-               "regress and destabilise some inits (high weight-init variance).")
+               "regress and destabilise some inits (high weight-init variance). "
+               "Error bars = ±1 SEM over the 6 init seeds.")
         index.append(("blockB_bust_clip.png", "§15",
-                      _save(ab_grouped_bar_figure(
+                      _save(_attach_group_sem(ab_grouped_bar_figure(
                           rows, group_key="clip", value_key="mean",
-                          group_order=["old", "4.6", "wide"],
+                          group_order=clip_order,
                           yaxis_title="mean chip diff vs myopic (avg over seeds)",
                           title="B3: bust-clip mean chip diff vs myopic "
                                 "(tight 3.0 → wide 6.9)"),
+                          rows, "clip", "mean", clip_order),
                           "blockB_bust_clip", cap)))
         cap2 = ("B3 (§15): bust rate per clip (avg over seeds). The tight 3.0 "
                 "clip also has the lowest bust rate — in this heads-up "
                 "winner-take-all format bust ≈ 1 − win rate, so there is no "
-                "independent risk lever to recover by un-clipping the ruin signal.")
+                "independent risk lever to recover by un-clipping the ruin signal. "
+                "Error bars = ±1 SEM over the 6 init seeds.")
         index.append(("blockB_bust_rate.png", "§15",
-                      _save(ab_grouped_bar_figure(
+                      _save(_attach_group_sem(ab_grouped_bar_figure(
                           rows, group_key="clip", value_key="bust_rate",
-                          group_order=["old", "4.6", "wide"],
+                          group_order=clip_order,
                           yaxis_title="bust rate (avg over seeds)",
                           title="B3: bust rate by clip (tight 3.0 → wide 6.9)"),
+                          rows, "clip", "bust_rate", clip_order),
                           "blockB_bust_rate", cap2)))
 
     # B4 — snapshot self-play (config × opponent mean net chips).
