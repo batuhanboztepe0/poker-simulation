@@ -116,6 +116,9 @@ Reported as a clean negative-results sweep, which is itself a result.
 ## How to reproduce (everything is seeded)
 
 ```bash
+# install (requires Python >= 3.10)
+python -m pip install -r requirements.txt
+
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
 OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 500 green
 
