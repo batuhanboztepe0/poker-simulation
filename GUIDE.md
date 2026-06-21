@@ -111,6 +111,23 @@ snapshot self-play, warmed fold-equity (the `blockB_*` and `rollout_fe` panels i
 [figures/](figures/)) — each works mechanically but **none moves the headline.**
 Reported as a clean negative-results sweep, which is itself a result.
 
+### 7. The thesis, tested on real human hands
+
+![real-data tilt](figures/tilt_realdata.png)
+
+**What you're looking at:** the exploit-predictable-deviations thesis tested on
+**777k hand-rows** of 2009 online play (PHH / Kim 2024, CC-BY-4.0) — used for the
+**opponent model only, never the policy**. Each effect is shown against a
+shuffled-label placebo.
+
+**Takeaway:** after a ≥10bb loss, 873 real players play **looser (VPIP +2.8pp)
+and more aggressively (+1.6pp)** — both 95% CIs exclude 0, while the shuffled
+placebo collapses to ~0, so it is the loss, not chance. The project's HMM tilt
+detector registers a small but resolved P(tilted) shift, and a separate
+Baum-Welch regime HMM corroborates it out-of-sample. Honestly small (1–3pp) —
+real but marginal, the project's signature — and the real-world analog of the
+adverse-selection signal at the heart of the markets thesis.
+
 ---
 
 ## How to reproduce (everything is seeded)
