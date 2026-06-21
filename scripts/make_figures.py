@@ -194,8 +194,10 @@ def fig_headline(index):
            f"Final {f.get('wins')}/{f.get('n_seeds')} matches, "
            f"{f.get('mean_chip_diff', 0):+.0f} mean chips"
            + (f", paired p={p:.4f}" if p is not None else "") + ci_txt
-           + (". The CI's lower bound near 0 shows the edge is real but marginal "
-              "— variance accounting matters (see exec_summary)." if ci else "."))
+           + (". The CI's lower bound sits at 0, so by the exec_summary test "
+              "(lo > 0) this edge is within per-seed noise — directionally "
+              "positive but not statistically resolved at this sample size."
+              if ci else "."))
     index.append(("headline.png", "§8",
                   _save(learning_curve_figure(d["history"], ribbon=True),
                         "headline", cap)))
@@ -428,9 +430,10 @@ def fig_tilt_realdata(index):
            f"each effect's shuffled-label placebo collapses to ~0 (gray). "
            f"{regime_txt} Honest scale: the shifts are small (1-3pp) — real but "
            f"marginal, the project's signature. This predictable, post-loss "
-           f"deviation is the adverse-selection signal of references.md §3 (Kyle; "
-           f"Glosten-Milgrom); the human-vs-bot contrast is corroborated by Haaf "
-           f"et al. 2021 (§6).")
+           f"deviation is the poker analog of the adverse-selection signal of "
+           f"references.md §3 (Kyle; Glosten-Milgrom) — the cross-domain mapping "
+           f"to real order flow remains an untested hypothesis; the human-vs-bot "
+           f"contrast is corroborated by Haaf et al. 2021 (§6).")
     index.append(("tilt_realdata.png", "§real-data",
                   _save(forest_plot_figure(
                       rows, title="Is tilt detectable in real hands? "

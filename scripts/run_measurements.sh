@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 #
-# run_measurements.sh — regenerate results/*.jsonl, the committed measurement
-# data that scripts/make_figures.py renders into figures/. This is the single
-# reproducible source of truth for the figure layer: no re-training is needed to
-# redraw a plot once these JSONs exist.
+# run_measurements.sh — regenerate the results/*.jsonl committed measurement data
+# (Block B + ICM + rollout + headline + pool) that scripts/make_figures.py renders
+# into figures/. No re-training is needed to redraw a plot once these JSONs exist.
+#
+# This covers the .jsonl figures only. Three standalone results are produced by
+# their own measure scripts (see GUIDE.md "How to reproduce"):
+#   results/variance_reduction.json  <- python -m scripts.measure_variance_reduction
+#   results/exploitability.json      <- python -m scripts.measure_exploitability
+#   results/tilt_realdata.json       <- python -m scripts.measure_tilt_realdata
 #
 # Thread-pinned (OMP_NUM_THREADS=1 — the small MLP only thrashes under parallel
 # BLAS, RL_HANDOFF §11). Per-(script, cell) jobs run PAR at a time; each writes

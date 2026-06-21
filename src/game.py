@@ -152,6 +152,11 @@ class GameEngine:
         self._ev_engine = None
         if track_allin_ev:
             from src.monte_carlo import MonteCarloEngine
+            # FIXED internal seed (not derived from the session seed) ON PURPOSE:
+            # the EV engine is observation-only (never deals the game deck), so
+            # game outcomes stay byte-identical to track_allin_ev=False, and the
+            # control-variate EV estimates are reproducible on their own regardless
+            # of the session seed. It is independent of the session RNG by design.
             self._ev_engine = MonteCarloEngine(allin_ev_sims,
                                                rng=random.Random(0xA111E7))
 

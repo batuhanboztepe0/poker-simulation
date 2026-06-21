@@ -9,9 +9,10 @@ against a bot whose hidden `is_tilted` flag is ground truth; real human logs
 carry no tilt label, so here the *behavioural definition* of tilt is the proxy
 ground truth: a player who has just suffered a (big) loss is hypothesised to
 play looser and more aggressively. The thesis link is Kyle (1985) /
-Glosten-Milgrom (1985): a predictable, post-loss deviation is the
-adverse-selection signal an opponent model exists to read (references.md §3).
-The label is observational ("post-loss"/"loss-associated"), not causal.
+Glosten-Milgrom (1985): a predictable, post-loss deviation is the poker analog
+of the adverse-selection signal an opponent model exists to read (references.md
+§3) — the cross-domain mapping to real order flow is an untested hypothesis. The
+label is observational ("post-loss"/"loss-associated"), not causal.
 
 IMPORTANT — real hands feed the OPPONENT MODEL ONLY, never the DQN policy.
 Training a policy on human logs would make the self-play agent exploitable; the

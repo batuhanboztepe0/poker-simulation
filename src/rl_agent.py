@@ -479,6 +479,14 @@ class SelfPlayTrainer:
             loose = multi_hand and self.reward_mode != 'chips'
             reward_clip = 3.0 if loose else 1.0
         self.reward_clip = reward_clip
+        # `seed` owns this trainer's Python/MC RNG (deck deal, epsilon-greedy,
+        # rollouts) — fully reproducible. It does NOT seed PyTorch's global RNG,
+        # so the QNetwork weight INIT below is drawn from torch's global state.
+        # This is deliberate: the measure scripts seed torch separately with a
+        # distinct torch_seed (e.g. measure_headline.py) so weight-init variance
+        # can be swept as its own axis while the trainer RNG is held fixed. To
+        # reproduce a specific run, fix BOTH torch.manual_seed(torch_seed) and
+        # this `seed` (the scripts do).
         self.rng = _random.Random(seed)
 
         # Compute the QNetwork input dimension from feature_mode.
