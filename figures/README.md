@@ -1,6 +1,6 @@
 # Figures — the results story
 
-Rendered by `python -m scripts.make_figures` from the committed measurement JSON in [`../results/`](../results/) (regenerate that data with `scripts/run_measurements.sh` + `scripts/measure_pool.py`). Each `.png` is for the write-up; the matching `.html` is interactive.
+Rendered by `python -m scripts.make_figures` from the committed measurement JSON in [`../results/`](../results/) (regenerate that data with `scripts/run_measurements.sh`, which trains the §10 pool too; the standalone variance/exploitability/tilt results have their own measure scripts — see [../GUIDE.md](../GUIDE.md)). Each `.png` is for the write-up; the matching `.html` is interactive.
 
 **Start with [`exec_summary.png`](exec_summary.png)** — every headline edge with its 95% bootstrap CI (the honest "are the edges real?" view). Narrative: [../THESIS.md](../THESIS.md). Bibliography: [../references.md](../references.md).
 

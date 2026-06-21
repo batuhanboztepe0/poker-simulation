@@ -2,8 +2,8 @@
 make_figures.py
 ---------------
 Render the results story to committed figures/*.png (+ interactive .html) from
-the measurement JSON under results/ (produced by scripts/run_measurements.sh and
-scripts/measure_pool.py). This is the single reproducible figure layer for the
+the measurement JSON under results/ (produced by scripts/run_measurements.sh,
+which trains the §10 pool itself). This is the single reproducible figure layer for the
 write-up — no re-training is needed to redraw a plot once results/ exists.
 
 Each figure reads only results/ + the existing Plotly factories in app/charts.py,
@@ -610,7 +610,9 @@ def write_index(index):
         "",
         "Rendered by `python -m scripts.make_figures` from the committed "
         "measurement JSON in [`../results/`](../results/) (regenerate that data "
-        "with `scripts/run_measurements.sh` + `scripts/measure_pool.py`). Each "
+        "with `scripts/run_measurements.sh`, which trains the §10 pool too; the "
+        "standalone variance/exploitability/tilt results have their own measure "
+        "scripts — see [../GUIDE.md](../GUIDE.md)). Each "
         "`.png` is for the write-up; the matching `.html` is interactive.",
         "",
         "**Start with [`exec_summary.png`](exec_summary.png)** — every headline "
