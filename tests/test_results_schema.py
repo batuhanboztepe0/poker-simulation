@@ -110,6 +110,36 @@ class TestResultsSchema(unittest.TestCase):
         for cell in d["grid"]:
             self.assertLessEqual({"tight", "aggr", "mean_net_chips"}, set(cell))
 
+    def test_tilt_realdata_schema(self):
+        path = os.path.join(RESULTS, "tilt_realdata.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/tilt_realdata.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertLessEqual(
+            {"source", "config", "n_rows", "n_sequences", "phenomenon",
+             "detector", "regime"}, set(d))
+        # Phenomenon: each of real/placebo carries vpip + aggr CIs and n_players.
+        for arm in ("real", "placebo"):
+            ph = d["phenomenon"][arm]
+            self.assertIn("n_players", ph)
+            for metric in ("vpip", "aggr"):
+                self.assertLessEqual({"mean", "lo", "hi"}, set(ph[metric]))
+        # Detector: each arm carries a separation CI (the figure reads its mean).
+        for arm in ("real", "placebo"):
+            self.assertLessEqual(
+                {"mean", "lo", "hi"}, set(d["detector"][arm]["separation"]))
+        # Regime: the keys fig_tilt_realdata reads when two_state_found is true.
+        reg = d["regime"]
+        self.assertIn("two_state_found", reg)
+        if reg.get("two_state_found"):
+            self.assertLessEqual(
+                {"bic_gain", "heldout_ll_gain", "p_aggr_low", "p_aggr_high",
+                 "p_loss_given_high", "p_loss_base"}, set(reg))
+        # Config fields the caption interpolates.
+        self.assertLessEqual(
+            {"loss_bb", "n_files", "mu_normal", "mu_tilted"}, set(d["config"]))
+
 
 if __name__ == "__main__":
     unittest.main()
