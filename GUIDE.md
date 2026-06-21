@@ -14,7 +14,8 @@ see [references.md](references.md); for the raw figure index see
   (paired seeds, t-tests, bootstrap CIs, variance reduction).
 - **The thesis:** poker ↔ market microstructure — *predictable deviations are
   exploitable, pure randomness is not* (the informed-vs-noise-trader distinction
-  of Kyle 1985 / Glosten-Milgrom 1985; SIG literally trains traders on poker).
+  of Kyle 1985 / Glosten-Milgrom 1985; SIG literally trains traders on poker) — a
+  decision-theory parallel, **untested on real order-flow data** (see limitations).
 - **The honest headline:** the agent is **directionally positive but the edges
   are marginal — mostly within per-seed noise.** That is not hidden; it is
   *measured*, with confidence intervals, and reported as the result. In a
@@ -58,8 +59,9 @@ lower bound near 0 is why figure 1 calls it "real but marginal."
 **What you're looking at:** a belief + opponent-mix generalist (RL) against a pool
 of {myopic, tilt, random} + an analytic Kelly agent.
 
-**Takeaway:** RL **tops the leaderboard** and beats each adaptive opponent
-head-to-head (13-3 / 9-7 / 12-4) — but it **loses head-to-head to Kelly (5-11)**.
+**Takeaway:** RL **tops the leaderboard** and beats two of three adaptive
+opponents head-to-head (13-3 vs myopic, 12-4 vs random; 9-7 vs tilt is within
+noise at n=16) — but it **loses head-to-head to Kelly (5-11)**.
 Reported honestly: the win is the leaderboard + adaptive pool, not Kelly.
 
 ![personality sweep](figures/pool_sweep.png)
@@ -115,12 +117,16 @@ Reported as a clean negative-results sweep, which is itself a result.
 
 ```bash
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
-OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 490 green
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 500 green
 
 # regenerate the committed measurement data under results/
 OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout + headline + pool
 OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
 OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json
+
+# real-data tilt validation (fetches the PHH subset to data/phh/, gitignored)
+python -m scripts.fetch_phh --max-files 120            # the 120 PokerStars 25NL files used
+OMP_NUM_THREADS=1 python -m scripts.measure_tilt_realdata  # -> results/tilt_realdata.json
 
 # redraw every figure from results/
 python -m scripts.make_figures                        # -> figures/*.png (+ .html)
@@ -138,15 +144,18 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
 - The **markets thesis is asserted, not yet validated on real market data** — the
   rigorous anchor is Kyle / Glosten-Milgrom, not the (refuted) VPIN claims
   (see references.md, where refuted claims are kept visible on purpose).
-- Opponents are currently **synthetic**; validating the tilt model on real human
-  hands is the clearest next step (see THESIS.md §6).
+- The agent's training/eval opponents are **synthetic** (real human logs would
+  make a learned policy exploitable, so they feed the opponent model ONLY); the
+  tilt opponent-model itself is now **validated on 777k real human hand-rows** —
+  post-loss VPIP +2.8pp and aggression +1.6pp, both 95% CIs exclude 0
+  (`tilt_realdata.png`, THESIS.md §6) — real but small, like the rest.
 
 ---
 
 ## Where to go next
 
 - **[THESIS.md](THESIS.md)** — the full narrative, SOTA placement, and the
-  prioritized next steps (full AIVAT, NFSP learner, real-data tilt validation).
+  prioritized next steps (full AIVAT, NFSP learner).
 - **[references.md](references.md)** — every claim's source, with honest
   verification flags.
 - **[figures/README.md](figures/README.md)** — the complete figure index.

@@ -14,9 +14,11 @@ Both poker and market-making extract edge from **predictable counterparty
 behaviour against a background of noise**: *predictable deviations are
 exploitable; pure randomness is not.*
 
-The defensible version of this is **not** a marketing analogy — it is the
-informed-vs-uninformed-trader distinction of **Kyle (1985)** and the
-adverse-selection model of **Glosten & Milgrom (1985)** (references.md §3). An
+The more defensible version of this is **not** a marketing analogy — it **draws
+on** the informed-vs-uninformed-trader distinction of **Kyle (1985)** and the
+adverse-selection model of **Glosten & Milgrom (1985)** (references.md §3) as a
+*structural parallel*, offered as a hypothesis and not yet tested on real
+order-flow data (see §6). An
 exploitable, predictable opponent is the analog of *informed / toxic flow* you
 can read; a uniformly-random opponent is *noise flow* you cannot. Opponent
 modelling ↔ detecting adverse selection; Kelly / log-bankroll growth is the
@@ -49,7 +51,7 @@ pricing risk" (references.md §4).
   **duplicate/mirror matching** (same deck, swapped seats — the variance-reduction
   protocol behind DIVAT/AIVAT, references.md §2).
 - **Engineering discipline**: every advanced feature is opt-in / default-off
-  (baseline byte-identical), 480 tests pass, and a **multi-agent adversarial
+  (baseline byte-identical), 500 tests pass, and a **multi-agent adversarial
   audit** of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
@@ -61,7 +63,8 @@ every claimed edge as a point with its 95% bootstrap CI:
 - **RL beats the myopic baseline directionally** (+560 chips/match) — but the
   95% CI's lower bound sits at ~0. Real, but **marginal**.
 - A **belief + opponent-mix generalist** tops a cross-agent leaderboard (+209)
-  and beats each adaptive opponent head-to-head — but its leaderboard CI
+  and beats two of three adaptive opponents head-to-head (13-3 vs myopic, 12-4 vs
+  random; 9-7 vs tilt is within noise at n=16) — but its leaderboard CI
   **includes 0** at 16 seeds, and it loses head-to-head to an analytic **Kelly**
   agent.
 - A **risk-averse ICM/Kelly reward shows no robust edge** over a risk-neutral
@@ -81,8 +84,11 @@ high-variance game — not a failure to hide.
 
 DQN self-play here is a **deliberate pragmatic baseline, not a claim to compete
 with the CFR family.** The superhuman poker AIs — DeepStack (2017), Libratus
-(2018), **Pluribus** (2019, first superhuman multiplayer, >30 mbb/g), ReBeL
-(2020) — are CFR / deep-RL-plus-search with game-theoretic grounding. Plain DQN
+(2018), **Pluribus** (2019, first superhuman multiplayer, >30 mbb/g) — are CFR /
+deep-RL-plus-search with game-theoretic grounding; ReBeL (2020) extends that
+deep-RL-plus-search paradigm to imperfect-information games (its own HUNL
+superhuman claim did not survive adversarial verification — cite it for the
+paradigm extension only, references.md §1). Plain DQN
 self-play even **violates the stationarity assumption** Q-learning needs (the
 opponent moves while you learn). This repo makes that concrete and *exact* on
 Leduc Hold'em ([`figures/exploitability.png`](figures/exploitability.png)): the
@@ -128,11 +134,14 @@ signal statistical maturity, references.md §5.)*
   not tuned to it). A **separate** Baum-Welch regime HMM (Test C, not the
   detector) corroborates the phenomenon with a different method, beating a 1-state
   model out-of-sample (held-out LL +681; held-out ΔBIC +1315) with its active
-  regime ~1.9× enriched for a recent big loss (4.3% vs 2.3% base). Each effect is
-  placebo-controlled (shuffled labels → ~0) and the shifts are honestly small
-  (1–3pp). This **post-loss** deviation (observational, not a causal claim) is the
-  adverse-selection signal of §1 (Kyle / Glosten-Milgrom), corroborated for the
-  human-vs-bot contrast by Haaf et al. 2021 (references.md §6).
+  regime ~1.9× enriched for a recent big loss (4.3% vs 2.3% base; the regime fit
+  used 3000 of 12320 eligible sessions — 2100 train / 900 test — a computational
+  cap). Each effect is placebo-controlled (shuffled labels → ~0) and the shifts
+  are honestly small (1–3pp). This **post-loss** deviation (observational, not a
+  causal claim) is the poker analog of the adverse-selection signal of §1 (Kyle /
+  Glosten-Milgrom) — the cross-domain mapping to real order flow remains an
+  untested hypothesis — corroborated for the human-vs-bot contrast by Haaf et al.
+  2021 (references.md §6).
 
 **Remaining (the genuine next steps):**
 - **Full decision-node AIVAT** — extend the chance-node (all-in) control variate

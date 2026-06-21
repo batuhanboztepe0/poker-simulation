@@ -11,6 +11,9 @@ verification. Status reflects that check honestly:
 - **⚠ qualified / refuted** — a specific claim attributed to the source did *not*
   survive; cite only the narrow, surviving version. Surfacing these is itself
   part of the project's honest-reporting stance.
+- **(no flag)** — a foundational / uncontested anchor (e.g. Kyle 1985, NFSP)
+  whose use here is definitional; not individually run through the 3-vote
+  process. The counts in the footer cover only the flagged claims.
 
 ---
 
@@ -102,8 +105,9 @@ verification. Status reflects that check honestly:
   modeling ↔ detecting informed/toxic counterparties."
 - **Easley, López de Prado, O'Hara (2012).** "Flow Toxicity and Liquidity in a
   High-Frequency World" (VPIN). *Review of Financial Studies.* SSRN:1695596 —
-  **⚠ qualified.** Specific claims that VPIN is parameter-free and an empirically
-  validated predictor of toxicity-driven volatility were **refuted 0-3**. Do not
+  **⚠ refuted (0-3).** Specific claims that VPIN is parameter-free and an
+  empirically validated predictor of toxicity-driven volatility were
+  **refuted 0-3** (the paper exists; those attributed claims did not survive). Do not
   cite VPIN as a validated direct analog in a portfolio context; the
   informed/uninformed *concept* is better grounded in Kyle / Glosten-Milgrom.
 - **Bayesian toxic-flow prediction (PULSE).** SSRN:4265814 — **⚠ refuted (0-3 /
@@ -140,7 +144,7 @@ verification. Status reflects that check honestly:
 - **Reproducibility & reporting (2020).** *arXiv:2011.02832.*
   — Together: rigorous null results signal intellectual honesty and statistical
   maturity; the project's honest-negative framing is positioned as a strength,
-  not a liability (see [THESIS.md](THESIS.md) §Positioning). *Caveat: that quant
+  not a liability (see [THESIS.md](THESIS.md) §5). *Caveat: that quant
   firms specifically reward null results is supported more by practitioner
   signal than by documented firm policy — frame as "demonstrates rigor," not
   "firms prefer nulls."*
@@ -194,6 +198,6 @@ verification. Status reflects that check honestly:
 
 *Compiled from a 26-source sweep (94 candidate claims, 25 adversarially
 verified: 12 confirmed, 13 refuted) plus a 4-source real-data-tilt sweep (§6,
-3-vote verified: 2 confirmed, 2 qualified). The refuted/qualified items are kept
+3-vote verified: 3 confirmed, 2 with ⚠ qualifications). The refuted/qualified items are kept
 visible above on purpose — knowing what does **not** hold up is part of the
 result.*
