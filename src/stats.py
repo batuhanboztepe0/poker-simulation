@@ -204,3 +204,34 @@ def bootstrap_ci(values, n_resamples: int = 10000, ci: float = 0.95,
     hi_idx = min(n_resamples - 1, int((1 + ci) / 2 * n_resamples))
     return {"mean": float(mean), "lo": float(means[lo_idx]),
             "hi": float(means[hi_idx]), "ci": ci, "n": n}
+
+
+def paired_t_test(diffs):
+    """
+    One-sample (paired) t-test of per-seed chip diffs against 0.
+
+    Each diff is already a paired observation (rl_stack - myopic_stack on the
+    same seed), so testing the diffs against 0 is the appropriate paired test. Uses scipy (exact t-distribution) when available, else a normal
+    approximation — which is anti-conservative for small df (it understates p
+    by ~2x near t=3 at n=50), so trust the scipy path for reported p-values.
+
+    Returns:
+        dict: {"mean", "n", "t", "p_value"} (p two-sided; None if degenerate).
+    """
+    n = len(diffs)
+    mean = sum(diffs) / n if n else 0.0
+    if n < 2:
+        return {"mean": mean, "n": n, "t": None, "p_value": None}
+    var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
+    if var == 0:
+        return {"mean": mean, "n": n, "t": None, "p_value": None}
+    se = (var / n) ** 0.5
+    t = mean / se
+    try:
+        from scipy import stats
+        p = float(2 * stats.t.sf(abs(t), df=n - 1))
+    except Exception:
+        # Normal approximation when scipy is unavailable.
+        import math
+        p = float(math.erfc(abs(t) / math.sqrt(2)))
+    return {"mean": mean, "n": n, "t": float(t), "p_value": p}

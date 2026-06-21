@@ -28,6 +28,10 @@ from src.featurizer import (
 )
 from src.icm import icm_equity
 from src.monte_carlo import MonteCarloEngine
+# paired_t_test is pure math and lives in the torch-free src.stats so that
+# torch-free analyses (e.g. src.evaluation) can use it without importing the
+# training path; re-exported here for the many scripts that import it from here.
+from src.stats import paired_t_test
 
 try:
     import torch
@@ -354,37 +358,6 @@ def evaluate_vs_baseline(qnet, n_seeds=50, n_hands=200, mc_sims=100,
         "mean_chip_diff": sum(diffs) / len(diffs) if diffs else 0.0,
         "per_seed_diffs": diffs,
     }
-
-
-def paired_t_test(diffs):
-    """
-    One-sample (paired) t-test of per-seed chip diffs against 0.
-
-    Each diff is already a paired observation (rl_stack - myopic_stack on the
-    same seed), so testing the diffs against 0 is the appropriate paired test. Uses scipy (exact t-distribution) when available, else a normal
-    approximation — which is anti-conservative for small df (it understates p
-    by ~2x near t=3 at n=50), so trust the scipy path for reported p-values.
-
-    Returns:
-        dict: {"mean", "n", "t", "p_value"} (p two-sided; None if degenerate).
-    """
-    n = len(diffs)
-    mean = sum(diffs) / n if n else 0.0
-    if n < 2:
-        return {"mean": mean, "n": n, "t": None, "p_value": None}
-    var = sum((d - mean) ** 2 for d in diffs) / (n - 1)
-    if var == 0:
-        return {"mean": mean, "n": n, "t": None, "p_value": None}
-    se = (var / n) ** 0.5
-    t = mean / se
-    try:
-        from scipy import stats
-        p = float(2 * stats.t.sf(abs(t), df=n - 1))
-    except Exception:
-        # Normal approximation when scipy is unavailable.
-        import math
-        p = float(math.erfc(abs(t) / math.sqrt(2)))
-    return {"mean": mean, "n": n, "t": float(t), "p_value": p}
 
 
 class SelfPlayTrainer:

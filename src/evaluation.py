@@ -15,7 +15,7 @@ Quant parallel: per-seed diff = a strategy's realised PnL per scenario; the
 paired t-test t-stat is its Sharpe-like significance over the scenario set.
 
 Pure of torch and Streamlit; reuses the deterministic seeding helpers from
-`tournament` and the `paired_t_test` from `rl_agent` (both torch-free).
+`tournament` and `paired_t_test` / `bootstrap_ci` from the torch-free `src.stats`.
 """
 
 import random
@@ -25,12 +25,12 @@ from typing import Callable, Dict, List, Tuple
 from src.simulation import simulate_session
 from src.game import DEFAULT_SMALL_BLIND, DEFAULT_BIG_BLIND
 from src.tournament import _wire_rng, _pair_seed
-from src.rl_agent import paired_t_test
 from src.player import BotPlayer
 from src.monte_carlo import MonteCarloEngine
-# bootstrap_ci lives in the dependency-light src.stats (no training-path imports)
-# so torch-free analyses can use it in isolation; re-exported here for back-compat.
-from src.stats import bootstrap_ci
+# bootstrap_ci and paired_t_test are pure stats living in the dependency-light
+# src.stats (no training-path imports), so this module stays torch-free; both are
+# re-exported here for back-compat with callers that import them from evaluation.
+from src.stats import bootstrap_ci, paired_t_test
 
 # A factory builds a FRESH player each call: factory(player_id, stack) -> Player.
 AgentFactory = Callable[[int, int], object]
