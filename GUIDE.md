@@ -122,7 +122,8 @@ python -m pip install -r requirements.txt
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
 OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 500 green
 
-# regenerate the committed measurement data under results/
+# regenerate the committed measurement data under results/ (trains the DQN, so
+# it needs torch: pip install "torch>=2.0" — commented out in requirements.txt)
 OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout + headline + pool
 OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
 OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json

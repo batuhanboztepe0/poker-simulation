@@ -26,6 +26,15 @@ PY="${PY:-python3}"
 PAR="${PAR:-8}"
 export OMP_NUM_THREADS=1
 
+# Preflight: every measurement cell trains the DQN, which requires torch
+# (commented out in requirements.txt). Fail early with a clear message rather
+# than letting each job die on an opaque ImportError.
+if ! "$PY" -c "import torch" 2>/dev/null; then
+  echo "ERROR: '$PY' cannot import torch. Install it first: pip install \"torch>=2.0\"" >&2
+  echo "       (the measurement scripts train the DQN; torch is required)" >&2
+  exit 1
+fi
+
 mkdir -p results/_parts
 rm -f results/_parts/*.jsonl results/_parts/*.json
 
