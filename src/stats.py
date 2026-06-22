@@ -235,3 +235,37 @@ def paired_t_test(diffs):
         import math
         p = float(math.erfc(abs(t) / math.sqrt(2)))
     return {"mean": mean, "n": n, "t": float(t), "p_value": p}
+
+
+def binomial_sign_test(diffs):
+    """
+    Exact two-sided binomial (sign) test of paired diffs against the null that a
+    win and a loss are equally likely (p = 0.5).
+
+    This is the CORRECT test for the headline bankroll matches: each match almost
+    always ends in a bust, so a per-seed diff is effectively ±2·stack and `wins`
+    is a Bernoulli count (see `rl_agent.evaluate_vs_baseline`). The paired
+    t-test treats those binary outcomes as continuous magnitudes and understates
+    p here (it reads the ±2000 spread as informative when only the sign is); the
+    exact binomial sign test makes no such assumption. Ties (diff == 0) are
+    dropped — the standard sign-test convention.
+
+    Computed exactly with `math.comb` (no scipy, no normal approximation), so the
+    p-value is reproducible bit-for-bit.
+
+    Returns {"wins", "losses", "ties", "n", "p_value"} (p two-sided exact;
+    None when there are no non-tied pairs).
+    """
+    from math import comb
+    wins = sum(1 for d in diffs if d > 0)
+    losses = sum(1 for d in diffs if d < 0)
+    ties = sum(1 for d in diffs if d == 0)
+    n = wins + losses
+    if n == 0:
+        return {"wins": wins, "losses": losses, "ties": ties, "n": 0,
+                "p_value": None}
+    k = max(wins, losses)
+    tail = sum(comb(n, i) for i in range(k, n + 1)) / (2 ** n)
+    p = min(1.0, 2.0 * tail)
+    return {"wins": wins, "losses": losses, "ties": ties, "n": n,
+            "p_value": float(p)}

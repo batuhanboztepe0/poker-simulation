@@ -67,9 +67,14 @@ class TestResultsSchema(unittest.TestCase):
                 {"step", "wins", "n_seeds", "mean_chip_diff", "per_seed_diffs"},
                 set(snap))
         self.assertLessEqual(
-            {"wins", "n_seeds", "mean_chip_diff", "p_value", "ci95"},
+            {"wins", "n_seeds", "mean_chip_diff", "p_value", "binom_p",
+             "binom", "ci95"},
             set(d["final"]))
         self.assertLessEqual({"lo", "hi", "mean"}, set(d["final"]["ci95"]))
+        # The exact binomial sign test is the headline's correct test (binary
+        # bust matches); guard its presence so a measure_* drift is caught here.
+        self.assertLessEqual({"wins", "losses", "n", "p_value"},
+                             set(d["final"]["binom"]))
 
     def test_variance_reduction_schema(self):
         path = os.path.join(RESULTS, "variance_reduction.json")

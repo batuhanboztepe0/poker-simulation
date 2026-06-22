@@ -1,8 +1,8 @@
 """
 measure_headline.py
 --------------------
-Train the headline fixed-vs-myopic RL agent (the 36/50 recipe, RL_HANDOFF §8)
-with DENSE held-out eval, and dump the learning-curve history to JSON for the
+Train the headline fixed-vs-myopic RL agent (fixed myopic opponent) with DENSE
+held-out eval, and dump the learning-curve history to JSON for the
 figure layer (scripts/make_figures.py).
 
 Each `SelfPlayTrainer.history` snapshot is
@@ -26,6 +26,7 @@ import torch
 
 from src.rl_agent import SelfPlayTrainer, evaluate_vs_baseline, paired_t_test
 from src.evaluation import bootstrap_ci
+from src.stats import binomial_sign_test
 
 
 def main():
@@ -36,7 +37,7 @@ def main():
     ap.add_argument("--eval-every", type=int, default=250)
     ap.add_argument("--eval-seeds", type=int, default=50)
     ap.add_argument("--eval-hands", type=int, default=150)
-    ap.add_argument("--final-seeds", type=int, default=50)
+    ap.add_argument("--final-seeds", type=int, default=200)
     ap.add_argument("--final-hands", type=int, default=200)
     ap.add_argument("--mc-sims", type=int, default=100)
     ap.add_argument("--out", default=None, help="write the history JSON here")
@@ -55,6 +56,7 @@ def main():
     final = evaluate_vs_baseline(tr.qnet, n_seeds=args.final_seeds,
                                  n_hands=args.final_hands, mc_sims=args.mc_sims)
     tt = paired_t_test(final["per_seed_diffs"])
+    binom = binomial_sign_test(final["per_seed_diffs"])
     out = {
         "torch_seed": args.torch_seed,
         "steps": args.steps,
@@ -66,13 +68,18 @@ def main():
             "n_seeds": final["n_seeds"],
             "n_hands": args.final_hands,
             "mean_chip_diff": final["mean_chip_diff"],
+            # paired_t treats the binary bust outcomes as continuous and
+            # understates p; binom is the exact sign test (the correct one).
             "p_value": tt["p_value"],
+            "binom_p": binom["p_value"],
+            "binom": binom,
             "ci95": bootstrap_ci(final["per_seed_diffs"]),
             "per_seed_diffs": final["per_seed_diffs"],
         },
     }
     print(f"HEADLINE wins {final['wins']}/{final['n_seeds']} "
-          f"mean {final['mean_chip_diff']:+.0f} p={tt['p_value']:.4f} "
+          f"mean {final['mean_chip_diff']:+.0f} "
+          f"paired_p={tt['p_value']:.4f} binom_p={binom['p_value']:.4f} "
           f"({len(tr.history)} curve points)")
     if args.out:
         with open(args.out, "w") as f:

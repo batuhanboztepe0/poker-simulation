@@ -27,6 +27,7 @@ from src.evaluation import (
     MatchupResult, RosterResult, bootstrap_ci,
 )
 from src.analytics import drawdown_curve, max_drawdown
+from src.stats import binomial_sign_test
 from app.charts import (
     pnl_distribution_figure, paired_diff_figure, learning_curve_figure,
     equity_drawdown_figure, pnl_box_figure, parameter_heatmap_figure,
@@ -69,6 +70,39 @@ class TestMatchup(unittest.TestCase):
                               n_hands=_N_HANDS, fast_mode=True)
         self.assertEqual(m1.diffs, m2.diffs)
         self.assertEqual(m1.net_a, m2.net_a)
+
+
+class TestBinomialSignTest(unittest.TestCase):
+    """Exact sign test for the headline bust-match win count (src.stats)."""
+
+    def test_headline_32_of_50_not_significant(self):
+        # 32 wins / 18 losses (the n=50 headline) -> exact two-sided p ~ 0.065,
+        # NOT significant at 0.05. The correct test for binary bust outcomes;
+        # paired_t on the +/-2000 spread understates p.
+        r = binomial_sign_test([2000] * 32 + [-2000] * 18)
+        self.assertEqual((r["wins"], r["losses"], r["ties"], r["n"]),
+                         (32, 18, 0, 50))
+        self.assertAlmostEqual(r["p_value"], 0.0649, places=3)
+        self.assertGreater(r["p_value"], 0.05)
+
+    def test_strong_majority_significant(self):
+        # The same 64% win rate at n=200 IS resolved (p < 0.001).
+        self.assertLess(binomial_sign_test([1] * 128 + [-1] * 72)["p_value"],
+                        0.001)
+
+    def test_only_sign_matters_and_symmetric(self):
+        # Magnitudes are irrelevant; win/loss swap is symmetric.
+        self.assertEqual(binomial_sign_test([5] * 12 + [-5] * 8)["p_value"],
+                         binomial_sign_test([1] * 12 + [-9999] * 8)["p_value"])
+        self.assertEqual(binomial_sign_test([1] * 12 + [-1] * 8)["p_value"],
+                         binomial_sign_test([1] * 8 + [-1] * 12)["p_value"])
+
+    def test_ties_dropped_and_degenerate(self):
+        r = binomial_sign_test([1, -1, 0, 0, 1, -1])
+        self.assertEqual((r["wins"], r["losses"], r["ties"], r["n"]),
+                         (2, 2, 2, 4))
+        self.assertEqual(r["p_value"], 1.0)            # even split -> p = 1
+        self.assertIsNone(binomial_sign_test([0, 0, 0])["p_value"])
 
 
 class TestVarianceReduction(unittest.TestCase):
