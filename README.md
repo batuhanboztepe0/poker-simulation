@@ -1,19 +1,32 @@
 # poker-simulation
 
-**Texas Hold'em as a market-microstructure sandbox: a seeded engine + self-play DQN + HMM tilt-detection, evaluated like a quant backtest (paired seeds, bootstrap CIs, variance reduction) — with marginal-but-measured edges reported honestly.**
+**A poker lab for the skills a trading desk screens for — finding edge under uncertainty, telling a real edge from noise, modelling adversarial counterparties, and sizing risk. Built on a seeded Hold'em engine + self-play RL + an HMM opponent model, and evaluated like a quant backtest: paired seeds, bootstrap CIs, variance reduction.**
 
 ![Are the edges real? Every headline edge with its 95% bootstrap CI.](figures/exec_summary.png)
 
 > *Every headline edge as a point with its 95% bootstrap CI. Three of four straddle zero — directionally positive but within per-seed noise. That is the result, measured and reported, not a failure to hide.*
 
-## The honest headline
+## What this demonstrates
 
-The agent is **directionally positive but its edges are marginal — mostly within per-seed
-noise.** That is not spun: it is measured, with confidence intervals, and reported as the
-finding. In a high-variance game with a single-developer DQN, marginal honestly-measured edges
-are the *correct* result — and the rigor + honesty is the deliverable. (For scale: even an
-80,000-hand human-AI match with a margin "huge" by professional standards was only at the edge
-of significance without variance reduction — Claudico 2015.)
+Prop desks and trading firms screen for a specific way of thinking — expected value under
+uncertainty, reading counterparties, and pricing risk — and some (e.g. SIG) literally use poker
+to train it. This repo turns that thinking into something measurable:
+
+- **Telling a real edge from noise.** Every claimed edge is shown with its 95% bootstrap CI (the
+  figure above): 3 of 4 straddle zero. Surfacing that — and *not* over-sizing a marginal edge —
+  is the trader-maturity signal, not a result to hide. (For scale: even an 80,000-hand human-AI
+  match with a margin "huge" by professional standards sat at the edge of significance without
+  variance reduction — Claudico 2015.)
+- **Reading exploitable counterparties.** On 777k real human hands, players measurably loosen and
+  turn more aggressive after a big loss — the poker analog of adverse selection — shown with a
+  shuffled-label placebo and within-player matching.
+- **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
+  agent head-to-head; reported plainly, because a learned policy that loses to Kelly is worth
+  knowing.
+
+The reinforcement-learning, opponent-modelling, and game-theory machinery underneath (self-play
+DQN, HMM tilt detection, exact Leduc-equilibrium analysis) doubles as evidence the ML stack was
+built end-to-end, not bolted on.
 
 ## What this is — and is not
 
