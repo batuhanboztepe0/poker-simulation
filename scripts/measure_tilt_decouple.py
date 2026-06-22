@@ -4,7 +4,7 @@ measure_tilt_decouple.py
 Phase B5: can the gain-only tilt-bonus and the PnL->tilt belief feed COEXIST once
 the bonus is decoupled from the learner's own realised PnL?
 
-Background (RL_HANDOFF thread (d) / footgun): stacking the PnL feed with the NAIVE
+Background (the documented footgun): stacking the PnL feed with the NAIVE
 tilt-bonus COLLAPSES the policy (zero-sum: a learner win == the opponent's loss
 spikes p_tilted on the same hand the bonus then amplifies -> it amplifies the
 learner's own wins, a reward distortion). PnL-feature and naive-bonus are

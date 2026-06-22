@@ -1,17 +1,17 @@
 """
 measure_pool.py
 ---------------
-Generate the data for the §10 "generalist" figure (the marquee POSITIVE result,
-RL_HANDOFF §10): train the belief-conditioned, opponent-mix RL generalist — the
-recipe that beats the whole {myopic, tilt, random} pool AND ranks #1 in the
-static (tight × aggression) personality sweep — then dump its cross-agent
-leaderboard + the fitness landscape + the RL agent's sweep rank to JSON for
-scripts/make_figures.py.
+Generate the data for the "generalist" pool figure: train the belief-conditioned,
+opponent-mix RL generalist — the recipe that tops the cross-agent leaderboard over
+the {myopic, tilt, random} pool but ranks #6/17 in the static (tight × aggression)
+personality sweep (best static cell t0.20/a0.50 at +434) and loses head-to-head to
+a closed-form Kelly agent (5-11) — then dump its cross-agent leaderboard + the
+fitness landscape + the RL agent's sweep rank to JSON for scripts/make_figures.py.
 
 Recipe mirrors `train_rl --mode fixed --belief --belief-sharp --opponent-mix
 --reward-mode chips`: the belief is a FEATURE (not equity); the engine
 auto-updates it via observe_action during eval. ~12k steps are needed (the
-generalist is uniformly underfit at ~1k, §10).
+generalist is uniformly underfit at ~1k).
 
 Run thread-pinned:
     OMP_NUM_THREADS=1 python -m scripts.measure_pool --steps 12000 --out results/pool.json

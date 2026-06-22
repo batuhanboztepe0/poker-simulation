@@ -5,7 +5,7 @@ Phase A5: does a concave ICM prize reward beat a risk-neutral chip reward at a
 MULTI-PRIZE 3+ player table?
 
 In a heads-up winner-take-all bust-match the loser just busts, so risk-aversion
-has nothing to exploit (RL_HANDOFF §9). With a concave prize ladder (e.g.
+has nothing to exploit. With a concave prize ladder (e.g.
 50/30/20) survival near the money is worth more than the chips suggest, so an
 agent trained on ICM prize-equity-to-go should out-EARN (in PRIZE) a chip-EV
 agent that over-gambles — even if they win similar chips.

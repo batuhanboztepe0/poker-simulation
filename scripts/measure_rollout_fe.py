@@ -5,7 +5,7 @@ Phase B1: does WARMING the rollout's opponent belief rescue fold-equity?
 
 The depth-1 rollout can value a bluff via a FoldEquityModel, but with a COLD /
 GTO-neutral belief it over-bluffs foes that don't fold at b/(pot+b) and loses
-badly (RL_HANDOFF §10). B1 shares the bot's engine-updated per-opponent belief
+badly. B1 shares the bot's engine-updated per-opponent belief
 (A4's belief_factory) into the policy AND its fold-equity model so p_fold
 becomes opponent-specific once warm. This script measures three rollout configs
 -- no fold-equity, cold fold-equity, warm fold-equity (B1) -- heads-up vs a
