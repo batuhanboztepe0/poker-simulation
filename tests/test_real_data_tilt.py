@@ -18,6 +18,7 @@ import os
 import pytest
 
 from src.real_data_tilt import (build_sequences, phenomenon_test,
+                                within_player_loss_vs_win,
                                 detector_separation, fit_regime_hmm)
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "sample.phhs")
@@ -121,6 +122,56 @@ def test_phenomenon_null_when_flat():
     res = phenomenon_test(flat, loss_bb=10.0)
     assert abs(res["aggr"]["mean"]) < 1e-9
     assert not (res["aggr"]["lo"] > 0)
+
+
+# --------------------------------------------------------------------------
+# Test A' — symmetric within-player control (post-loss vs post-WIN)
+# --------------------------------------------------------------------------
+
+def _swing_session(player, after_loss_rate, after_win_rate, n=24, n_dec=10):
+    """Even hands are big-swing events (alternating −20bb / +20bb); the odd hand
+    right after each is the 'response', aggressive at `after_loss_rate` when the
+    swing was a loss and `after_win_rate` when it was a win. Response hands net 0
+    so they are not themselves classified as swings -> per player 6 post-loss and
+    6 post-win response hands."""
+    sess = []
+    for i in range(n):
+        if i % 2 == 0:
+            swing_loss = ((i // 2) % 2 == 0)
+            net, n_a = (-20.0 if swing_loss else 20.0), round(0.3 * n_dec)
+        else:
+            prev_loss = (((i - 1) // 2) % 2 == 0)
+            net = 0.0
+            n_a = round((after_loss_rate if prev_loss else after_win_rate) * n_dec)
+        sess.append(_obs(player, i, n_a, n_dec, vpip=(n_a > 0),
+                         net_bb=net, hand=i))
+    return sess
+
+
+def test_within_player_loss_vs_win_detects_asymmetry():
+    seqs = [_swing_session(f"p{k}", after_loss_rate=0.7 + 0.02 * k,
+                           after_win_rate=0.3) for k in range(8)]
+    r = within_player_loss_vs_win(seqs, swing_bb=10.0, min_per_group=5)
+    assert r["n_players"] == 8
+    assert r["n_loss"] >= 40 and r["n_win"] >= 40
+    assert r["aggr"]["lo"] > 0               # more aggressive after a loss than an equal win
+    assert r["aggr_cohen_d"] is not None and r["aggr_cohen_d"] > 0
+
+    # Placebo: permuting the loss/win labels within each player kills the effect.
+    p = within_player_loss_vs_win(seqs, swing_bb=10.0, min_per_group=5,
+                                  placebo_seed=7)
+    assert not (p["aggr"]["lo"] > 0)
+
+
+def test_within_player_loss_vs_win_null_when_symmetric():
+    # Identical response after a loss and after an equal win -> no asymmetry,
+    # even though both differ from the player's ordinary baseline (arousal, not
+    # loss-aversion).
+    seqs = [_swing_session(f"q{k}", after_loss_rate=0.5, after_win_rate=0.5)
+            for k in range(8)]
+    r = within_player_loss_vs_win(seqs, swing_bb=10.0, min_per_group=5)
+    assert abs(r["aggr"]["mean"]) < 1e-9
+    assert not (r["aggr"]["lo"] > 0)
 
 
 # --------------------------------------------------------------------------

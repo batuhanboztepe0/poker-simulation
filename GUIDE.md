@@ -135,6 +135,21 @@ project's two real-data headline findings, and the behavioral pattern the
 decision-science framing casts as the poker analog of adverse selection (the
 markets parallel is motivation, untested on real order flow).
 
+### 7b. The confound-controlled version (loss vs an equal win)
+
+![loss-aversion asymmetry](figures/tilt_lossvswin.png)
+
+**What you're looking at:** the post-loss-vs-baseline shift could be confounded —
+looser players both lose more and play looser. So compare each player's hand after
+a ≥10bb **loss** to their hand after an **equal-size ≥10bb win**, matching player,
+big-pot arousal, and event size; only the swing *sign* differs.
+
+**Takeaway:** after a loss players are **+3.6pp more aggressive and +2.9pp looser**
+than after an equal win (95% CIs exclude 0, Cohen d=0.25/0.14, n=685 matched
+players; shuffled-label placebo ~0). It is *larger* than the vs-baseline effect
+because players also tighten after a win — a clean **prospect-theory loss-aversion
+asymmetry**, not generic big-pot arousal.
+
 ---
 
 ## How to reproduce (everything is seeded)

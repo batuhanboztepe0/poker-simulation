@@ -17,9 +17,10 @@ to train it. This repo turns that thinking into something measurable:
   is the trader-maturity signal, not a result to hide. (For scale: even an 80,000-hand human-AI
   match with a margin "huge" by professional standards sat at the edge of significance without
   variance reduction — Claudico 2015.)
-- **Reading exploitable counterparties.** On 777k real human hands, players measurably loosen and
-  turn more aggressive after a big loss — the poker analog of adverse selection — shown with a
-  shuffled-label placebo and per-player baselines.
+- **Reading exploitable counterparties.** On 777k real human hands, players loosen and turn more
+  aggressive after a big loss — the poker analog of adverse selection. A within-player matched
+  control (the hand after a loss vs the hand after an *equal-size* win, same player) isolates a
+  clean loss-aversion asymmetry (+3.6pp aggression, +2.9pp VPIP; shuffled-label placebo ~0).
 - **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
   agent head-to-head; reported plainly, because a learned policy that loses to Kelly is worth
   knowing.
@@ -48,6 +49,7 @@ built end-to-end, not bolted on.
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
 | Leduc exploitability (exact NashConv) | time-average 0.433 → **0.0014**; greedy last-iterate ~**0.355** | — | Exact: averaging → Nash, greedy does not converge |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
+| Loss-aversion asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes — clean within-player asymmetry |
 | ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative — n=6, suggestive not robust |
 
 *Every number traces to committed data under [`results/`](results/) and a figure under

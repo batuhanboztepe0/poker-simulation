@@ -123,13 +123,21 @@ class TestResultsSchema(unittest.TestCase):
             d = json.load(f)
         self.assertLessEqual(
             {"source", "config", "n_rows", "n_sequences", "phenomenon",
-             "detector", "regime"}, set(d))
+             "within_player", "detector", "regime"}, set(d))
         # Phenomenon: each of real/placebo carries vpip + aggr CIs and n_players.
         for arm in ("real", "placebo"):
             ph = d["phenomenon"][arm]
             self.assertIn("n_players", ph)
             for metric in ("vpip", "aggr"):
                 self.assertLessEqual({"mean", "lo", "hi"}, set(ph[metric]))
+        # Symmetric within-player control (post-loss vs post-WIN): CIs, the
+        # matched-player count, and the Cohen's d effect size.
+        for arm in ("real", "placebo"):
+            wp = d["within_player"][arm]
+            self.assertLessEqual({"n_players", "n_loss", "n_win"}, set(wp))
+            for metric in ("vpip", "aggr"):
+                self.assertLessEqual({"mean", "lo", "hi"}, set(wp[metric]))
+            self.assertIn("aggr_cohen_d", wp)
         # Detector: each arm carries a separation CI (the figure reads its mean).
         for arm in ("real", "placebo"):
             self.assertLessEqual(

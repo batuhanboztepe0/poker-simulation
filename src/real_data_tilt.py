@@ -297,6 +297,104 @@ def _per_player_entries(sequences, loss_bb):
     return by_player
 
 
+def _cohen_d(diffs):
+    """Paired Cohen's d (mean / SD of the per-player paired differences).
+
+    None if < 2 values or zero variance. This is the standardised effect size of
+    the loss-vs-win asymmetry; |d| ~ 0.2 small, 0.5 medium, 0.8 large.
+    """
+    n = len(diffs)
+    if n < 2:
+        return None
+    m = sum(diffs) / n
+    var = sum((d - m) ** 2 for d in diffs) / (n - 1)
+    if var <= 0:
+        return None
+    return m / (var ** 0.5)
+
+
+def _per_player_swing_entries(sequences):
+    """player -> list of (aggr_rate, vpip01, prev_net_bb) for each hand that
+    follows another hand in a session (the previous hand's net result is kept so
+    the caller can classify the swing sign)."""
+    by_player = {}
+    for sess in sequences:
+        for prev, cur in zip(sess, sess[1:]):
+            rate = _aggr_rate(cur)
+            if rate is None:
+                continue
+            by_player.setdefault(cur["player"], []).append(
+                (rate, 1.0 if cur["vpip"] else 0.0, prev["net_bb"]))
+    return by_player
+
+
+def within_player_loss_vs_win(sequences, swing_bb=10.0, min_per_group=5,
+                              placebo_seed=None):
+    """
+    The SYMMETRIC within-player control for the post-loss tilt phenomenon.
+
+    `phenomenon_test` compares a player's post-(big-)loss hands against ALL their
+    other hands — a baseline dominated by ordinary, no-recent-swing hands. So that
+    contrast can reflect *any* big-pot arousal (not loss specifically), and it
+    does not fully close the player-type confound (looser players both lose more
+    and play looser to begin with).
+
+    This test compares, WITHIN each player, the hand after a >= `swing_bb` LOSS
+    against the hand after a >= `swing_bb` WIN. Both groups are "the hand after an
+    equal-magnitude decisive pot for the same player", so player identity, big-pot
+    arousal, and event magnitude are all matched — the only thing that differs is
+    the SIGN of the swing. A positive difference (more aggressive / looser after a
+    loss than after an equal win) is the prospect-theory loss-aversion asymmetry;
+    a null says the post-loss shift is big-pot arousal, not loss-specific.
+
+    Per player we require >= `min_per_group` hands in BOTH the post-loss and
+    post-win groups, average each metric per group, and bootstrap the per-player
+    paired difference (post-loss − post-win). Cohen's d (paired) is the effect
+    size. `placebo_seed` permutes the loss/win labels within each player among the
+    swing hands (group sizes preserved) — the negative control, which must
+    collapse to ~0.
+
+    Returns {aggr, vpip, aggr_cohen_d, vpip_cohen_d, n_players, n_loss, n_win,
+             swing_bb, placebo}.
+    """
+    import random
+    rng = random.Random(placebo_seed) if placebo_seed is not None else None
+    agg_diffs, vpip_diffs = [], []
+    n_loss = n_win = 0
+    for entries in _per_player_swing_entries(sequences).values():
+        labels = [(-1 if prev <= -swing_bb else 1 if prev >= swing_bb else 0)
+                  for (_r, _v, prev) in entries]
+        if rng is not None:
+            # Permute only the loss/win labels among the swing hands (the
+            # 'neither' hands stay out), so group sizes are preserved.
+            idx = [i for i, l in enumerate(labels) if l != 0]
+            shuffled = [labels[i] for i in idx]
+            rng.shuffle(shuffled)
+            for i, l in zip(idx, shuffled):
+                labels[i] = l
+        al = [entries[i][0] for i, l in enumerate(labels) if l == -1]
+        aw = [entries[i][0] for i, l in enumerate(labels) if l == 1]
+        vl = [entries[i][1] for i, l in enumerate(labels) if l == -1]
+        vw = [entries[i][1] for i, l in enumerate(labels) if l == 1]
+        if len(al) < min_per_group or len(aw) < min_per_group:
+            continue
+        agg_diffs.append(sum(al) / len(al) - sum(aw) / len(aw))
+        vpip_diffs.append(sum(vl) / len(vl) - sum(vw) / len(vw))
+        n_loss += len(al)
+        n_win += len(aw)
+    return {
+        "aggr": bootstrap_ci(agg_diffs),
+        "vpip": bootstrap_ci(vpip_diffs),
+        "aggr_cohen_d": _cohen_d(agg_diffs),
+        "vpip_cohen_d": _cohen_d(vpip_diffs),
+        "n_players": len(agg_diffs),
+        "n_loss": n_loss,
+        "n_win": n_win,
+        "swing_bb": swing_bb,
+        "placebo": placebo_seed is not None,
+    }
+
+
 # --------------------------------------------------------------------------
 # 4. Test B — the project's HMM detector, emission-only
 # --------------------------------------------------------------------------

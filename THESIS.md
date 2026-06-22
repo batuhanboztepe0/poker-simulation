@@ -63,8 +63,9 @@ uncertainty, bankroll growth, adverse-selection detection), not as alpha.
 
 Two results here are genuinely novel and statistically clean: (1) an **exact**
 demonstration on Leduc Hold'em of *why* DQN-style self-play cannot reach Nash
-while averaging methods can (§4, §6), and (2) **post-loss tilt validated on 777k
-real human hand-rows** (§6). The self-play RL agent is a resolved-but-modest edge
+while averaging methods can (§4, §6), and (2) a **within-player loss-aversion
+asymmetry** on 777k real human hand-rows — players are more aggressive after a
+loss than after an equal-size win (§6). The self-play RL agent is a resolved-but-modest edge
 over a myopic baseline and, above all, an **end-to-end engineering**
 demonstration — it loses head-to-head to a zero-parameter Kelly bot.
 
@@ -151,7 +152,16 @@ signal statistical maturity, references.md §5.)*
   HandHQ scrape, used for the **opponent model ONLY, never the policy** — human
   logs in the policy would make the agent exploitable). After a ≥10bb loss,
   873 players play looser and more aggressively: **VPIP +2.8pp and aggression
-  +1.6pp, both 95% CIs exclude 0 — real but small.** The project's emission-only
+  +1.6pp, both 95% CIs exclude 0 — real but small.** A **symmetric within-player
+  control** ([`figures/tilt_lossvswin.png`](figures/tilt_lossvswin.png)) closes the
+  player-type confound (looser players both lose more and play looser): comparing
+  each player's hand after a ≥10bb LOSS to their hand after an **equal-size ≥10bb
+  WIN** — matching player, big-pot arousal, and event magnitude, so only the swing
+  *sign* differs — the loss side is **+3.6pp more aggressive and +2.9pp looser**
+  (95% CIs exclude 0; Cohen d=0.25 / 0.14; n=685 matched players; shuffled-label
+  placebo ~0). That is *larger* than the vs-baseline shift, because players also
+  tighten after a win — a clean **prospect-theory loss-aversion asymmetry**, not
+  generic big-pot arousal. The project's emission-only
   forward-filter HMM detector (Test B) registers a small but resolved shift
   (+0.011 in P(tilted), CI excludes 0; its emission means μ_normal=0.11,
   μ_tilted=0.64 are population statistics fixed before the separation is measured,

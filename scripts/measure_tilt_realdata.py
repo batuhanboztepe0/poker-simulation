@@ -28,7 +28,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from src.real_data_tilt import (parse_phhs, build_sequences, phenomenon_test,
-                                detector_separation, fit_regime_hmm, _aggr_rate)
+                                within_player_loss_vs_win, detector_separation,
+                                fit_regime_hmm, _aggr_rate)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data", "phh")
@@ -108,6 +109,14 @@ def main():
             "placebo": phenomenon_test(sequences, loss_bb=lb,
                                        placebo_seed=PLACEBO_SEED),
         },
+        # The SYMMETRIC within-player control: post-(big-)loss vs post-(big-)WIN
+        # of the SAME magnitude, so player type / big-pot arousal / event size
+        # are matched and only the swing SIGN differs (the loss-aversion test).
+        "within_player": {
+            "real": within_player_loss_vs_win(sequences, swing_bb=lb),
+            "placebo": within_player_loss_vs_win(sequences, swing_bb=lb,
+                                                 placebo_seed=PLACEBO_SEED),
+        },
         "detector": {
             "real": detector_separation(sequences, loss_bb=lb,
                                         mu_normal=mu_normal, mu_tilted=mu_tilted),
@@ -130,6 +139,14 @@ def main():
         r, p = ph["real"][k], ph["placebo"][k]
         print(f"  {k}: real {r['mean']:+.4f} [{r['lo']:+.4f},{r['hi']:+.4f}]   "
               f"placebo {p['mean']:+.4f} [{p['lo']:+.4f},{p['hi']:+.4f}]")
+    wp = out["within_player"]
+    print(f"WITHIN-PLAYER loss vs win (swing>={lb:.0f}bb, "
+          f"{wp['real']['n_players']} matched players):")
+    for k in ("aggr", "vpip"):
+        r, p, dd = wp["real"][k], wp["placebo"][k], wp["real"][f"{k}_cohen_d"]
+        print(f"  {k}: real {r['mean']:+.4f} [{r['lo']:+.4f},{r['hi']:+.4f}] "
+              f"d={dd:.3f}   placebo {p['mean']:+.4f} "
+              f"[{p['lo']:+.4f},{p['hi']:+.4f}]")
     r, p = det["real"]["separation"], det["placebo"]["separation"]
     print(f"DETECTOR P(tilted) separation: real {r['mean']:+.4f} "
           f"[{r['lo']:+.4f},{r['hi']:+.4f}]   placebo {p['mean']:+.4f} "

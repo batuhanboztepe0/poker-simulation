@@ -556,6 +556,49 @@ def fig_tilt_realdata(index):
                       "tilt_realdata", cap, height=480, subcaption=sub)))
 
 
+def fig_tilt_lossvswin(index):
+    d = _load_json("tilt_realdata.json")
+    if not d or "within_player" not in d:
+        return
+    ph = d["phenomenon"]["real"]
+    wr, wpl = d["within_player"]["real"], d["within_player"]["placebo"]
+    lb = int(wr.get("swing_bb", d["config"]["loss_bb"]))
+    npl = wr["n_players"]
+
+    def pp(ci):
+        return {"mean": ci["mean"] * 100, "lo": ci["lo"] * 100, "hi": ci["hi"] * 100}
+
+    rows = []
+    for metric, name in (("aggr", "Aggression"), ("vpip", "VPIP")):
+        rows.append({"label": f"{name}: post-loss vs baseline (all other hands)",
+                     **pp(ph[metric])})
+        rows.append({"label": f"{name}: post-loss vs post-win (matched, n={npl})",
+                     **pp(wr[metric])})
+        rows.append({"label": f"{name}: post-loss vs post-win (shuffled placebo)",
+                     **pp(wpl[metric])})
+    da, dv = wr["aggr_cohen_d"], wr["vpip_cohen_d"]
+    cap = (f"Symmetric within-player control (the confound-controlled tilt test). "
+           f"The post-loss-vs-baseline shift can be confounded — looser players "
+           f"both lose more and play looser — so compare each player's hand after "
+           f"a ≥{lb}bb LOSS against their hand after an equal ≥{lb}bb WIN, matching "
+           f"player, big-pot arousal, and event size so only the swing SIGN "
+           f"differs. After a loss players are "
+           f"{wr['aggr']['mean']*100:+.1f}pp more aggressive and "
+           f"{wr['vpip']['mean']*100:+.1f}pp looser than after an equal win "
+           f"(95% CIs exclude 0; Cohen d={da:.2f}/{dv:.2f}; n={npl} matched "
+           f"players); the shuffled-label placebo collapses to ~0. The matched "
+           f"effect is LARGER than post-loss-vs-baseline because players also "
+           f"tighten after a win — a clean prospect-theory loss-aversion "
+           f"asymmetry, not generic big-pot arousal.")
+    index.append(("tilt_lossvswin.png", "§real-data",
+                  _save(forest_plot_figure(
+                      rows, title="Loss-aversion asymmetry: post-loss vs an "
+                      "equal-size post-win (within player)",
+                      xaxis_title="Shift in the next hand "
+                                  "(percentage points; 95% bootstrap CI)"),
+                      "tilt_lossvswin", cap, height=480)))
+
+
 def fig_rollout_fe(index):
     rows = _load_jsonl("rollout_fe.jsonl")
     if not rows:
@@ -680,7 +723,7 @@ def fig_plain_tilt(index):
 
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
-            fig_rollout_fe,
+            fig_tilt_lossvswin, fig_rollout_fe,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -692,6 +735,7 @@ DATA_DEPS = {
     "fig_icm": "results/icm.jsonl",
     "fig_block_b": "results/{action_grid,bust_clip,selfplay,tilt_decouple}.jsonl",
     "fig_tilt_realdata": "results/tilt_realdata.json",
+    "fig_tilt_lossvswin": "results/tilt_realdata.json",
     "fig_rollout_fe": "results/rollout_fe.jsonl",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
