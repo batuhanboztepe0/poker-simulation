@@ -1,28 +1,38 @@
-# Poker as a Market-Microstructure Sandbox — thesis, method & honest results
+# Poker as a Decision-Science Sandbox — finding edge under uncertainty, measured honestly
 
-*Project narrative for a quant-research portfolio. Bibliography:
+*Project narrative for a trader / quant-research portfolio. Bibliography:
 [references.md](references.md). Figures: [figures/](figures/) (start with
-[`figures/exec_summary.png`](figures/exec_summary.png)). This document is the
-narrative; the repository `README.md` is intentionally left for a human to write
-last.*
+[`figures/exec_summary.png`](figures/exec_summary.png)). Reading order:
+[README.md](README.md) (entry) → [GUIDE.md](GUIDE.md) (picture-first tour) → this
+document (full narrative) → [notebooks/](notebooks/) (reproduce from committed
+data).*
 
 ---
 
-## 1. Thesis — what poker and market-making share (and what they don't)
+## 1. Thesis — poker as decision-making under uncertainty
 
-Both poker and market-making extract edge from **predictable counterparty
-behaviour against a background of noise**: *predictable deviations are
-exploitable; pure randomness is not.*
+Poker and trading reward the same core skill: **finding and sizing edge under
+uncertainty** — expected value against a noisy, adversarial background, where
+*predictable deviations are exploitable and pure randomness is not.* This is a
+decision-science claim, not a marketing metaphor.
 
-The more defensible version of this is **not** a marketing analogy — it **draws
-on** the informed-vs-uninformed-trader distinction of **Kyle (1985)** and the
+**This is how a top-tier market maker actually trains.** SIG uses poker as formal
+trader pedagogy — a mandatory ~100-hour requirement, with *The Mathematics of
+Poker* authors (Bill Chen, Jerrod Ankenman) on staff in quant roles — to teach
+"the same thought process as evaluating the expected value of a trade and pricing
+risk" (references.md §4, ✓ confirmed 3-0). The poker→quant career path is
+documented, not asserted — the strongest, *non-metaphorical* version of the
+poker↔trading link.
+
+**The market-microstructure analogy (motivation, not alpha).** At the
+decision-theory level the parallel sharpens into market microstructure: an
+exploitable, predictable opponent is the analog of *informed / toxic flow* you can
+read; a uniformly-random opponent is *noise flow* you cannot. It **draws on** the
+informed-vs-uninformed-trader distinction of **Kyle (1985)** and the
 adverse-selection model of **Glosten & Milgrom (1985)** (references.md §3) as a
-*structural parallel*, offered as a hypothesis and not yet tested on real
-order-flow data (see §6). An
-exploitable, predictable opponent is the analog of *informed / toxic flow* you
-can read; a uniformly-random opponent is *noise flow* you cannot. Opponent
-modelling ↔ detecting adverse selection; Kelly / log-bankroll growth is the
-shared capital-allocation objective in both domains.
+*structural parallel* — opponent modelling ↔ detecting adverse selection; Kelly /
+log-bankroll growth is the shared capital-allocation objective. It is offered as
+**motivation**, a hypothesis not yet tested on real order-flow data (§6).
 
 **Honest boundary of the claim.** I do *not* claim a validated tradable signal.
 The popular "toxic-flow metric" mapping (VPIN) does **not** survive scrutiny: the
@@ -30,12 +40,6 @@ specific claims that VPIN is parameter-free and an empirically validated
 volatility predictor were *refuted* under adversarial verification
 (references.md §3). The analogy holds at the **decision-theory** level (EV under
 uncertainty, bankroll growth, adverse-selection detection), not as alpha.
-
-**Institutional grounding.** This is how a top-tier market maker actually
-trains. SIG uses poker as formal trader pedagogy — a mandatory ~100-hour
-requirement, with *The Mathematics of Poker* authors on staff — to teach
-"the same thought process as evaluating the expected value of a trade and
-pricing risk" (references.md §4).
 
 ## 2. What was built (method)
 
@@ -55,10 +59,18 @@ pricing risk" (references.md §4).
   audit** of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
-## 3. Honest results — the headline is the honesty
+## 3. Honest results — what is genuinely new, and the honesty around it
+
+Two results here are genuinely novel and statistically clean: (1) an **exact**
+demonstration on Leduc Hold'em of *why* DQN-style self-play cannot reach Nash
+while averaging methods can (§4, §6), and (2) **post-loss tilt validated on 777k
+real human hand-rows** (§6). The self-play RL agent is a resolved-but-modest edge
+over a myopic baseline and, above all, an **end-to-end engineering**
+demonstration — it loses head-to-head to a zero-parameter Kelly bot.
 
 The lead figure, [`figures/exec_summary.png`](figures/exec_summary.png), shows
-every claimed edge as a point with its 95% bootstrap CI:
+every claimed edge as a point with its 95% bootstrap CI — **2 of 4 resolve** (CI
+excludes 0), 2 are within per-seed noise:
 
 - **RL beats the myopic baseline** (+500 chips/match, 125/200 matches; exact
   binomial sign test **p=0.0005**, 95% bootstrap CI **[+240, +760]** — excludes
@@ -77,7 +89,7 @@ every claimed edge as a point with its 95% bootstrap CI:
   in the pool.
 - A **risk-averse ICM/Kelly reward shows no robust edge** over a risk-neutral
   chip reward heads-up — it is *directionally negative* on the mild prize ladder
-  (mean −146 chips; the 6-seed bootstrap CI excludes 0, but at n=6 that is
+  (mean −146 chips; 95% bootstrap CI [−249, −51] excludes 0, but at n=6 that is
   suggestive, not robust).
 - A rigorous **Block-B sweep** (finer action grid, un-truncated bust clip,
   tilt-bonus decoupling, snapshot self-play, warmed fold-equity) found every
@@ -128,9 +140,10 @@ signal statistical maturity, references.md §5.)*
 - **An exact exploitability metric** ([`src/leduc_eval.py`](src/leduc_eval.py))
   for any Leduc strategy, and the verifiable demonstration
   ([`figures/exploitability.png`](figures/exploitability.png)) that the
-  time-AVERAGE strategy converges to the Nash equilibrium while the greedy
-  LAST-ITERATE — the regime DQN self-play plays in — stays exploitable. This is
-  the exact reason DQN self-play does not reach Nash and averaging methods do.
+  time-AVERAGE strategy's exploitability falls from **0.433 to 0.0014**
+  (effectively Nash) while the greedy LAST-ITERATE — the regime DQN self-play
+  plays in — plateaus near **0.355** and does not converge. This is the exact
+  reason DQN self-play does not reach Nash and averaging methods do.
 - **Real-data tilt validation** ([`src/real_data_tilt.py`](src/real_data_tilt.py),
   [`figures/tilt_realdata.png`](figures/tilt_realdata.png)) — the
   exploit-predictable-deviations thesis tested on **777k hand-rows** of 2009
@@ -162,9 +175,10 @@ signal statistical maturity, references.md §5.)*
 - **A neural NFSP learner on NLHE** — carry the averaging that reaches Nash on
   Leduc to the large game via a neural average-policy network, evaluated with the
   exploitability metric now in place. (DQN here stays a deliberate baseline.)
-- **Thesis** — keep the markets connection on **Kyle / Glosten-Milgrom** (drop
-  VPIN); if pursued, *test* the exploit-predictable-deviations idea on real
-  order-flow data rather than asserting the analogy.
+- **Test the markets analogy on real data** — the §1 connection stays a
+  *motivation* on Kyle / Glosten-Milgrom (not VPIN); the genuine next step is to
+  *test* the exploit-predictable-deviations idea on real order-flow data rather
+  than assert it.
 
 ---
 

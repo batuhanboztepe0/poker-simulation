@@ -46,7 +46,7 @@ built end-to-end, not bolted on.
 |---|---|---|---|
 | RL vs myopic baseline (200 seeds × 200 hands) | **+500** chips/match | [+240, +760], exact binomial p=0.0005 | Yes — CI excludes 0 (still loses H2H to Kelly) |
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
-| Leduc exploitability (exact NashConv) | time-average 0.43 → **0.0014**; greedy last-iterate ~**0.35** | — | Exact: averaging → Nash, greedy does not converge |
+| Leduc exploitability (exact NashConv) | time-average 0.433 → **0.0014**; greedy last-iterate ~**0.355** | — | Exact: averaging → Nash, greedy does not converge |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
 | ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative — n=6, suggestive not robust |
 
@@ -56,7 +56,7 @@ built end-to-end, not bolted on.
 ## Start here
 
 - **[GUIDE.md](GUIDE.md)** — a five-minute, picture-first tour of every result.
-- **[THESIS.md](THESIS.md)** — the full narrative, market-microstructure thesis, SOTA placement, and prioritized next steps (full AIVAT, an NFSP learner).
+- **[THESIS.md](THESIS.md)** — the full narrative, decision-science framing, SOTA placement, and prioritized next steps (full AIVAT, an NFSP learner).
 - **[references.md](references.md)** — every external claim's source, with honest verification flags (refuted claims kept visible on purpose).
 - **[notebooks/](notebooks/)** — three executed notebooks that reproduce the headline claims from committed data, no retraining.
 - **[figures/README.md](figures/README.md)** — the complete figure index.

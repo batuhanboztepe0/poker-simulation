@@ -12,15 +12,17 @@ see [references.md](references.md); for the raw figure index see
 - **What it is:** a seeded Texas Hold'em engine + a self-play reinforcement-learning
   agent (DQN) + an HMM "tilt" opponent model, evaluated like a **quant backtest**
   (paired seeds, t-tests, bootstrap CIs, variance reduction).
-- **The thesis:** poker ↔ market microstructure — *predictable deviations are
-  exploitable, pure randomness is not* (the informed-vs-noise-trader distinction
-  of Kyle 1985 / Glosten-Milgrom 1985; SIG literally trains traders on poker) — a
-  decision-theory parallel, **untested on real order-flow data** (see limitations).
-- **The honest headline:** the agent is **directionally positive but the edges
-  are marginal — mostly within per-seed noise.** That is not hidden; it is
-  *measured*, with confidence intervals, and reported as the result. In a
-  high-variance game with a single-developer DQN, that is the *correct* finding,
-  and the rigor + honesty is the point.
+- **The thesis:** poker trains the trader's core skill — *finding edge under
+  uncertainty*, where predictable deviations are exploitable and pure randomness
+  is not. SIG literally puts traders through ~100 hours of poker to teach it
+  (references.md §4); the market-microstructure framing (Kyle 1985 /
+  Glosten-Milgrom 1985) is **motivation**, untested on real order-flow data.
+- **The honest headline:** the two genuinely novel results are an **exact** proof
+  on Leduc of why DQN self-play can't reach Nash (figure 4) and **post-loss tilt
+  validated on 777k real human hands** (figure 7). The RL agent's edge over a
+  myopic baseline **resolves** at 200 paired seeds (binomial p=0.0005) but is
+  modest — a 0-parameter Kelly bot beats it. Every edge is reported with its CI;
+  the rigor + honesty is the point.
 
 > If you read one figure, read **[`figures/exec_summary.png`](figures/exec_summary.png)** below.
 
@@ -37,9 +39,10 @@ confidence interval. Gray = the interval straddles 0 (the effect is within
 per-seed noise); green/red = it excludes 0.
 
 **Takeaway:** the agent beats the myopic baseline (+500 chips, exact binomial
-p=0.0005, CI excludes 0) and tops the opponent pool (+209), but **2 of 4
-intervals still straddle 0** — and the ICM reward is directionally *negative*
-(n=6). One resolved edge, the rest marginal: the whole project in one chart.
+p=0.0005, CI excludes 0) and tops the opponent pool (+209). Of the four edges
+here, **2 resolve** (this baseline edge; and the ICM reward, which resolves
+*negative* at n=6) and **2 stay within per-seed noise** — one resolved win plus
+honest nulls: the whole project in one chart.
 
 ### 2. The agent does learn
 
@@ -82,7 +85,7 @@ agent was trained for. Another honest, contextualized number.
 **What you're looking at:** exact exploitability (NashConv; 0 = exact Nash
 equilibrium) on Leduc Hold'em, log-log, over training.
 
-**Takeaway:** the **time-average strategy converges to Nash** (0.43 → 0.0014),
+**Takeaway:** the **time-average strategy converges to Nash** (0.433 → 0.0014),
 but the **greedy last-iterate — the regime a DQN self-play agent plays in — stays
 exploitable (~0.35) and never converges.** This is the *exact, verifiable* reason
 DQN self-play does not reach equilibrium and averaging methods (CFR; NFSP at
@@ -126,9 +129,11 @@ shuffled-label placebo.
 and more aggressively (+1.6pp)** — both 95% CIs exclude 0, while the shuffled
 placebo collapses to ~0, so it is the loss, not chance. The project's HMM tilt
 detector registers a small but resolved P(tilted) shift, and a separate
-Baum-Welch regime HMM corroborates it out-of-sample. Honestly small (1–3pp) —
-real but marginal, the project's signature — and the real-world analog of the
-adverse-selection signal at the heart of the markets thesis.
+Baum-Welch regime HMM corroborates it out-of-sample. Honestly small (1–3pp) in
+absolute size but statistically resolved (both CIs exclude 0) — one of the
+project's two real-data headline findings, and the behavioral pattern the
+decision-science framing casts as the poker analog of adverse selection (the
+markets parallel is motivation, untested on real order flow).
 
 ---
 
@@ -139,7 +144,7 @@ adverse-selection signal at the heart of the markets thesis.
 python -m pip install -r requirements.txt
 
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
-OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 500 green
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 504 green
 
 # regenerate the committed measurement data under results/ (trains the DQN, so
 # it needs torch: pip install "torch>=2.0" — commented out in requirements.txt)
@@ -159,8 +164,10 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
 
 ## What's honest about this (limitations, stated up front)
 
-- The agent's edges are **marginal / within noise** (figure 1); this is measured,
-  not spun.
+- The RL agent's edge over the baseline **resolves** at 200 seeds but is
+  **modest** (a 0-parameter Kelly bot beats it head-to-head); the pool edge stays
+  within per-seed noise and the ICM reward resolves *negative* (CI excludes 0 but
+  n=6, suggestive) — all measured, not spun.
 - **DQN is a deliberate baseline, not state of the art** — CFR-family methods
   (DeepStack/Libratus/Pluribus/ReBeL) are 2–3 generations ahead (figure 4 shows
   exactly why).
