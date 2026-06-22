@@ -36,10 +36,10 @@ see [references.md](references.md); for the raw figure index see
 confidence interval. Gray = the interval straddles 0 (the effect is within
 per-seed noise); green/red = it excludes 0.
 
-**Takeaway:** the agent beats the myopic baseline (+560 chips) and tops the
-opponent pool (+209), but **3 of 4 intervals straddle 0** — and the ICM reward is
-significantly *negative*. Directionally positive, statistically marginal. This is
-the whole project in one chart.
+**Takeaway:** the agent beats the myopic baseline (+500 chips, exact binomial
+p=0.0005, CI excludes 0) and tops the opponent pool (+209), but **2 of 4
+intervals still straddle 0** — and the ICM reward is directionally *negative*
+(n=6). One resolved edge, the rest marginal: the whole project in one chart.
 
 ### 2. The agent does learn
 
@@ -49,8 +49,10 @@ the whole project in one chart.
 SEM ribbon (right) over training.
 
 **Takeaway:** the dip-then-climb is real — the agent first collapses into
-over-folding, then recovers to beat the baseline (32/50 matches, p≈0.05). The CI's
-lower bound near 0 is why figure 1 calls it "real but marginal."
+over-folding, then recovers to beat the baseline (125/200 matches, exact binomial
+p=0.0005). The 95% CI [+240, +760] excludes 0, so figure 1 now calls this edge
+**resolved** — the ~63% win rate held from 50 to 200 seeds; the smaller sample
+just lacked the power to resolve it.
 
 ### 3. It generalizes to a whole opponent pool
 

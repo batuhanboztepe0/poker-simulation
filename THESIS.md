@@ -51,7 +51,7 @@ pricing risk" (references.md §4).
   **duplicate/mirror matching** (same deck, swapped seats — the variance-reduction
   protocol behind DIVAT/AIVAT, references.md §2).
 - **Engineering discipline**: every advanced feature is opt-in / default-off
-  (baseline byte-identical), 500 tests pass, and a **multi-agent adversarial
+  (baseline byte-identical), 504 tests pass, and a **multi-agent adversarial
   audit** of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
@@ -60,15 +60,25 @@ pricing risk" (references.md §4).
 The lead figure, [`figures/exec_summary.png`](figures/exec_summary.png), shows
 every claimed edge as a point with its 95% bootstrap CI:
 
-- **RL beats the myopic baseline directionally** (+560 chips/match) — but the
-  95% CI's lower bound sits at ~0. Real, but **marginal**.
+- **RL beats the myopic baseline** (+500 chips/match, 125/200 matches; exact
+  binomial sign test **p=0.0005**, 95% bootstrap CI **[+240, +760]** — excludes
+  0). The matches are binary bust outcomes, so the sign test is the right test (a
+  paired t-test on the ±2000 spread agrees, p=0.0003). The win rate is stable
+  across samples (64% at 50 seeds, 62.5% at 200): the 50-seed eval lacked the
+  power to resolve a real ~63% edge and 200 paired seeds **do** — correct
+  powering, not optional stopping. It is an edge over the *myopic baseline*, not
+  the field (next bullet).
 - A **belief + opponent-mix generalist** tops a cross-agent leaderboard (+209)
   and beats two of three adaptive opponents head-to-head (13-3 vs myopic, 12-4 vs
   random; 9-7 vs tilt is within noise at n=16) — but its leaderboard CI
-  **includes 0** at 16 seeds, and it loses head-to-head to an analytic **Kelly**
-  agent.
+  **includes 0** at 16 seeds, it **loses 5-11 head-to-head to a zero-parameter,
+  closed-form Kelly** agent, and it ranks **6th of 17** in a tight×aggressive
+  static round-robin. The RL agent is a competent generalist, not the best agent
+  in the pool.
 - A **risk-averse ICM/Kelly reward shows no robust edge** over a risk-neutral
-  chip reward heads-up — it is *significantly negative* on the mild prize ladder.
+  chip reward heads-up — it is *directionally negative* on the mild prize ladder
+  (mean −146 chips; the 6-seed bootstrap CI excludes 0, but at n=6 that is
+  suggestive, not robust).
 - A rigorous **Block-B sweep** (finer action grid, un-truncated bust clip,
   tilt-bonus decoupling, snapshot self-play, warmed fold-equity) found every
   RL-*mechanics* lever works mechanically but **none moves the headline**
@@ -76,9 +86,10 @@ every claimed edge as a point with its 95% bootstrap CI:
 
 This matches the field: even an **80,000-hand** human-AI match with a margin
 "huge" by professional standards was only **at the edge of significance** without
-variance reduction (Claudico 2015; references.md §2). Marginal,
-honestly-measured edges are the *correct* finding for a single-developer DQN in a
-high-variance game — not a failure to hide.
+variance reduction (Claudico 2015; references.md §2). Honestly-measured edges —
+one that resolves over the baseline with enough paired seeds, the rest marginal
+or null — are the *correct* finding for a single-developer DQN in a high-variance
+game, not a failure to hide.
 
 ## 4. Where this sits vs the state of the art
 

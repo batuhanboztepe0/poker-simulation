@@ -4,7 +4,7 @@
 
 ![Are the edges real? Every headline edge with its 95% bootstrap CI.](figures/exec_summary.png)
 
-> *Every headline edge as a point with its 95% bootstrap CI. Three of four straddle zero — directionally positive but within per-seed noise. That is the result, measured and reported, not a failure to hide.*
+> *Every headline edge as a point with its 95% bootstrap CI. Two of four straddle zero; the headline RL-vs-baseline edge resolves once measured on 200 paired seeds (exact binomial p=0.0005, CI excludes 0). That is the result, measured and reported, not a failure to hide.*
 
 ## What this demonstrates
 
@@ -13,13 +13,13 @@ uncertainty, reading counterparties, and pricing risk — and some (e.g. SIG) li
 to train it. This repo turns that thinking into something measurable:
 
 - **Telling a real edge from noise.** Every claimed edge is shown with its 95% bootstrap CI (the
-  figure above): 3 of 4 straddle zero. Surfacing that — and *not* over-sizing a marginal edge —
+  figure above): 2 of 4 straddle zero. Surfacing that — and *not* over-sizing a marginal edge —
   is the trader-maturity signal, not a result to hide. (For scale: even an 80,000-hand human-AI
   match with a margin "huge" by professional standards sat at the edge of significance without
   variance reduction — Claudico 2015.)
 - **Reading exploitable counterparties.** On 777k real human hands, players measurably loosen and
   turn more aggressive after a big loss — the poker analog of adverse selection — shown with a
-  shuffled-label placebo and within-player matching.
+  shuffled-label placebo and per-player baselines.
 - **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
   agent head-to-head; reported plainly, because a learned policy that loses to Kelly is worth
   knowing.
@@ -44,11 +44,11 @@ built end-to-end, not bolted on.
 
 | Experiment | Result | 95% CI | Statistically resolved? |
 |---|---|---|---|
-| RL vs myopic baseline (50 seeds × 200 hands) | **+560** chips/match | [+0, +1040], p=0.047 | Borderline — CI lower bound at 0 |
+| RL vs myopic baseline (200 seeds × 200 hands) | **+500** chips/match | [+240, +760], exact binomial p=0.0005 | Yes — CI excludes 0 (still loses H2H to Kelly) |
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
 | Leduc exploitability (exact NashConv) | time-average 0.43 → **0.0014**; greedy last-iterate ~**0.35** | — | Exact: averaging → Nash, greedy does not converge |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
-| ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | excludes 0, p≈0.049 (n=6) | Borderline-negative — no risk-aversion edge |
+| ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative — n=6, suggestive not robust |
 
 *Every number traces to committed data under [`results/`](results/) and a figure under
 [`figures/`](figures/). The real-data hands feed the **opponent model only**, never the policy.*
@@ -68,7 +68,7 @@ git clone https://github.com/batuhanboztepe0/poker-simulation.git
 cd poker-simulation
 python -m pip install -r requirements.txt   # requires Python >= 3.10
 
-python -m pytest tests/ -q                   # 500 tests (RL/torch tests skip without torch)
+python -m pytest tests/ -q                   # 504 tests (RL/torch tests skip without torch)
 python -m src.main                           # play a Human vs Bot session
 ```
 

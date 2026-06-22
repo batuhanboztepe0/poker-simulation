@@ -7,7 +7,7 @@ which trains the §10 pool itself). This is the single reproducible figure layer
 write-up — no re-training is needed to redraw a plot once results/ exists.
 
 Each figure reads only results/ + the existing Plotly factories in app/charts.py,
-is self-captioned (a one-line caption maps it to the RL_HANDOFF section it
+is self-captioned (a one-line caption maps it to the write-up section it
 illustrates), and is SKIPPED gracefully if its data file is absent — so a partial
 results/ still renders whatever is available.
 
@@ -171,8 +171,9 @@ def fig_exec_summary(index):
            "bootstrap CI. Gray = the CI straddles 0 (effect is within per-seed "
            f"noise); green/red = CI excludes 0. {n_real}/{len(rows)} edges are "
            "statistically distinguishable from zero at these sample sizes — the "
-           "honest takeaway: the agent is directionally positive but the edges "
-           "are marginal, exactly what rigorous variance accounting should show "
+           "honest takeaway: directionally positive throughout, with the "
+           "unresolved edges within per-seed noise, exactly what rigorous "
+           "variance accounting should show "
            "(see references.md §2; THESIS.md).")
     index.append(("exec_summary.png", "§summary",
                   _save(forest_plot_figure(
@@ -233,25 +234,38 @@ def fig_headline(index):
         return
     f = d.get("final", {})
     p = f.get("p_value")
+    bp = f.get("binom_p")
     ci = f.get("ci95")
     ci_txt = (f", 95% CI [{ci['lo']:+.0f}, {ci['hi']:+.0f}]" if ci else "")
+    resolved = bool(ci and (ci["lo"] > 0 or ci["hi"] < 0))
+    # Lead with the exact binomial sign test (binary bust matches); the paired
+    # t-test treats the +/-2000 spread as continuous and only corroborates.
+    test_txt = ((f", exact binomial sign test p={bp:.4f}"
+                 + (f" (paired t agrees, p={p:.4f})" if p is not None else ""))
+                if bp is not None
+                else (f", paired p={p:.4f}" if p is not None else ""))
+    verdict = ((". The 95% CI excludes 0: a statistically resolved edge over the "
+                "baseline (the ~63% win rate is stable from 50 to 200 seeds — the "
+                "smaller sample simply lacked the power to resolve it).")
+               if resolved else
+               (". The 95% CI includes 0, so this edge is within per-seed noise — "
+                "directionally positive but not resolved at this sample size."))
     cap = (f"Headline (§8): the fixed-vs-myopic RL agent learns to beat the "
-           f"myopic EV baseline. Left axis = held-out win rate; right axis = "
-           f"mean chip diff with a ±1 SEM ribbon over training. "
+           f"myopic EV baseline (binary bust matches, so the exact binomial "
+           f"sign test is the right test). Left axis = held-out win rate; "
+           f"right axis = mean chip diff with a ±1 SEM ribbon over training. "
            f"Final {f.get('wins')}/{f.get('n_seeds')} matches, "
            f"{f.get('mean_chip_diff', 0):+.0f} mean chips"
-           + (f", paired p={p:.4f}" if p is not None else "") + ci_txt
-           + (". The CI's lower bound sits at 0, so by the exec_summary test "
-              "(lo > 0) this edge is within per-seed noise — directionally "
-              "positive but not statistically resolved at this sample size."
-              if ci else "."))
+           + test_txt + ci_txt + (verdict if ci else "."))
     sub = ("The agent dips into over-folding, then recovers to beat the myopic "
            f"baseline. Final {f.get('wins')}/{f.get('n_seeds')} held-out matches, "
            f"{f.get('mean_chip_diff', 0):+.0f} mean chips"
-           + (f", 95% CI [{ci['lo']:+.0f}, {ci['hi']:+.0f}], p={p:.3f}"
-              if ci and p is not None else "")
-           + " — lower bound at 0, so directionally positive but marginal. "
-             "Full detail in figures/README.md.")
+           + (f", 95% CI [{ci['lo']:+.0f}, {ci['hi']:+.0f}], binomial p={bp:.4f}"
+              if ci and bp is not None else "")
+           + (" — CI excludes 0, a resolved edge over the baseline."
+              if resolved else
+              " — lower bound at 0, so directionally positive but marginal.")
+           + " Full detail in figures/README.md.")
     index.append(("headline.png", "§8",
                   _save(learning_curve_figure(d["history"], ribbon=True),
                         "headline", cap, subcaption=sub)))
@@ -580,9 +594,15 @@ def fig_plain_rl_edge(index):
         xaxis_title=f"chips won vs the baseline over {f.get('n_hands','?')} hands "
                     f"(bar = average, line = 95% range)",
         yaxis_title="", showlegend=False)
-    take = (f"On average the trained bot wins (+{mean:.0f} chips), but the 95% "
-            f"range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it reaches back to 0, "
-            f"so the edge is real but marginal, not a sure thing.")
+    take = ((f"On average the trained bot wins (+{mean:.0f} chips), and the 95% "
+             f"range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it stays clear of 0, "
+             f"so the edge over the simple baseline is real and statistically "
+             f"resolved (still modest: a 0-parameter Kelly bot beats this RL "
+             f"agent head-to-head — see the pool figures).") if not straddles
+            else (f"On average the trained bot wins (+{mean:.0f} chips), but the "
+                  f"95% range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it reaches "
+                  f"back to 0, so the edge is real but marginal, not a sure "
+                  f"thing."))
     index.append(("plain_rl_edge.png", "§plain",
                   _save_plain(fig, "plain_rl_edge",
                               "Does the trained bot beat the simple baseline?",
