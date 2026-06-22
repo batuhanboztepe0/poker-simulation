@@ -189,3 +189,48 @@ class TestQLearningSelfPlay:
             ql.train(4000)
             vals.append(exploitability_of(ql.greedy_strategy_table()))
         assert sum(vals) / len(vals) > 0.2
+
+
+class TestNFSPSelfPlay:
+    """src/leduc_nfsp: tabular NFSP. The SAME value learner as leduc_q
+    (alpha/eps/gamma identical) with policy-AVERAGING added. Its AVERAGE policy
+    converges toward Nash where the greedy last-iterate does not -- isolating the
+    single variable (averaging) on the same exact exploitability metric."""
+
+    def test_average_table_valid_and_covers_all_info_sets(self):
+        from src.leduc_nfsp import LeducNFSP
+        from src.leduc_eval import uniform_strategy_table
+        from src.leduc_cfr import _avail_from_key
+        nf = LeducNFSP(seed=0)
+        nf.train(20000)
+        table = nf.average_strategy_table()
+        assert set(table) == set(uniform_strategy_table())   # every info-set
+        for info_set, dist in table.items():
+            assert abs(sum(dist) - 1.0) < 1e-9 and all(p >= 0.0 for p in dist)
+            avail = set(_avail_from_key(info_set))
+            assert all(dist[a] == 0.0 for a in range(3) if a not in avail)
+
+    def test_deterministic(self):
+        # Single shared RNG -> the whole run reproduces bit-identically from seed.
+        from src.leduc_nfsp import LeducNFSP
+        a = LeducNFSP(seed=0); a.train(30000)
+        b = LeducNFSP(seed=0); b.train(30000)
+        assert a.average_strategy_table() == b.average_strategy_table()
+
+    def test_average_policy_less_exploitable_than_greedy_last_iterate(self):
+        # The point: holding alpha/eps/gamma at leduc_q's values and adding ONLY
+        # averaging, the AVERAGE policy is far less exploitable than the greedy
+        # learner's last-iterate at the same seed and episode budget -- and far
+        # below uniform. (Deterministic at fixed seed; thresholds carry margin.)
+        from src.leduc_nfsp import LeducNFSP
+        from src.leduc_q import LeducQLearner
+        from src.leduc_eval import exploitability_of, uniform_strategy_table
+        budget = 100000
+        nf = LeducNFSP(seed=0); nf.train(budget)
+        ql = LeducQLearner(seed=0); ql.train(budget)
+        nfsp_expl = exploitability_of(nf.average_strategy_table())
+        greedy_expl = exploitability_of(ql.greedy_strategy_table())
+        uniform_expl = exploitability_of(uniform_strategy_table())
+        assert nfsp_expl < greedy_expl
+        assert nfsp_expl < 0.6
+        assert uniform_expl > 5 * nfsp_expl
