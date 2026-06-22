@@ -51,7 +51,7 @@ of significance without variance reduction — Claudico 2015.)
 ## Quickstart
 
 ```bash
-git clone https://github.com/<your-org>/poker-simulation.git
+git clone https://github.com/batuhanboztepe0/poker-simulation.git
 cd poker-simulation
 python -m pip install -r requirements.txt   # requires Python >= 3.10
 
