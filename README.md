@@ -70,7 +70,7 @@ git clone https://github.com/batuhanboztepe0/poker-simulation.git
 cd poker-simulation
 python -m pip install -r requirements.txt   # requires Python >= 3.10
 
-python -m pytest tests/ -q                   # 504 tests (RL/torch tests skip without torch)
+python -m pytest tests/ -q                   # 509 tests (RL/torch tests skip without torch)
 python -m src.main                           # play a Human vs Bot session
 ```
 

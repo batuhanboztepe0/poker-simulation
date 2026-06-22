@@ -8,7 +8,7 @@ more ROBUST agent than the proven fixed-vs-myopic recipe?
 The other Block-B levers (finer action grid, wider clip, decoupled bonus, warmed
 FE) tweak the reward/feature/action MECHANICS and came back neutral. Self-play
 changes the TRAINING DISTRIBUTION instead -- the lever family that actually paid
-off (opponent-mix/domain-randomization was a §10 win). Fixed-vs-myopic is directly
+off (opponent-mix/domain-randomization was a pool-generalist win). Fixed-vs-myopic is directly
 optimised for the myopic headline, so the interesting question is whether
 self-play GENERALISES better to the adaptive pool {tilt, random} even if it gives
 up something on the myopic bench it never trains against.

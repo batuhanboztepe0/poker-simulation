@@ -55,7 +55,7 @@ uncertainty, bankroll growth, adverse-selection detection), not as alpha.
   **duplicate/mirror matching** (same deck, swapped seats — the variance-reduction
   protocol behind DIVAT/AIVAT, references.md §2).
 - **Engineering discipline**: every advanced feature is opt-in / default-off
-  (baseline byte-identical), 504 tests pass, and a **multi-agent adversarial
+  (baseline byte-identical), 509 tests pass, and a **multi-agent adversarial
   audit** of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
@@ -77,12 +77,12 @@ excludes 0), 2 are within per-seed noise:
   binomial sign test **p=0.0005**, 95% bootstrap CI **[+240, +760]** — excludes
   0). The matches are binary bust outcomes, so the sign test is the right test (a
   paired t-test on the ±2000 spread agrees, p=0.0003). The win rate is stable
-  across samples (64% at 50 seeds, 62.5% at 200): the 50-seed eval lacked the
+  across samples (66% at 50 seeds, 62.5% at 200): the 50-seed eval lacked the
   power to resolve a real ~63% edge and 200 paired seeds **do** — correct
   powering, not optional stopping. It is an edge over the *myopic baseline*, not
   the field (next bullet).
 - A **belief + opponent-mix generalist** tops a cross-agent leaderboard (+209)
-  and beats two of three adaptive opponents head-to-head (13-3 vs myopic, 12-4 vs
+  and beats two of its three pool opponents head-to-head (13-3 vs myopic, 12-4 vs
   random; 9-7 vs tilt is within noise at n=16) — but its leaderboard CI
   **includes 0** at 16 seeds, it **loses 5-11 head-to-head to a zero-parameter,
   closed-form Kelly** agent, and it ranks **6th of 17** in a tight×aggressive
@@ -170,7 +170,7 @@ signal statistical maturity, references.md §5.)*
   generic big-pot arousal. The project's emission-only
   forward-filter HMM detector (Test B) registers a small but resolved shift
   (+0.011 in P(tilted), CI excludes 0; its emission means μ_normal=0.11,
-  μ_tilted=0.64 are population statistics fixed before the separation is measured,
+  μ_tilted=0.643 are population statistics fixed before the separation is measured,
   not tuned to it). A **separate** Baum-Welch regime HMM (Test C, not the
   detector) corroborates the phenomenon with a different method, beating a 1-state
   model out-of-sample (held-out LL +681; held-out ΔBIC +1315) with its active

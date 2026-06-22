@@ -554,8 +554,8 @@ def icm_edge_figure(rows, title=None):
     """
     Per-init-seed ICM-minus-chips prize edge (measure_icm rows). Green = the
     concave ICM reward earned MORE tournament prize than the risk-neutral chip
-    reward at this multi-prize table; red = less. The RL_HANDOFF §13 story is the
-    SIGN consistency across seeds, not any single significant p-value.
+    reward at this multi-prize table; red = less. The story is the SIGN
+    consistency across seeds, not any single significant p-value.
     """
     ordered = sorted(rows, key=lambda r: r["init_seed"])
     y = [r["icm_minus_chips"] for r in ordered]

@@ -62,7 +62,7 @@ def train_agent(reward, prize, args, seed):
     # figure must redraw identically) and the icm-vs-chips A/B is PAIRED on
     # init: both rewards share this seed's decks (trainer seed=seed) AND weight
     # init, so the only difference is the reward shape. Each init_seed is an
-    # independent reseed of both (cf. the §20 measurement convention).
+    # independent reseed of both (cf. the paired-seed measurement convention).
     import torch
     torch.manual_seed(seed)
     kw = dict(n_players=args.n_players, hidden=args.hidden, seed=seed,

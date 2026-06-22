@@ -11,12 +11,12 @@
 #   results/tilt_realdata.json       <- python -m scripts.measure_tilt_realdata
 #
 # Thread-pinned (OMP_NUM_THREADS=1 — the small MLP only thrashes under parallel
-# BLAS, RL_HANDOFF §11). Per-(script, cell) jobs run PAR at a time; each writes
+# BLAS). Per-(script, cell) jobs run PAR at a time; each writes
 # its own part file (atomic, no interleaving) and the parts are concatenated.
 #
-# Scale matches the published Block B / A5 measurements (RL_HANDOFF §13–§18):
+# Scale matches the committed Block B / A5 measurements (see results/ + GUIDE.md):
 # init_seed varies the torch weight-init; the trainer RNG is held at seed=1, so
-# every A/B is PAIRED per init_seed (the rl_multihand_sweep convention, §20).
+# every A/B is PAIRED per init_seed (the rl_multihand_sweep convention).
 #
 # Usage:  PY=python3.11 PAR=8 bash scripts/run_measurements.sh
 #
@@ -60,12 +60,12 @@ for seed in 0 1 2; do
 done
 
 # --- whole-sweep jobs (ICM mild+bubble ladders, rollout-FE, headline curve,
-#     and the §10 belief+mix generalist pool/sweep) ------------------------------
+#     and the belief+mix generalist pool/sweep) ----------------------------------
 echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 4 5 6 --prize-fracs 0.5 0.3 0.2 --out results/_parts/icm_mild.jsonl" >> "$JOBS"
 echo "$PY -m scripts.measure_icm --steps 1500 --train-seeds 1 2 3 4 5 6 --prize-fracs 0.65 0.35 0.0 --out results/_parts/icm_bubble.jsonl" >> "$JOBS"
 echo "$PY -m scripts.measure_rollout_fe --seeds 60 --hands 200 --out results/_parts/rollout_fe.jsonl" >> "$JOBS"
 echo "$PY -m scripts.measure_headline --steps 1500 --eval-every 250 --eval-seeds 50 --eval-hands 150 --out results/_parts/headline_history.json" >> "$JOBS"
-# The §10 generalist is a single heavy 12k-step train + roster + MC sweep (~20 min).
+# The generalist is a single heavy 12k-step train + roster + MC sweep (~20 min).
 echo "$PY -m scripts.measure_pool --steps 12000 --seeds 16 --hands 100 --out results/_parts/pool.json" >> "$JOBS"
 
 echo "Launching $(wc -l < "$JOBS") jobs, $PAR at a time (thread-pinned)..."

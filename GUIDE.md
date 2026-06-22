@@ -18,8 +18,8 @@ see [references.md](references.md); for the raw figure index see
   (references.md §4); the market-microstructure framing (Kyle 1985 /
   Glosten-Milgrom 1985) is **motivation**, untested on real order-flow data.
 - **The honest headline:** the two genuinely novel results are an **exact** proof
-  on Leduc of why DQN self-play can't reach Nash (figure 4) and **post-loss tilt
-  validated on 777k real human hands** (figure 7). The RL agent's edge over a
+  on Leduc of why DQN self-play can't reach Nash (figure 4) and a **within-player
+  loss-aversion asymmetry** on 777k real human hands (figure 7b). The RL agent's edge over a
   myopic baseline **resolves** at 200 paired seeds (binomial p=0.0005) but is
   modest — a 0-parameter Kelly bot beats it. Every edge is reported with its CI;
   the rigor + honesty is the point.
@@ -54,8 +54,8 @@ SEM ribbon (right) over training.
 **Takeaway:** the dip-then-climb is real — the agent first collapses into
 over-folding, then recovers to beat the baseline (125/200 matches, exact binomial
 p=0.0005). The 95% CI [+240, +760] excludes 0, so figure 1 now calls this edge
-**resolved** — the ~63% win rate held from 50 to 200 seeds; the smaller sample
-just lacked the power to resolve it.
+**resolved** — the edge was already there at 50 seeds (33/50 = 66%), but the
+smaller sample lacked the power to resolve the CI; 200 paired seeds do.
 
 ### 3. It generalizes to a whole opponent pool
 
@@ -161,7 +161,7 @@ asymmetry**, not generic big-pot arousal.
 python -m pip install -r requirements.txt
 
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
-OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 504 green
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 509 green
 
 # regenerate the committed measurement data under results/ (trains the DQN, so
 # it needs torch: pip install "torch>=2.0" — commented out in requirements.txt)

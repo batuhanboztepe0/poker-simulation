@@ -8,7 +8,7 @@ figure layer (scripts/make_figures.py).
 Each `SelfPlayTrainer.history` snapshot is
 {step, wins, n_seeds, mean_chip_diff, per_seed_diffs}; the per-snapshot
 per_seed_diffs spread is what gives the headline figure its confidence ribbon.
-The §10 belief generalist is trained with eval_every=None (its base-feature
+The belief generalist is trained with eval_every=None (its base-feature
 vs-myopic curve would mismatch the belief net), so this fixed-vs-myopic curve is
 the reproducible learning-curve source.
 
@@ -45,7 +45,7 @@ def main():
 
     # init_seed (torch) varies weight-init; trainer RNG held at seed=1 (the
     # rl_multihand_sweep convention) so decks/opponents are common -- consistent
-    # with the Block B measurement scripts (RL_HANDOFF §20).
+    # with the Block B measurement scripts.
     torch.manual_seed(args.torch_seed)
     tr = SelfPlayTrainer(seed=1, opponent_mode="fixed", mc_sims=args.mc_sims,
                          hidden=args.hidden, epsilon_start=1.0, epsilon_end=0.05)

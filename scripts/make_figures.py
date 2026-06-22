@@ -255,8 +255,9 @@ def fig_headline(index):
                 if bp is not None
                 else (f", paired p={p:.4f}" if p is not None else ""))
     verdict = ((". The 95% CI excludes 0: a statistically resolved edge over the "
-                "baseline (the ~63% win rate is stable from 50 to 200 seeds — the "
-                "smaller sample simply lacked the power to resolve it).")
+                "baseline (the win rate is stable from the 50-seed training "
+                "curve to the 200-seed headline; the smaller sample simply "
+                "lacked the power to resolve it).")
                if resolved else
                (". The 95% CI includes 0, so this edge is within per-seed noise — "
                 "directionally positive but not resolved at this sample size."))
@@ -307,11 +308,12 @@ def fig_pool(index):
     cap_lb = (f"Pool generalist (RL = belief + sharp HMM + PnL feed + "
               f"opponent-mix, multi-hand chips, {d.get('steps')} steps): "
               f"cross-agent leaderboard over {d.get('n_seeds')} held-out seeds × "
-              f"{d.get('n_hands')} hands. RL {lb_pos} and beats each of the "
-              f"{{myopic, tilt, random}} adaptive opponents head-to-head "
-              f"({_h2h('Myopic')} / {_h2h('Tilt')} / {_h2h('Random')}); it "
-              f"loses H2H to the analytic Kelly ({_h2h('Kelly')}). The pool win "
-              f"is the leaderboard + adaptive-pool result, not Kelly H2H." + ci_txt)
+              f"{d.get('n_hands')} hands. RL {lb_pos} and beats two of its three "
+              f"pool opponents head-to-head ({_h2h('Myopic')} vs myopic, "
+              f"{_h2h('Random')} vs random; {_h2h('Tilt')} vs tilt is within "
+              f"noise at {d.get('n_seeds')} seeds); it loses H2H to the analytic "
+              f"Kelly ({_h2h('Kelly')}). The pool win is the leaderboard, not "
+              f"Kelly H2H." + ci_txt)
     index.append(("pool_leaderboard.png", "pool",
                   _save(tournament_leaderboard_figure(lb),
                         "pool_leaderboard", cap_lb)))

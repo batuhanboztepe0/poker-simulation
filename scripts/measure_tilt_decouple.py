@@ -12,7 +12,7 @@ SUBSTITUTES for the tilt edge, not complements. B5 scales the bonus by p_tilted
 ENTERING the hand (`tilt_bonus_decouple`), removing that same-hand coupling.
 
 This is the honest A/B over four configs (all belief-conditioned, sharp HMM,
-opponent-mix, multi-hand chips -- the §10 generalist recipe), each trained then
+opponent-mix, multi-hand chips -- the generalist recipe), each trained then
 evaluated on held-out seeds vs the pool {myopic, tilt, random}:
 
   pnl_nobonus   PnL feed on,  no bonus           (the substitute baseline)

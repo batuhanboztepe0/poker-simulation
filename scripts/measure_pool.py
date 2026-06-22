@@ -43,7 +43,7 @@ def _mc():
 
 
 def train_generalist(steps, torch_seed):
-    """Train the §10 belief+mix generalist (mirrors train_rl's construction)."""
+    """Train the belief+mix generalist (mirrors train_rl's construction)."""
     torch.manual_seed(torch_seed)
 
     def myo(pid, s, mc, rng):
