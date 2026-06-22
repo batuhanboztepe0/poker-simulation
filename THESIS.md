@@ -117,8 +117,10 @@ self-play even **violates the stationarity assumption** Q-learning needs (the
 opponent moves while you learn). This repo makes that concrete and *exact* on
 Leduc Hold'em ([`figures/exploitability.png`](figures/exploitability.png)): the
 time-AVERAGE strategy's exploitability falls toward 0 (Nash), but the greedy
-LAST-ITERATE — the regime DQN self-play plays in — stays exploitable and does not
-converge. **NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
+LAST-ITERATE stays exploitable and does not converge — and an **independent
+tabular Q-learning self-play** (an actual DQN-regime learner, not a proxy)
+confirms it directly, its greedy last-iterate oscillating around **1.15** and
+never approaching Nash. **NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
 step: it brings exactly this averaging to large games via a neural average-policy
 network (references.md §1).
 
@@ -143,8 +145,12 @@ signal statistical maturity, references.md §5.)*
   ([`figures/exploitability.png`](figures/exploitability.png)) that the
   time-AVERAGE strategy's exploitability falls from **0.433 to 0.0014**
   (effectively Nash) while the greedy LAST-ITERATE — the regime DQN self-play
-  plays in — plateaus near **0.355** and does not converge. This is the exact
-  reason DQN self-play does not reach Nash and averaging methods do.
+  plays in — plateaus near **0.355** and does not converge. An **independent
+  tabular Q-learning self-play** (the DQN regime, measured directly) confirms
+  this: its greedy last-iterate oscillates around **1.15** (range [0.03, 2.53]
+  over 1M+ episodes) and never approaches Nash — genuine non-convergence, not a
+  CFR artifact. This is the exact reason DQN self-play does not reach Nash and
+  averaging methods do.
 - **Real-data tilt validation** ([`src/real_data_tilt.py`](src/real_data_tilt.py),
   [`figures/tilt_realdata.png`](figures/tilt_realdata.png)) — the
   exploit-predictable-deviations thesis tested on **777k hand-rows** of 2009

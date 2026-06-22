@@ -153,3 +153,39 @@ class TestGeneralExploitability:
         cfr, _ = trained
         assert (exploitability_of(current_strategy_table(cfr))
                 > 5 * cfr.exploitability())
+
+
+class TestQLearningSelfPlay:
+    """src/leduc_q: the DQN-regime tabular Q-learner. Its greedy last-iterate
+    does NOT converge to Nash -- a direct measurement of the same non-convergence
+    that CFR's last-iterate shows, with an INDEPENDENT value-based learner."""
+
+    def test_greedy_table_valid_and_covers_all_info_sets(self):
+        from src.leduc_q import LeducQLearner
+        from src.leduc_eval import uniform_strategy_table
+        ql = LeducQLearner(seed=0)
+        ql.train(2000)
+        table = ql.greedy_strategy_table()
+        assert set(table) == set(uniform_strategy_table())   # every info-set
+        for dist in table.values():
+            assert abs(sum(dist) - 1.0) < 1e-9 and all(p >= 0.0 for p in dist)
+
+    def test_deterministic(self):
+        from src.leduc_q import LeducQLearner
+        from src.leduc_eval import exploitability_of
+        a = LeducQLearner(seed=0); a.train(3000)
+        b = LeducQLearner(seed=0); b.train(3000)
+        assert (exploitability_of(a.greedy_strategy_table())
+                == exploitability_of(b.greedy_strategy_table()))
+
+    def test_greedy_last_iterate_does_not_reach_nash(self):
+        # CFR's time-average is < 0.03 after 1000 iters; the independent greedy
+        # Q-learner's last-iterate stays an order of magnitude more exploitable
+        # (averaged over snapshots, to be robust to its oscillation).
+        from src.leduc_q import LeducQLearner
+        from src.leduc_eval import exploitability_of
+        ql, vals = LeducQLearner(seed=0), []
+        for _ in range(5):
+            ql.train(4000)
+            vals.append(exploitability_of(ql.greedy_strategy_table()))
+        assert sum(vals) / len(vals) > 0.2

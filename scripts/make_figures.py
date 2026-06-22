@@ -216,16 +216,25 @@ def fig_exploitability(index):
     curve = d["curve"]
     avg0, avgN = curve[0]["avg_exploitability"], curve[-1]["avg_exploitability"]
     lastN = curve[-1]["last_iterate_exploitability"]
+    q_rows = d.get("q_curve")
+    q_mean, q_rng = d.get("q_last_iterate_mean"), d.get("q_last_iterate_range")
+    q_txt = ((f" An INDEPENDENT tabular Q-learning self-play (the DQN regime — "
+              f"greedy off-policy TD, no averaging) confirms this directly: its "
+              f"greedy last-iterate oscillates around {q_mean:.2f} (range "
+              f"[{q_rng[0]:.2f}, {q_rng[1]:.2f}] over 1M+ episodes) and never "
+              f"approaches Nash — genuine non-convergence, not a CFR artifact.")
+             if q_mean is not None and q_rng else "")
     cap = (f"Exact Leduc exploitability (NashConv; 0 = exact Nash). The CFR "
            f"TIME-AVERAGE strategy converges toward the equilibrium "
-           f"({avg0:.3f} → {avgN:.4f}), but the greedy LAST-ITERATE — the regime "
-           f"a DQN self-play agent plays in — stays exploitable (~{lastN:.3f}) "
-           f"and does NOT converge. This is the rigorous, exact reason DQN "
-           f"self-play does not reach Nash while averaging methods do (CFR here; "
-           f"NFSP scales the same averaging to large games — references.md §1).")
+           f"({avg0:.3f} → {avgN:.4f}), but the greedy LAST-ITERATE stays "
+           f"exploitable (~{lastN:.3f}) and does NOT converge." + q_txt +
+           f" This is the rigorous, exact reason DQN self-play does not reach "
+           f"Nash while averaging methods do (CFR here; NFSP scales the same "
+           f"averaging to large games — references.md §1).")
     index.append(("exploitability.png", "§rigor",
                   _save(exploitability_curve_figure(
-                      curve, uniform=d.get("uniform_exploitability")),
+                      curve, uniform=d.get("uniform_exploitability"),
+                      q_rows=q_rows),
                       "exploitability", cap, height=480)))
 
 

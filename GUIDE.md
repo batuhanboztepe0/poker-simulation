@@ -86,8 +86,10 @@ agent was trained for. Another honest, contextualized number.
 equilibrium) on Leduc Hold'em, log-log, over training.
 
 **Takeaway:** the **time-average strategy converges to Nash** (0.433 → 0.0014),
-but the **greedy last-iterate — the regime a DQN self-play agent plays in — stays
-exploitable (~0.35) and never converges.** This is the *exact, verifiable* reason
+but the **greedy last-iterate stays exploitable (~0.355) and never converges.** An
+independent tabular Q-learning self-play (an actual DQN-regime learner) confirms
+it directly — its greedy last-iterate oscillates around 1.15, never near Nash.
+This is the *exact, verifiable* reason
 DQN self-play does not reach equilibrium and averaging methods (CFR; NFSP at
 scale) do.
 

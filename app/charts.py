@@ -504,34 +504,47 @@ def forest_plot_figure(rows, title=None,
     return fig
 
 
-def exploitability_curve_figure(rows, uniform=None, title=None):
+def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None):
     """
-    Exploitability (NashConv) of two strategies over training, log-log: the
-    time-AVERAGE (which converges to the Nash equilibrium, exploitability -> 0)
-    vs the LAST-ITERATE greedy strategy (the regime a DQN self-play agent plays
-    in, which stays exploitable). An optional `uniform` reference line marks a
-    uniform-random baseline.
+    Exploitability (NashConv) over self-play training, log-log. CFR's
+    time-AVERAGE converges to the Nash equilibrium (-> 0); the CFR LAST-ITERATE
+    greedy strategy stays exploitable. With `q_rows`, a third curve adds an
+    INDEPENDENT tabular Q-learning self-play (the DQN regime — greedy off-policy
+    TD, no averaging) whose greedy last-iterate oscillates and never reaches Nash
+    — a direct measurement of the same non-convergence, not an analogy. An
+    optional `uniform` reference line marks a uniform-random baseline.
 
     Args:
         rows (list[dict]): each {iters, avg_exploitability,
             last_iterate_exploitability}.
         uniform (float | None): uniform-random baseline exploitability.
+        q_rows (list[dict] | None): each {episodes, exploitability} for the
+            Q-learning self-play greedy last-iterate.
     """
     iters = [r["iters"] for r in rows]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=iters, y=[r["avg_exploitability"] for r in rows],
-        mode="lines+markers", name="time-average (→ Nash equilibrium)"))
+        mode="lines+markers", name="CFR time-average (→ Nash equilibrium)",
+        line=dict(color="#2ca02c")))
     fig.add_trace(go.Scatter(
         x=iters, y=[r["last_iterate_exploitability"] for r in rows],
-        mode="lines+markers",
-        name="last-iterate (greedy / DQN-self-play regime)"))
+        mode="lines+markers", name="CFR last-iterate (greedy regret-matching)",
+        line=dict(color="#ff7f0e")))
+    if q_rows:
+        fig.add_trace(go.Scatter(
+            x=[r["episodes"] for r in q_rows],
+            y=[r["exploitability"] for r in q_rows],
+            mode="lines+markers",
+            name="Q-learning self-play last-iterate (DQN regime)",
+            line=dict(color="#d62728")))
     if uniform is not None:
         fig.add_hline(y=uniform, line=dict(color="gray", dash="dot"),
                       annotation_text=f"uniform random ({uniform:.2f})")
     fig.update_layout(
         title=title or "Leduc exploitability: averaging converges, greedy doesn't",
-        xaxis_title="CFR iterations", xaxis_type="log",
+        xaxis_title="self-play training (CFR iterations / Q-learning episodes)",
+        xaxis_type="log",
         yaxis_title="Exploitability (NashConv; 0 = exact Nash)",
         yaxis_type="log", legend=dict(orientation="h"))
     return fig
