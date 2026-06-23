@@ -126,7 +126,7 @@ def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
     diffs plus their paired t-test against 0.
 
     Variance-reduction options (both opt-in, default off → byte-identical;
-    composable; references.md §2):
+    composable; REFERENCES.md §2):
     - ``mirror=True`` — DUPLICATE/mirror match: replay the same deck with the
       agents in swapped seats and average A's result over both orientations,
       cancelling the deck-luck that favours one seat.

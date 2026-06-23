@@ -137,13 +137,21 @@ def fig_exec_summary(index):
     """The glanceable honest summary: each headline edge as a point + 95%
     bootstrap CI; gray = CI straddles 0 (within noise)."""
     rows = []
-    h = _load_json("headline_history.json")
-    if h and h.get("final", {}).get("ci95"):
-        f = h["final"]
-        c = f["ci95"]
-        rows.append({"label": f"RL vs myopic — headline "
-                              f"({f.get('n_seeds')}×{f.get('n_hands')}h)",
-                     "mean": f["mean_chip_diff"], "lo": c["lo"], "hi": c["hi"]})
+    conf = _load_json("confirmatory.json")
+    if conf and conf.get("confirmatory_primary", {}).get("ci95"):
+        cp = conf["confirmatory_primary"]
+        c = cp["ci95"]
+        rows.append({"label": f"RL vs myopic — pre-registered confirmatory "
+                              f"({cp['n_seeds']} mirrored seeds)",
+                     "mean": cp["mean_diff"], "lo": c["lo"], "hi": c["hi"]})
+    else:
+        h = _load_json("headline_history.json")
+        if h and h.get("final", {}).get("ci95"):
+            f = h["final"]
+            c = f["ci95"]
+            rows.append({"label": f"RL vs myopic — headline "
+                                  f"({f.get('n_seeds')}×{f.get('n_hands')}h)",
+                         "mean": f["mean_chip_diff"], "lo": c["lo"], "hi": c["hi"]})
     p = _load_json("pool.json")
     if p:
         for e in p["leaderboard"]:
@@ -175,7 +183,7 @@ def fig_exec_summary(index):
            "ICM edges directionally negative, with the unresolved edges within "
            "per-seed noise, exactly what rigorous "
            "variance accounting should show "
-           "(see references.md §2; THESIS.md).")
+           "(see REFERENCES.md §2; THESIS.md).")
     index.append(("exec_summary.png", "§summary",
                   _save(forest_plot_figure(
                       rows, title="Are the edges real? Effects with 95% CIs"),
@@ -194,7 +202,7 @@ def fig_variance_reduction(index):
     mir = by.get("mirror", {}).get("ci_width_vs_raw", 1.0)
     luck = by.get("luck_adjusted", {}).get("ci_width_vs_raw", 1.0)
     base = arms[0]
-    cap = (f"Variance reduction (references.md §2): the SAME Myopic-vs-Aggro edge "
+    cap = (f"Variance reduction (REFERENCES.md §2): the SAME Myopic-vs-Aggro edge "
            f"({base['n_seeds']} seeds × {base['n_hands']} hands) measured four "
            f"ways. Duplicate/mirror matching narrows the 95% CI to {mir:.0%} of "
            f"raw (cancels seat/deck luck); the all-in EV control variate is "
@@ -240,7 +248,7 @@ def fig_exploitability(index):
            f"exploitable (~{lastN:.3f}) and does NOT converge." + q_txt + nfsp_txt +
            f" This is the rigorous, exact reason DQN self-play does not reach "
            f"Nash while averaging methods do (CFR here; NFSP carries the same "
-           f"averaging to a learned policy — references.md §1).")
+           f"averaging to a learned policy — REFERENCES.md §1).")
     index.append(("exploitability.png", "§rigor",
                   _save(exploitability_curve_figure(
                       curve, uniform=d.get("uniform_exploitability"),
@@ -265,13 +273,14 @@ def fig_headline(index):
                 if bp is not None
                 else (f", paired p={p:.4f}" if p is not None else ""))
     verdict = ((". The 95% CI excludes 0: a statistically resolved edge over the "
-                "baseline (the win rate is stable from the 50-seed training "
-                "curve to the 200-seed headline; the smaller sample simply "
-                "lacked the power to resolve it).")
+                "baseline (this is the exploratory pilot; the edge was already "
+                "resolved at 50 seeds — 33/50, CI [+80, +1120] — and the "
+                "pre-registered confirmatory at 500 mirrored seeds pins it to "
+                "+256 [+144, +364]).")
                if resolved else
                (". The 95% CI includes 0, so this edge is within per-seed noise — "
                 "directionally positive but not resolved at this sample size."))
-    cap = (f"Headline: the fixed-vs-myopic RL agent learns to beat the "
+    cap = (f"Headline (exploratory pilot): the fixed-vs-myopic RL agent learns to beat the "
            f"myopic EV baseline (binary bust matches, so the exact binomial "
            f"sign test is the right test). Left axis = held-out win rate; "
            f"right axis = mean chip diff with a ±1 SEM ribbon over training. "
@@ -560,9 +569,9 @@ def fig_tilt_realdata(index):
            f"size but statistically resolved (both CIs exclude 0) — one of the "
            f"project's two real-data headline findings. This predictable, post-loss "
            f"deviation is the poker analog of the adverse-selection signal of "
-           f"references.md §3 (Kyle; Glosten-Milgrom) — the cross-domain mapping "
+           f"REFERENCES.md §3 (Kyle; Glosten-Milgrom) — the cross-domain mapping "
            f"to real order flow remains an untested hypothesis; the human-vs-bot "
-           f"contrast is corroborated by Haaf et al. 2021 (references.md §6).")
+           f"contrast is corroborated by Haaf et al. 2021 (REFERENCES.md §6).")
     sub = (f"After a ≥{lb}bb loss, {npl} real players play looser "
            f"(VPIP {ph['real']['vpip']['mean']*100:+.1f}pp) and more aggressively "
            f"({ph['real']['aggr']['mean']*100:+.1f}pp) — both 95% CIs exclude 0; the "
@@ -647,10 +656,16 @@ def fig_rollout_fe(index):
 # ---------------------------------------------------------------------------
 
 def fig_plain_rl_edge(index):
-    d = _load_json("headline_history.json")
-    if not d or not d.get("final", {}).get("ci95"):
-        return
-    f = d["final"]
+    conf = _load_json("confirmatory.json")
+    if conf and conf.get("confirmatory_primary", {}).get("ci95"):
+        cp = conf["confirmatory_primary"]
+        f = {"mean_chip_diff": cp["mean_diff"], "ci95": cp["ci95"],
+             "n_hands": cp["n_hands"]}
+    else:
+        d = _load_json("headline_history.json")
+        if not d or not d.get("final", {}).get("ci95"):
+            return
+        f = d["final"]
     ci = f["ci95"]
     mean = f["mean_chip_diff"]
     straddles = ci["lo"] <= 0 <= ci["hi"]
@@ -669,7 +684,8 @@ def fig_plain_rl_edge(index):
     take = ((f"On average the trained bot wins (+{mean:.0f} chips), and the 95% "
              f"range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it stays clear of 0, "
              f"so the edge over the simple baseline is real and statistically "
-             f"resolved (still modest: a 0-parameter Kelly bot beats this RL "
+             f"resolved (pre-registered confirmatory over 500 mirrored seeds; "
+             f"still modest: a 0-parameter Kelly bot beats this RL "
              f"agent head-to-head — see the pool figures).") if not straddles
             else (f"On average the trained bot wins (+{mean:.0f} chips), but the "
                   f"95% range is [{ci['lo']:+.0f}, {ci['hi']:+.0f}] — it reaches "
@@ -780,7 +796,7 @@ def write_index(index):
         "**Start with [`exec_summary.png`](exec_summary.png)** — every headline "
         "edge with its 95% bootstrap CI (the honest \"are the edges real?\" "
         "view). Narrative: [../THESIS.md](../THESIS.md). Bibliography: "
-        "[../references.md](../references.md).",
+        "[../REFERENCES.md](../REFERENCES.md).",
         "",
         "| Figure | Section | What it shows |",
         "|---|---|---|",

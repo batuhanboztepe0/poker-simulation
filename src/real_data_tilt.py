@@ -10,7 +10,7 @@ carry no tilt label, so here the *behavioural definition* of tilt is the proxy
 ground truth: a player who has just suffered a (big) loss is hypothesised to
 play looser and more aggressively. The thesis link is Kyle (1985) /
 Glosten-Milgrom (1985): a predictable, post-loss deviation is the poker analog
-of the adverse-selection signal an opponent model exists to read (references.md
+of the adverse-selection signal an opponent model exists to read (REFERENCES.md
 §3) — the cross-domain mapping to real order flow is an untested hypothesis. The
 label is observational ("post-loss"/"loss-associated"), not causal.
 
@@ -39,7 +39,7 @@ Three honest tests, run by two DISTINCT HMMs (do not conflate them):
 
 Data: PHH Dataset (Kim 2024, Zenodo DOI 10.5281/zenodo.13997158, CC-BY-4.0).
 The NLHE hands originate from a 2009 HandHQ scrape, redistributed under
-CC-BY-4.0; see references.md.
+CC-BY-4.0; see REFERENCES.md.
 """
 
 from src.stats import bootstrap_ci
@@ -420,7 +420,7 @@ def detector_separation(sequences, loss_bb=10.0, min_per_group=5,
 
     The emission parameters should be set from a population/train summary BEFORE
     looking at this separation, not tuned to maximise it (the Kim & Sandholm
-    post-hoc-tuning footgun, references.md §2).
+    post-hoc-tuning footgun, REFERENCES.md §2).
 
     `placebo_seed`: if set, the post/baseline labels are permuted within each
     player (negative control) — the separation must collapse to ~0.

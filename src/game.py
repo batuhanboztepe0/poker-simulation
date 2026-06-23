@@ -141,7 +141,7 @@ class GameEngine:
         self.prize_structure = prize_structure
 
         # Opt-in all-in EV control variate (the AIVAT-family chance-node variance
-        # reduction, references.md §2): at an all-in showdown the remaining board
+        # reduction, REFERENCES.md §2): at an all-in showdown the remaining board
         # is pure chance, so we record the equity-weighted EV of the pot and let
         # the evaluator score by EV instead of the realised runout. This is
         # OBSERVATION-ONLY -- the EV engine builds its own card pool with its own

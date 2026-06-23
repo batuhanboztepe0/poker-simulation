@@ -4,7 +4,7 @@
 
 ![Are the edges real? Every headline edge with its 95% bootstrap CI.](figures/exec_summary.png)
 
-> *Every headline edge as a point with its 95% bootstrap CI. Two of four straddle zero; the headline RL-vs-baseline edge resolves once measured on 200 paired seeds (exact binomial p=0.0005, CI excludes 0). That is the result, measured and reported, not a failure to hide.*
+> *Every headline edge as a point with its 95% bootstrap CI. Two of four straddle zero; the headline RL-vs-baseline edge resolves under the pre-registered confirmatory protocol (500 mirrored seeds: +256 chips, CI [+144, +364], binomial p≈7×10⁻⁶). That is the result, measured and reported, not a failure to hide.*
 
 ## What this demonstrates
 
@@ -45,7 +45,7 @@ built end-to-end, not bolted on.
 
 | Experiment | Result | 95% CI | Statistically resolved? |
 |---|---|---|---|
-| RL vs myopic baseline (200 seeds × 200 hands) | **+500** chips/match | [+240, +760], exact binomial p=0.0005 | Yes — CI excludes 0 (still loses H2H to Kelly) |
+| RL vs myopic — **pre-registered confirmatory** (500 mirrored seeds × 100 hands) | **+256** chips/match | [+144, +364], binomial p≈7×10⁻⁶ | Yes — CI excludes 0 (exploratory pilot was +500 at 200 seeds; still loses H2H to Kelly) |
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
 | Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | — | Exact: averaging → Nash; greedy (DQN regime) never converges |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
@@ -59,7 +59,7 @@ built end-to-end, not bolted on.
 
 - **[GUIDE.md](GUIDE.md)** — a five-minute, picture-first tour of every result.
 - **[THESIS.md](THESIS.md)** — the full narrative, decision-science framing, SOTA placement, and prioritized next steps (full AIVAT, an NFSP learner).
-- **[references.md](references.md)** — every external claim's source, with honest verification flags (refuted claims kept visible on purpose).
+- **[REFERENCES.md](REFERENCES.md)** — every external claim's source, with honest verification flags (refuted claims kept visible on purpose).
 - **[notebooks/](notebooks/)** — three executed notebooks that reproduce the headline claims from committed data, no retraining.
 - **[figures/README.md](figures/README.md)** — the complete figure index.
 
@@ -70,7 +70,7 @@ git clone https://github.com/batuhanboztepe0/poker-simulation.git
 cd poker-simulation
 python -m pip install -r requirements.txt   # requires Python >= 3.10
 
-python -m pytest tests/ -q                   # 509 tests (RL/torch tests skip without torch)
+python -m pytest tests/ -q                   # 513 tests (509 without torch; RL/torch tests skip)
 python -m src.main                           # play a Human vs Bot session
 ```
 

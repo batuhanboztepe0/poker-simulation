@@ -1,7 +1,7 @@
 # Poker as a Decision-Science Sandbox — finding edge under uncertainty, measured honestly
 
 *Project narrative for a trader / quant-research portfolio. Bibliography:
-[references.md](references.md). Figures: [figures/](figures/) (start with
+[REFERENCES.md](REFERENCES.md). Figures: [figures/](figures/) (start with
 [`figures/exec_summary.png`](figures/exec_summary.png)). Reading order:
 [README.md](README.md) (entry) → [GUIDE.md](GUIDE.md) (picture-first tour) → this
 document (full narrative) → [notebooks/](notebooks/) (reproduce from committed
@@ -20,7 +20,7 @@ decision-science claim, not a marketing metaphor.
 trader pedagogy — a mandatory ~100-hour requirement, with *The Mathematics of
 Poker* authors (Bill Chen, Jerrod Ankenman) on staff in quant roles — to teach
 "the same thought process as evaluating the expected value of a trade and pricing
-risk" (references.md §4, ✓ confirmed 3-0). The poker→quant career path is
+risk" (REFERENCES.md §4, ✓ confirmed 3-0). The poker→quant career path is
 documented, not asserted — the strongest, *non-metaphorical* version of the
 poker↔trading link.
 
@@ -29,7 +29,7 @@ decision-theory level the parallel sharpens into market microstructure: an
 exploitable, predictable opponent is the analog of *informed / toxic flow* you can
 read; a uniformly-random opponent is *noise flow* you cannot. It **draws on** the
 informed-vs-uninformed-trader distinction of **Kyle (1985)** and the
-adverse-selection model of **Glosten & Milgrom (1985)** (references.md §3) as a
+adverse-selection model of **Glosten & Milgrom (1985)** (REFERENCES.md §3) as a
 *structural parallel* — opponent modelling ↔ detecting adverse selection; Kelly /
 log-bankroll growth is the shared capital-allocation objective. It is offered as
 **motivation**, a hypothesis not yet tested on real order-flow data (§6).
@@ -38,7 +38,7 @@ log-bankroll growth is the shared capital-allocation objective. It is offered as
 The popular "toxic-flow metric" mapping (VPIN) does **not** survive scrutiny: the
 specific claims that VPIN is parameter-free and an empirically validated
 volatility predictor were *refuted* under adversarial verification
-(references.md §3). The analogy holds at the **decision-theory** level (EV under
+(REFERENCES.md §3). The analogy holds at the **decision-theory** level (EV under
 uncertainty, bankroll growth, adverse-selection detection), not as alpha.
 
 ## 2. What was built (method)
@@ -53,34 +53,65 @@ uncertainty, bankroll growth, adverse-selection detection), not as alpha.
   each seed is one *paired* scenario; it reports per-seed PnL diffs, paired
   t-tests, **bootstrap 95% confidence intervals**, and opt-in
   **duplicate/mirror matching** (same deck, swapped seats — the variance-reduction
-  protocol behind DIVAT/AIVAT, references.md §2).
+  protocol behind DIVAT/AIVAT, REFERENCES.md §2).
 - **Engineering discipline**: every advanced feature is opt-in / default-off
-  (baseline byte-identical), 509 tests pass, and a **multi-agent adversarial
+  (baseline byte-identical), 513 tests pass (509 without torch), and a **multi-agent adversarial
   audit** of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
-## 3. Honest results — what is genuinely new, and the honesty around it
+## 3. Honest results — what was built, what is reproduced, and what is new
 
-Two results here are genuinely novel and statistically clean: (1) an **exact**
-demonstration on Leduc Hold'em of *why* DQN-style self-play cannot reach Nash
-while averaging methods can (§4, §6), and (2) a **within-player loss-aversion
-asymmetry** on 777k real human hand-rows — players are more aggressive after a
-loss than after an equal-size win (§6). The self-play RL agent is a resolved-but-modest edge
-over a myopic baseline and, above all, an **end-to-end engineering**
-demonstration — it loses head-to-head to a zero-parameter Kelly bot.
+**Cross-cutting thesis.** Predictable behavioral deviations are an exploitable,
+measurable edge; the same paired, variance-reduced methodology detects them
+whether the opponent is a tilted poker player or an uninformed market participant
+(Bartlett & O'Hara 2026, SSRN:6615739 — cite-with-caveat; confirmed at abstract
+level, REFERENCES.md §3).
+
+**Lead finding:** a **clean, exact, pedagogically-valuable reproduction** of the
+known last-iterate vs. time-average exploitability result on Leduc Hold'em (§4,
+§6), with an independent tabular NFSP fix — plus: a **0-parameter closed-form
+Kelly bot beats the DQN agent** head-to-head. The convergence result faithfully
+reproduces known theory (Freund & Schapire 1999 on time-average convergence;
+Mertikopoulos, Papadimitriou & Piliouras SODA 2018 on Poincaré recurrence /
+cycling of regularized learners; Bailey & Piliouras EC 2018 on MWU divergence
+toward the simplex boundary; Daskalakis & Panageas ITCS 2019 on OMWU last-iterate
+convergence — all in REFERENCES.md §7). It is *not* a novel theorem; the novelty
+boundary is the exact numerical confirmation on Leduc with an independent
+tabular-NFSP fix.
+
+**Supporting finding:** a **within-player loss-aversion asymmetry** on 777k real
+human hand-rows — players are +3.6 pp more aggressive and +2.9 pp looser after a
+realized loss than after an equal-size win (Cohen d=0.25/0.14, n=685 matched
+players, §6). The effect is small but real, well-calibrated to the behavioral
+literature (Coval & Shumway 2005 — ⚠ abstract-level claim only; Haaf et al. 2021
+— REFERENCES.md §6), and
+statistically disciplined (within-player paired design, bootstrap CIs). The
+"novel" claim for this result is the within-player paired design on this dataset;
+the directional finding is consistent with, not independent of, prior work.
+
+The self-play RL agent is a resolved-but-modest edge over a myopic baseline and,
+above all, an **end-to-end engineering** demonstration — it loses head-to-head to
+a zero-parameter Kelly bot.
 
 The lead figure, [`figures/exec_summary.png`](figures/exec_summary.png), shows
 every claimed edge as a point with its 95% bootstrap CI — **2 of 4 resolve** (CI
 excludes 0), 2 are within per-seed noise:
 
-- **RL beats the myopic baseline** (+500 chips/match, 125/200 matches; exact
-  binomial sign test **p=0.0005**, 95% bootstrap CI **[+240, +760]** — excludes
-  0). The matches are binary bust outcomes, so the sign test is the right test (a
-  paired t-test on the ±2000 spread agrees, p=0.0003). The win rate is stable
-  across samples (66% at 50 seeds, 62.5% at 200): the 50-seed eval lacked the
-  power to resolve a real ~63% edge and 200 paired seeds **do** — correct
-  powering, not optional stopping. It is an edge over the *myopic baseline*, not
-  the field (next bullet).
+- **RL beats the myopic baseline — pre-registered confirmatory.** The
+  [pre-registered](PREREGISTRATION.md) confirmatory protocol (500 mirrored paired
+  seeds × 100 hands via `evaluate_matchup`, PREREGISTRATION.md §4.3/§4.6) resolves
+  a mean **+256 chips/match**, 95% bootstrap CI **[+144, +364]** (excludes 0;
+  exact binomial sign test **p≈7×10⁻⁶** on the 200 decisive seeds, 132–68 — the
+  mirror splits the other 300 on pure seat-luck, which is exactly what duplicate
+  matching is for; paired t agrees, p≈5×10⁻⁶). The single-orientation raw
+  calibration arm agrees (+400 chips, CI [+232, +576]). An earlier **exploratory
+  pilot** (`evaluate_vs_baseline`, 200 seeds × 200 hands, single orientation)
+  first surfaced the edge at +500 (125/200, CI [+240, +760]); the confirmatory
+  number is smaller because mirror matching removes the seat-correlated deck luck
+  the pilot left in. The edge was already directionally resolved in that pilot at
+  50 seeds (33/50, CI [+80, +1120] excludes 0) and at 200 seeds, and the 500-seed
+  mirrored confirmatory pins it down tightly — correct powering, not optional
+  stopping. It is an edge over the *myopic baseline*, not the field (next bullet).
 - A **belief + opponent-mix generalist** tops a cross-agent leaderboard (+209)
   and beats two of its three pool opponents head-to-head (13-3 vs myopic, 12-4 vs
   random; 9-7 vs tilt is within noise at n=16) — but its leaderboard CI
@@ -99,7 +130,7 @@ excludes 0), 2 are within per-seed noise:
 
 This matches the field: even an **80,000-hand** human-AI match with a margin
 "huge" by professional standards was only **at the edge of significance** without
-variance reduction (Claudico 2015; references.md §2). Honestly-measured edges —
+variance reduction (Claudico 2015; REFERENCES.md §2). Honestly-measured edges —
 one that resolves over the baseline with enough paired seeds, the rest marginal
 or null — are the *correct* finding for a single-developer DQN in a high-variance
 game, not a failure to hide.
@@ -112,7 +143,7 @@ with the CFR family.** The superhuman poker AIs — DeepStack (2017), Libratus
 deep-RL-plus-search with game-theoretic grounding; ReBeL (2020) extends that
 deep-RL-plus-search paradigm to imperfect-information games (its own HUNL
 superhuman claim did not survive adversarial verification — cite it for the
-paradigm extension only, references.md §1). Plain DQN
+paradigm extension only, REFERENCES.md §1). Plain DQN
 self-play even **violates the stationarity assumption** Q-learning needs (the
 opponent moves while you learn). This repo makes that concrete and *exact* on
 Leduc Hold'em ([`figures/exploitability.png`](figures/exploitability.png)): the
@@ -120,9 +151,21 @@ time-AVERAGE strategy's exploitability falls toward 0 (Nash), but the greedy
 LAST-ITERATE stays exploitable and does not converge — and an **independent
 tabular Q-learning self-play** (an actual DQN-regime learner, not a proxy)
 confirms it directly, its greedy last-iterate oscillating around **3.40** and
-never approaching Nash. **NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
+never approaching Nash.
+
+This last-iterate vs. time-average gap is **known theory**, faithfully reproduced
+here with exact Leduc exploitability numbers: Freund & Schapire (1999) proved
+time-average convergence of no-regret dynamics to Nash in zero-sum games;
+Mertikopoulos et al. (SODA 2018) showed regularized learners / Mirror Descent /
+FTRL exhibit Poincaré recurrence (cycling); Bailey & Piliouras (EC 2018) showed
+MWU iterates diverge monotonically toward the simplex boundary; Daskalakis &
+Panageas (ITCS 2019) proved OMWU achieves last-iterate convergence (REFERENCES.md
+§7). The contribution here is a **clean, exact, end-to-end pedagogical
+demonstration** on Leduc with a tabular-NFSP fix — not a novel theorem.
+
+**NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
 step: it brings exactly this averaging to large games via a neural average-policy
-network (references.md §1).
+network (REFERENCES.md §1).
 
 ## 5. Honest-negative as a feature, not a bug
 
@@ -130,11 +173,25 @@ The deliverable is **method + intellectual honesty**: reproducible, paired,
 variance-accounted, adversarially-audited, with null/marginal results reported as
 such. *(Caveat: that quant firms specifically reward null results is practitioner
 signal, not documented policy — the defensible claim is that rigour + honesty
-signal statistical maturity, references.md §5.)*
+signal statistical maturity, REFERENCES.md §5.)*
+
+The confirmatory analysis plan — frozen seeds, opponent configuration, test
+files, and the power calculation — is **pre-registered** in
+[`PREREGISTRATION.md`](PREREGISTRATION.md) (registered *concurrently*, dated
+2026-06-23; §0 states plainly that nothing is claimed to have been registered
+earlier). The pre-registered RL-vs-myopic confirmatory run **has now been executed
+exactly as frozen** (500 mirrored seeds × 100 hands; +256 chips, CI [+144, +364],
+resolved — PREREGISTRATION.md §4.6, [`results/confirmatory.json`](results/confirmatory.json)),
+with the outcome reported in full regardless of magnitude (§8). The plan, the run
+script, and the result are committed together (the registration is concurrent, not
+sequenced ahead of the run in git history — PREREGISTRATION.md §0 says so plainly);
+what makes the posture honest is not a git-provable time gap but the **pre-committed
+rule to report whatever the frozen protocol returns** — and it returned an edge
+*smaller* than the exploratory pilot, reported as such rather than hidden.
 
 ## 6. What the rigor layer ships, and what remains
 
-**Shipped (the deep-research rigor recommendations, references.md §1–§2):**
+**Shipped (the deep-research rigor recommendations, REFERENCES.md §1–§2):**
 - **Variance reduction** — bootstrap CIs, duplicate/mirror matching (cuts the
   heads-up CI to ~65% of raw), and the **all-in EV control variate** (the
   AIVAT-family chance-node adjustment; unbiased, chip-conserving, opt-in). See
@@ -187,7 +244,52 @@ signal statistical maturity, references.md §5.)*
   (95% CIs exclude 0; Cohen d=0.25 / 0.14; n=685 matched players; shuffled-label
   placebo ~0). That is *larger* than the vs-baseline shift, because players also
   tighten after a win — a clean **prospect-theory loss-aversion asymmetry**, not
-  generic big-pot arousal. The project's emission-only
+  generic big-pot arousal.
+
+  **Positioning against the behavioral literature.** The ≥10bb chip loss in this
+  design is a *realized* loss (chips removed from stack at showdown), which puts
+  it squarely in the domain of Imas (2016, AER 106(8):2086–2109): the realization
+  effect predicts that after a *realized* loss people take **less** risk, while
+  paper (unrealized) losses produce loss-chasing. Our finding — rising aggression
+  after a realized chip loss — runs in the **opposite** direction to the Imas
+  prediction, placing it closer to Coval & Shumway (2005, J. Finance 60(1):1–34),
+  who document CBOT proprietary traders becoming ~16% more likely to take
+  above-average afternoon risk after morning losses. Rather than weakening the
+  contribution, this tension **sharpens** it: the result is not a replication of
+  a known effect but a potentially distinct phenomenon — emotional loss-chasing
+  under competitive-game pressure — where the social and competitive context of a
+  poker session may override the realization-effect brake. The mechanism
+  distinguishing the two predictions (realized-loss risk-reduction vs.
+  competitive-context loss-chasing) is an open question, not a resolved claim.
+
+  **On lambda=2.25.** The prospect-theory framing above does not depend on
+  the canonical Tversky-Kahneman (1992) loss-aversion coefficient of λ=2.25.
+  That estimate comes from a small, unincentivized student sample, and recent
+  meta-analyses report substantially lower and widely heterogeneous estimates —
+  the broad verdict is that 2.25 is probably too high. The qualitative asymmetry
+  (losses loom larger than equal-size gains) is well-supported; the precise
+  magnitude is contested, and this thesis does not rely on 2.25 as a fixed
+  parameter. (Specific meta-analytic point estimates are deliberately not quoted
+  here — they were not primary-source-verified in this project's reference sweep.)
+
+  **Pre-registered confound controls** (PREREGISTRATION.md §5.3)**.** Three
+  confounds could explain the asymmetry without any loss-aversion mechanism, and
+  the project pre-commits to reporting honestly if they absorb the effect:
+  (i) *Session time-of-day* — fatigue in late-session hands could co-vary with
+  cumulative loss position; the primary robustness check is to re-run the
+  within-player comparison controlling for hand-number within session and
+  time-of-day quantile. If the asymmetry vanishes under time-of-day control,
+  that null will be reported.
+  (ii) *Stake-size* — the 10bb threshold is fixed, but its real-money magnitude
+  varies by stake; the check is to stratify by stake level and test whether the
+  effect persists in each stratum independently.
+  (iii) *Survivorship / selection* — players who remain after a big loss are
+  those who kept playing; session-level dropout is a residual threat even in the
+  within-player matched design. The project will report the fraction of eligible
+  loss events where the player left the session immediately, and test robustness
+  after excluding sessions with very few post-event hands.
+
+  The project's emission-only
   forward-filter HMM detector (Test B) registers a small but resolved shift
   (+0.011 in P(tilted), CI excludes 0; its emission means μ_normal=0.11,
   μ_tilted=0.643 are population statistics fixed before the separation is measured,
@@ -201,13 +303,15 @@ signal statistical maturity, references.md §5.)*
   causal claim) is the poker analog of the adverse-selection signal of §1 (Kyle /
   Glosten-Milgrom) — the cross-domain mapping to real order flow remains an
   untested hypothesis — corroborated for the human-vs-bot contrast by Haaf et al.
-  2021 (references.md §6).
+  2021 (REFERENCES.md §6).
 
 **Remaining (the genuine next steps):**
 - **Full decision-node AIVAT** — extend the chance-node (all-in) control variate
-  with a *pre-committed* value function at decision nodes for the ~10–44× CI
-  reduction; the precondition is to fix the heuristic before seeing the
-  evaluation data (the documented footgun).
+  with a *pre-committed* value function at decision nodes for the ~10–44×
+  sample-size reduction (fewer hands for equivalent significance — REFERENCES.md
+  §2; equivalently ~3–7× CI-width narrowing, since CI scales as 1/√n); the
+  precondition is to fix the heuristic before seeing the evaluation data (the
+  documented footgun).
 - **A neural NFSP learner on NLHE** — the tabular version above already reaches
   Nash on Leduc; the next step carries that averaging to the large game via a
   *neural* average-policy network, evaluated with the same exploitability metric.
@@ -215,11 +319,33 @@ signal statistical maturity, references.md §5.)*
 - **Test the markets analogy on real data** — the §1 connection stays a
   *motivation* on Kyle / Glosten-Milgrom (not VPIN); the genuine next step is to
   *test* the exploit-predictable-deviations idea on real order-flow data rather
-  than assert it.
+  than assert it. A concrete backtest design is pre-committed (in local working
+  notes) before any data is pulled.
+
+  **Microstructure lead (motivation, untested on real order-flow).** A recent
+  working paper — Bartlett & O'Hara, *"Adverse Selection in Prediction Markets:
+  Evidence from Kalshi"* (SSRN 6615739, April 2026) — finds, from 41.6 million
+  Kalshi trades, that traders systematically overbet YES in markets that
+  predominantly settle NO, generating a "behavioral surplus" that
+  cross-subsidizes adverse selection; separately, an adapted VPIN predicts
+  maker losses in single-name markets but not in broad-based markets. These are
+  abstract-level findings confirmed from the Stanford Law School press page;
+  granular figures cited in press coverage are unverified at the primary-source
+  level and are not repeated here as fact. The **honest framing** for this project: the
+  YES-overbetting / behavioral-surplus channel maps to poker **tilt** (both are
+  predictable behavioral deviations, not information asymmetry), while the
+  OFI/VPIN adverse-selection channel maps to the Kyle / Glosten-Milgrom
+  informed-opponent framing of §1 — conflating the two is a category error. The
+  planned backtest tests both channels separately via Kalshi's official trades
+  API, feeding results into the existing `src/stats.py` bootstrap/paired harness
+  (`bootstrap_ci`, `paired_t_test`), with a pre-registered pivot rule: if the
+  behavioral-surplus channel does not survive transaction costs and out-of-sample
+  holdout, pivot to OFI on equity TAQ data. No Kalshi data has been pulled and
+  no backtest result exists yet.
 
 ---
 
 *Every empirical number above traces to committed data under
 [results/](results/) and a figure under [figures/](figures/); every external
-claim traces to [references.md](references.md), where claims that did **not**
+claim traces to [REFERENCES.md](REFERENCES.md), where claims that did **not**
 survive adversarial verification are kept visible on purpose.*

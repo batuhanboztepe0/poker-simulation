@@ -4,7 +4,7 @@
     "doi": "10.5281/zenodo.13997158",
     "license": "CC-BY-4.0",
     "subset": "PokerStars 25NL (2009 HandHQ scrape)",
-    "provenance": "NLHE hands originate from a July 2009 HandHQ scrape, redistributed under CC-BY-4.0; see references.md",
+    "provenance": "NLHE hands originate from a July 2009 HandHQ scrape, redistributed under CC-BY-4.0; see REFERENCES.md",
     "use": "opponent-model validation only \u2014 these hands never train the self-play DQN policy",
     "parser": "pokerkit (canonical PHH replayer; chip-conserving net)"
   },
@@ -16,7 +16,7 @@
     "mu_normal": 0.11,
     "mu_tilted": 0.643,
     "recover": 0.15,
-    "emission_calibration_note": "mu_normal = global mean per-hand aggression rate; mu_tilted = mean rate over AGGRESSIVE hands only (rate>0), used as the detector's tilted-state emission anchor \u2014 NOT a regime mean. Both are population descriptive statistics fixed BEFORE the separation is measured, not tuned to the outcome (the post-hoc-tuning footgun, references.md \u00a72).",
+    "emission_calibration_note": "mu_normal = global mean per-hand aggression rate; mu_tilted = mean rate over AGGRESSIVE hands only (rate>0), used as the detector's tilted-state emission anchor \u2014 NOT a regime mean. Both are population descriptive statistics fixed BEFORE the separation is measured, not tuned to the outcome (the post-hoc-tuning footgun, REFERENCES.md \u00a72).",
     "session_note": "all hands carry one placeholder date (2009-07-01); sessions are split by the within-day time-of-day gap (max_gap_s), which reproduces PokerStars hand-id order on ~99.9% of adjacent pairs."
   },
   "n_rows": 777687,

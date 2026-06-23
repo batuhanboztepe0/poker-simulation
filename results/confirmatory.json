@@ -1,0 +1,99 @@
+{
+ "protocol": {
+  "function": "evaluate_matchup",
+  "seeds": "list(range(500))",
+  "n_hands": 100,
+  "mirror": true,
+  "luck_adjusted": false,
+  "baseline": {
+   "name": "Myopic",
+   "type": "BotPlayer",
+   "tight_threshold": 0.2,
+   "aggression": 0.5,
+   "mc_sims": 100
+  },
+  "rl_agent": {
+   "checkpoint": "models/confirmatory_rl.pt",
+   "steps": 1500,
+   "torch_seed": 0,
+   "hidden": 64,
+   "feature_mode": "base"
+  },
+  "registered_in": "PREREGISTRATION.md \u00a74.3"
+ },
+ "selfcheck_pilot": {
+  "function": "evaluate_vs_baseline",
+  "n_seeds": 200,
+  "n_hands": 200,
+  "wins": 125,
+  "mean_chip_diff": 500.0,
+  "ci95": {
+   "mean": 500.0,
+   "lo": 240.0,
+   "hi": 760.0,
+   "ci": 0.95,
+   "n": 200
+  },
+  "note": "reproduces the exploratory pilot (results/headline_history.json) to confirm the retrained policy is the same agent before the confirmatory call"
+ },
+ "confirmatory_primary": {
+  "mirror": true,
+  "n_seeds": 500,
+  "n_hands": 100,
+  "wins_rl": 132,
+  "wins_myopic": 68,
+  "ties": 300,
+  "mean_diff": 256.0,
+  "ci95": {
+   "mean": 256.0,
+   "lo": 144.0,
+   "hi": 364.0,
+   "ci": 0.95,
+   "n": 500
+  },
+  "paired_t": {
+   "mean": 256.0,
+   "n": 500,
+   "t": 4.61648986193103,
+   "p_value": 4.970562053971026e-06
+  },
+  "binom": {
+   "wins": 132,
+   "losses": 68,
+   "ties": 300,
+   "n": 200,
+   "p_value": 7.086525758598971e-06
+  },
+  "resolved": true
+ },
+ "confirmatory_raw": {
+  "mirror": false,
+  "n_seeds": 500,
+  "n_hands": 100,
+  "wins_rl": 300,
+  "wins_myopic": 200,
+  "ties": 0,
+  "mean_diff": 400.0,
+  "ci95": {
+   "mean": 400.0,
+   "lo": 232.0,
+   "hi": 576.0,
+   "ci": 0.95,
+   "n": 500
+  },
+  "paired_t": {
+   "mean": 400.0,
+   "n": 500,
+   "t": 4.559788006768151,
+   "p_value": 6.449834831165789e-06
+  },
+  "binom": {
+   "wins": 300,
+   "losses": 200,
+   "ties": 0,
+   "n": 500,
+   "p_value": 8.940066542253267e-06
+  },
+  "resolved": true
+ }
+}

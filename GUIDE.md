@@ -2,7 +2,7 @@
 
 A five-minute, picture-first walkthrough of what this project found. For the
 full narrative and positioning see [THESIS.md](THESIS.md); for the literature
-see [references.md](references.md); for the raw figure index see
+see [REFERENCES.md](REFERENCES.md); for the raw figure index see
 [figures/README.md](figures/README.md).
 
 ---
@@ -15,14 +15,18 @@ see [references.md](references.md); for the raw figure index see
 - **The thesis:** poker trains the trader's core skill — *finding edge under
   uncertainty*, where predictable deviations are exploitable and pure randomness
   is not. SIG literally puts traders through ~100 hours of poker to teach it
-  (references.md §4); the market-microstructure framing (Kyle 1985 /
+  (REFERENCES.md §4); the market-microstructure framing (Kyle 1985 /
   Glosten-Milgrom 1985) is **motivation**, untested on real order-flow data.
-- **The honest headline:** the two genuinely novel results are an **exact** proof
-  on Leduc of why DQN self-play can't reach Nash (figure 4) and a **within-player
-  loss-aversion asymmetry** on 777k real human hands (figure 7b). The RL agent's edge over a
-  myopic baseline **resolves** at 200 paired seeds (binomial p=0.0005) but is
-  modest — a 0-parameter Kelly bot beats it. Every edge is reported with its CI;
-  the rigor + honesty is the point.
+- **The honest headline:** the lead finding is a **clean, exact reproduction** of
+  the known last-iterate vs. time-average exploitability result on Leduc (figure
+  4) — known theory (Freund-Schapire 1999; Mertikopoulos et al. 2018;
+  Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019 — OMWU convergence), faithfully confirmed
+  with exact Leduc numbers and a tabular-NFSP fix, not a novel theorem — plus a
+  **within-player loss-aversion asymmetry** on 777k real human hands (figure 7b,
+  d=0.25, well-calibrated to prior literature). The RL agent's edge over a myopic
+  baseline **resolves** under a pre-registered confirmatory run (500 mirrored
+  seeds: +256 chips, CI [+144, +364]) but is modest — a 0-parameter Kelly bot
+  beats it. Every edge is reported with its CI; the rigor + honesty is the point.
 
 > If you read one figure, read **[`figures/exec_summary.png`](figures/exec_summary.png)** below.
 
@@ -38,10 +42,11 @@ see [references.md](references.md); for the raw figure index see
 confidence interval. Gray = the interval straddles 0 (the effect is within
 per-seed noise); green/red = it excludes 0.
 
-**Takeaway:** the agent beats the myopic baseline (+500 chips, exact binomial
-p=0.0005, CI excludes 0) and tops the opponent pool (+209). Of the four edges
-here, **2 resolve** (this baseline edge; and the ICM reward, which resolves
-*negative* at n=6) and **2 stay within per-seed noise** — one resolved win plus
+**Takeaway:** the agent beats the myopic baseline (pre-registered confirmatory:
++256 chips, CI [+144, +364], binomial p≈7×10⁻⁶) and tops the opponent pool (+209). Of the four edges
+here, **2 have CIs excluding 0** (this baseline edge, robustly; and the ICM
+reward — *negative*, but only suggestive at n=6) and **2 stay within per-seed
+noise** — one resolved win plus
 honest nulls: the whole project in one chart.
 
 ### 2. The agent does learn
@@ -52,10 +57,11 @@ honest nulls: the whole project in one chart.
 SEM ribbon (right) over training.
 
 **Takeaway:** the dip-then-climb is real — the agent first collapses into
-over-folding, then recovers to beat the baseline (125/200 matches, exact binomial
-p=0.0005). The 95% CI [+240, +760] excludes 0, so figure 1 now calls this edge
-**resolved** — the edge was already there at 50 seeds (33/50 = 66%), but the
-smaller sample lacked the power to resolve the CI; 200 paired seeds do.
+over-folding, then recovers to beat the baseline. This is the **exploratory
+pilot** (final 125/200 matches, +500, 95% CI [+240, +760] — excludes 0). The
+edge was already resolved here at 50 seeds (33/50, CI [+80, +1120] excludes 0),
+and the **pre-registered confirmatory** at 500 mirrored seeds pins it down tightly
+at +256 [+144, +364] (figure 1) — correct powering, not optional stopping.
 
 ### 3. It generalizes to a whole opponent pool
 
@@ -169,13 +175,14 @@ asymmetry**, not generic big-pot arousal.
 python -m pip install -r requirements.txt
 
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
-OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 509 green
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 513 green (509 without torch)
 
 # regenerate the committed measurement data under results/ (trains the DQN, so
 # it needs torch: pip install "torch>=2.0" — commented out in requirements.txt)
 OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout + headline + pool
 OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
 OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json
+OMP_NUM_THREADS=1 python -m scripts.measure_confirmatory --raw --out results/confirmatory.json  # pre-registered RL-vs-myopic run (PREREGISTRATION.md §4.3)
 
 # real-data tilt validation (fetches the PHH subset to data/phh/, gitignored)
 python -m scripts.fetch_phh --max-files 120            # the 120 PokerStars 25NL files used
@@ -198,7 +205,7 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
   exactly why).
 - The **markets thesis is asserted, not yet validated on real market data** — the
   rigorous anchor is Kyle / Glosten-Milgrom, not the (refuted) VPIN claims
-  (see references.md, where refuted claims are kept visible on purpose).
+  (see REFERENCES.md, where refuted claims are kept visible on purpose).
 - The agent's training/eval opponents are **synthetic** (real human logs would
   make a learned policy exploitable, so they feed the opponent model ONLY); the
   tilt opponent-model itself is now **validated on 777k real human hand-rows**
@@ -212,6 +219,6 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
 
 - **[THESIS.md](THESIS.md)** — the full narrative, SOTA placement, and the
   prioritized next steps (full AIVAT, NFSP learner).
-- **[references.md](references.md)** — every claim's source, with honest
+- **[REFERENCES.md](REFERENCES.md)** — every claim's source, with honest
   verification flags.
 - **[figures/README.md](figures/README.md)** — the complete figure index.

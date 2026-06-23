@@ -120,6 +120,20 @@ verification. Status reflects that check honestly:
   [link](https://rpc.cfainstitute.org/blogs/enterprising-investor/2018/the-kelly-criterion-you-dont-know-the-half-of-it)
   — Practitioner caveats on full-Kelly's variance (motivates fractional Kelly /
   the project's risk-aversion experiments).
+- **Bartlett, R. & O'Hara, M. (2026).** "Adverse Selection in Prediction Markets:
+  Evidence from Kalshi." SSRN:6615739 (Rock Center WP 266 / Stanford Law & Econ
+  Olin WP 615 — WP numbers from SSRN metadata; the primary SSRN page returned
+  HTTP 403 and was not read directly). — ⚠ **cite-with-caveat:** abstract-level findings confirmed from
+  Stanford Law School's institutional press page; granular figures from secondary
+  press source only, unverified from primary. Abstract-confirmed claims: using 41.6
+  million trades, the paper finds traders systematically overbet YES in markets that
+  predominantly settle NO, generating a "behavioral surplus" that cross-subsidizes
+  adverse selection; market makers earn twice as much per contract in single-name
+  vs. broad-based markets; an adapted VPIN metric predicts maker losses in
+  single-name markets but not broad-based markets. Relevance: the "behavioral
+  surplus" from uninformed YES-overbetting is the prediction-market analog of this
+  project's tilt detection — predictable behavioral deviations generate exploitable
+  edge in both settings.
 
 ## 4. Quant culture — poker as decision-science pedagogy
 
@@ -193,11 +207,67 @@ verification. Status reflects that check honestly:
   — so cite it for the definition / tractability only; this project's
   behavioural-signal detection (aggression / VPIP from hand logs) is the
   *complement* they did not pursue.
+- **Imas, A. (2016).** "The Realization Effect: Risk-Taking after Realized versus
+  Paper Losses." *American Economic Review 106(8):2086–2109.*
+  doi:10.1257/aer.20140386 — **✓ confirmed (3-0):** after a *realized* loss
+  people take **less** risk; after a *paper* (unrealized) loss they take **more**
+  (loss-chasing). Mechanism: dynamic CPT with open vs. closed mental accounts.
+  This project's finding — rising aggression after a realized chip loss — is in
+  **tension** with the Imas prediction, which sharpens rather than weakens the
+  result: it suggests the poker competitive-session context may override the
+  realization-effect brake, placing the finding closer to Coval & Shumway (below).
+- **Coval, J. & Shumway, T. (2005).** "Do Behavioral Biases Affect Prices?"
+  *Journal of Finance 60(1):1–34.* doi:10.1111/j.1540-6261.2005.00723.x —
+  **⚠ partially confirmed:** CBOT proprietary traders were **~16% more likely to
+  assume above-average afternoon risk** after morning losses (abstract-level claim
+  confirmed; the specific sub-percentages 31.2% vs 27% appear in a CFA Digest
+  secondary summary only — cite the ~16% figure from the abstract, not the
+  underlying sub-percentages). The paper covers CBOT proprietary traders broadly;
+  the T-bond-specific characterization should be used with caution. Cited here as
+  the closest empirical analog to this project's loss-chasing-under-competitive-
+  pressure finding, in contrast to the Imas realization-effect prediction.
+
+## 7. Last-iterate vs. time-average convergence — novelty boundary
+
+These are the canonical sources that establish the known theory faithfully
+reproduced in this project's Leduc exploitability demonstration (§4). The
+contribution here is a clean, exact, pedagogical reproduction with exact Leduc
+numbers and a tabular-NFSP fix — not a novel theorem.
+
+- **Freund, Y. & Schapire, R.E. (1999).** "Adaptive Game Playing Using
+  Multiplicative Weights." *Games and Economic Behavior 29(1–2): 79–103.* —
+  Proves time-average convergence of no-regret (multiplicative-weights) dynamics
+  to Nash equilibrium in two-player zero-sum games; gives a new proof of the
+  minimax theorem. Foundational source for the time-average side of this project's
+  exploitability comparison.
+- **Mertikopoulos, P., Papadimitriou, C. & Piliouras, G. (2018).** "Cycles in
+  Adversarial Regularized Learning." *SODA 2018 (ACM-SIAM), pp. 2703–2717.* —
+  Proves regularized learning dynamics (including Mirror Descent and FTRL as
+  special cases) exhibit Poincaré recurrence — almost every trajectory revisits
+  any arbitrarily small neighborhood of its starting point infinitely often —
+  establishing failure of last-iterate convergence. *(Note: the mechanism here is
+  cycling / recurrence, distinct from the boundary-divergence result below.)*
+- **Bailey, J.P. & Piliouras, G. (2018).** "Multiplicative Weights Update in
+  Zero-Sum Games." *EC 2018 (ACM Conference on Economics and Computation),
+  pp. 321–338.* — Proves a non-negative lower bound on KL divergence from
+  equilibrium for MWU iterates in games with interior Nash equilibria: the last
+  iterate diverges monotonically toward the simplex boundary, not toward Nash.
+  Establishes last-iterate divergence via a distinct mechanism from Mertikopoulos
+  et al.
+- **Daskalakis, C. & Panageas, I. (2019).** "Last-Iterate Convergence: Zero-Sum
+  Games and Constrained Min-Max Optimization." *ITCS 2019.*
+  arXiv:1807.04252 — Proves last-iterate **convergence** for Optimistic MWU
+  (OMWU) to Nash in constrained zero-sum min-max problems. *(Cite on the positive
+  side only: this paper establishes that OMWU converges, not that vanilla GDA
+  diverges. The divergence of plain gradient descent-ascent / MWU is established
+  by the Mertikopoulos et al. and Bailey-Piliouras papers above.)*
 
 ---
 
 *Compiled from a 26-source sweep (94 candidate claims, 25 adversarially
-verified: 12 confirmed, 13 refuted) plus a 4-source real-data-tilt sweep (§6,
-3-vote verified: 3 confirmed, 2 with ⚠ qualifications). The refuted/qualified items are kept
-visible above on purpose — knowing what does **not** hold up is part of the
-result.*
+verified: 12 confirmed, 13 refuted) plus a 6-source real-data-tilt sweep (§6,
+3-vote verified: 4 confirmed, 2 with ⚠ qualifications). The §3 Bartlett-O'Hara
+entry (cite-with-caveat) and the §7 convergence anchors (definitional) were added
+later via independent web/literature verification, outside the original sweep
+tally. The refuted/qualified items are kept visible above on purpose — knowing
+what does **not** hold up is part of the result.*

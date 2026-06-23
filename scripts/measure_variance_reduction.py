@@ -10,7 +10,7 @@ of a measured edge? Compares four arms of the SAME seeded matchup:
     mirror+luck    both stacked
 
 and reports each arm's mean edge + 95% bootstrap CI + CI width. This is the
-honest demonstration of the rigor layer (references.md §2): the CI should narrow
+honest demonstration of the rigor layer (REFERENCES.md §2): the CI should narrow
 as variance is removed. Expect mirror to help most in this multi-hand bust-match
 format and the all-in EV adjustment to help modestly (match-outcome variance is
 dominated by bust path-dependence, not single-hand runout luck — the large AIVAT

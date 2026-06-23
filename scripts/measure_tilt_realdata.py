@@ -77,7 +77,7 @@ def main():
             "license": "CC-BY-4.0",
             "subset": args.subset,
             "provenance": ("NLHE hands originate from a July 2009 HandHQ scrape, "
-                           "redistributed under CC-BY-4.0; see references.md"),
+                           "redistributed under CC-BY-4.0; see REFERENCES.md"),
             "use": ("opponent-model validation only — these hands never train "
                     "the self-play DQN policy"),
             "parser": "pokerkit (canonical PHH replayer; chip-conserving net)",
@@ -92,7 +92,7 @@ def main():
                 "detector's tilted-state emission anchor — NOT a regime mean. "
                 "Both are population descriptive statistics fixed BEFORE the "
                 "separation is measured, not tuned to the outcome (the "
-                "post-hoc-tuning footgun, references.md §2)."
+                "post-hoc-tuning footgun, REFERENCES.md §2)."
             ),
             "session_note": (
                 "all hands carry one placeholder date (2009-07-01); sessions are "

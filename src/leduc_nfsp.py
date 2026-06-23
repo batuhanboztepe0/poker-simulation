@@ -1,7 +1,7 @@
 """
 leduc_nfsp.py
 -------------
-Tabular Neural Fictitious Self-Play (NFSP; Heinrich & Silver 2016, references.md
+Tabular Neural Fictitious Self-Play (NFSP; Heinrich & Silver 2016, REFERENCES.md
 §1) on Leduc Hold'em — the policy-AVERAGING learner that fixes the exact
 non-convergence the greedy value learner in `leduc_q.LeducQLearner` (the DQN
 regime) exhibits on this very game.

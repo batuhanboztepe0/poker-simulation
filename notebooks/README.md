@@ -22,7 +22,7 @@ jupyter nbconvert --to notebook --execute --inplace 01_evaluation_rigor.ipynb
 `03` has an optional live-reproduction cell that needs the raw PHH subset
 (`python -m scripts.fetch_phh`); without it the notebook still stands on the
 committed JSON. Narrative: [`../THESIS.md`](../THESIS.md). Bibliography:
-[`../references.md`](../references.md).
+[`../REFERENCES.md`](../REFERENCES.md).
 
 > `00_origin.ipynb` is the private origin notebook and is intentionally
 > gitignored.

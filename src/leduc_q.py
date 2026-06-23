@@ -12,7 +12,7 @@ The point (made directly, not by analogy): CFR's TIME-AVERAGE converges to the
 Nash equilibrium, but the LAST-ITERATE of an independent greedy value learner —
 this Q-learner, just like a DQN — does NOT. Each player greedily best-responds to
 the other's *current* (non-stationary) policy, so the iterate stays exploitable.
-NFSP (references.md §1) is exactly the fix: average the policy.
+NFSP (REFERENCES.md §1) is exactly the fix: average the policy.
 
 Pure-Python, seeded, and self-contained beyond `leduc_cfr`; an offline analysis
 module that touches no engine, training, or baseline behaviour.

@@ -3,7 +3,7 @@ leduc_eval.py
 -------------
 Exact exploitability of an ARBITRARY Leduc Hold'em strategy, and the
 average-vs-last-iterate comparison that explains why equilibrium self-play
-converges to Nash while greedy best-response self-play does not (references.md
+converges to Nash while greedy best-response self-play does not (REFERENCES.md
 §1–§2).
 
 `exploitability_of(strategy_table)` reuses the verified best-response machinery in

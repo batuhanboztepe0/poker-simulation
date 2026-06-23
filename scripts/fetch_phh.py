@@ -12,7 +12,7 @@ repo commits only the aggregated `results/tilt_realdata.json`, never the hands.
 Dataset: A Dataset of Poker Hand Histories (Kim, J., 2024).
   DOI: 10.5281/zenodo.13997158   License: CC-BY-4.0
   The ~21.6 M NLHE hands originate from a July 2009 HandHQ scrape, redistributed
-  under CC-BY-4.0; see references.md. Used here for the OPPONENT MODEL ONLY.
+  under CC-BY-4.0; see REFERENCES.md. Used here for the OPPONENT MODEL ONLY.
 
     # default: 200 PokerStars 25NL files (~200k human hands), chronological
     python -m scripts.fetch_phh
