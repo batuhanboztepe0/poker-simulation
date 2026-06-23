@@ -20,9 +20,14 @@ CALL = 1
 RAISE = 2
 NUM_ACTIONS = 3
 
-# The Leduc game value for player 0 (first mover), empirically verified limit
-# of vanilla CFR on this variant: antes=1, r1-bet=2, r2-bet=4, max-2-raises.
-LEDUC_GAME_VALUE = -0.032913
+# The Leduc game value for player 0 (first mover): the empirically verified limit
+# of corrected vanilla CFR on this variant (antes=1, r1-bet=2, r2-bet=4,
+# max-2-raises) -- train()'s running average settles at ~ -0.0862 by 20k-50k
+# iterations (close to the ~ -0.0856 commonly cited for Leduc). The earlier
+# -0.032913 was the value of a DEGENERATE all-call average produced by a sign bug
+# in the round-1->round-2 transition (now fixed); it neither matched the
+# literature nor reflected a converged equilibrium, and it masked the bug.
+LEDUC_GAME_VALUE = -0.0862
 
 
 class Node:
@@ -242,8 +247,15 @@ class LeducCFR:
                 else:  # tie
                     return 0.0
             else:
-                # round-1 terminal (both checked) — proceed to round 2
-                return self._cfr(c0, c1, board, r1, '', p0, p1)
+                # round-1 betting closed (no fold) — reveal board and play round 2.
+                # The round-2 subgame value comes back in PLAYER 0's units (player 0
+                # acts first in round 2). Convert it to THIS node's player
+                # perspective so it matches the alternating sign convention the
+                # caller applies via -child_util; without this, lines where player 0
+                # closes round 1 (e.g. 'crc', 'rrc') get a flipped sign and CFR
+                # never learns to raise (it converges to a degenerate all-call).
+                v2 = self._cfr(c0, c1, board, r1, '', p0, p1)
+                return v2 if player == 0 else -v2
 
         # Non-terminal: get/create node and compute strategy
         if in_r2:
@@ -346,19 +358,21 @@ class LeducCFR:
         Total value over all 120 deals (in br_player's own units) when
         br_player plays a true best response to the opponent's average strategy.
 
-        Found by policy iteration: holding the opponent at its average strategy
-        and br_player fixed at the current per-info-set action map, accumulate
-        the opponent-reach-weighted counterfactual value of each action per
-        info-set (summed over every deal/history reaching it), then set each
-        info-set to the argmax.  Iterating to a fixed point gives the exact
-        best response.
+        Found by policy iteration: each sweep prices EVERY br_player info-set and
+        action (the opponent-reach-weighted counterfactual value, continuations
+        following the current per-info-set action map), then sets each info-set to
+        the argmax.  Pricing every info-set -- not only those reachable under the
+        current map -- is what makes this exact: a reachability-gated sweep can
+        lock an info-set at a stale action whose subtree is never re-evaluated and
+        converge to a non-best-response (which can even score below simply
+        following the strategy, i.e. a NEGATIVE NashConv).  Full evaluation makes
+        this Howard policy iteration on the finite best-response MDP, which
+        converges to the global optimum.
         """
         all_cards = [0, 0, 1, 1, 2, 2]
         br_action = {}
-        total = 0.0
         for _sweep in range(self._BR_SWEEPS):
             q = {}
-            total = 0.0
             for i in range(6):
                 for j in range(6):
                     if j == i:
@@ -366,7 +380,7 @@ class LeducCFR:
                     for k in range(6):
                         if k == i or k == j:
                             continue
-                        total += self._br_walk(
+                        self._br_gather(
                             all_cards[i], all_cards[j], all_cards[k],
                             '', None, br_player, 1.0, br_action, q)
             changed = False
@@ -378,6 +392,18 @@ class LeducCFR:
                     changed = True
             if not changed:
                 break
+        # Exact value of the converged best response, over all 120 deals.
+        total = 0.0
+        for i in range(6):
+            for j in range(6):
+                if j == i:
+                    continue
+                for k in range(6):
+                    if k == i or k == j:
+                        continue
+                    total += self._br_value(
+                        all_cards[i], all_cards[j], all_cards[k],
+                        '', None, br_player, br_action)
         return total
 
     def _info_key(self, c0, c1, board, r1, curr, player, in_r2):
@@ -437,48 +463,47 @@ class LeducCFR:
             [1.0 / len(avail) if a in avail else 0.0 for a in range(NUM_ACTIONS)]
         return sum(avg[a] * child(a) for a in avail)
 
-    def _br_walk(self, c0, c1, board, r1, r2, br_player, opp_reach, br_action, q):
+    def _br_gather(self, c0, c1, board, r1, r2, br_player, opp_reach, br_action, q):
         """
         Walk one deal returning the value to br_player under the current
         `br_action` and the opponent's average strategy, while accumulating
-        q[info_set][a] += opp_reach * value(action a) at every br_player
-        info-set.  Recurses the main path only through br_player's CHOSEN action
-        (so deeper reaches reflect the current policy); alternative actions are
-        priced by the side-effect-free `_br_value`.
+        q[info_set][a] += opp_reach * value(action a) at EVERY br_player info-set.
+        It recurses into ALL of br_player's actions -- the BR player's own action
+        does not change the opponent's reach, so opp_reach is passed through
+        unchanged -- so every reachable info-set is priced each sweep and none is
+        locked out by the current action map (the bug that let a stale subtree
+        survive and produce a sub-on-policy, negative-NashConv best response).
         """
         in_r2 = (r2 is not None)
         curr = r2 if in_r2 else r1
         player = len(curr) % 2
         if _is_terminal(curr, in_r2):
             if not in_r2 and curr[-1] == 'c':
-                return self._br_walk(c0, c1, board, r1, '', br_player,
-                                     opp_reach, br_action, q)
+                return self._br_gather(c0, c1, board, r1, '', br_player,
+                                       opp_reach, br_action, q)
             return self._br_terminal(c0, c1, board, r1, r2, curr, in_r2, br_player)
         avail = _available_actions(curr, in_r2)
         info_set = self._info_key(c0, c1, board, r1, curr, player, in_r2)
 
-        def child_walk(a, reach):
+        def go(a, reach):
             ch = curr + ('f' if a == FOLD else 'c' if a == CALL else 'r')
             if in_r2:
-                return self._br_walk(c0, c1, board, r1, ch, br_player,
-                                     reach, br_action, q)
-            return self._br_walk(c0, c1, board, ch, None, br_player,
-                                 reach, br_action, q)
+                return self._br_gather(c0, c1, board, r1, ch, br_player,
+                                       reach, br_action, q)
+            return self._br_gather(c0, c1, board, ch, None, br_player,
+                                   reach, br_action, q)
 
         if player == br_player:
             slot = q.setdefault(info_set, [0.0] * NUM_ACTIONS)
+            vals = {}
             for a in avail:
-                ch = curr + ('f' if a == FOLD else 'c' if a == CALL else 'r')
-                if in_r2:
-                    v = self._br_value(c0, c1, board, r1, ch, br_player, br_action)
-                else:
-                    v = self._br_value(c0, c1, board, ch, None, br_player, br_action)
-                slot[a] += opp_reach * v
-            return child_walk(br_action.get(info_set, avail[0]), opp_reach)
+                vals[a] = go(a, opp_reach)          # price every action; reach unchanged
+                slot[a] += opp_reach * vals[a]
+            return vals[br_action.get(info_set, avail[0])]
         node = self.nodes.get(info_set)
         avg = node.average_strategy(avail) if node is not None else \
             [1.0 / len(avail) if a in avail else 0.0 for a in range(NUM_ACTIONS)]
-        return sum(avg[a] * child_walk(a, opp_reach * avg[a]) for a in avail)
+        return sum(avg[a] * go(a, opp_reach * avg[a]) for a in avail)
 
 
 def _avail_from_key(info_set):

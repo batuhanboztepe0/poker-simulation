@@ -4,7 +4,8 @@ test_phase_d_leduc.py
 Tests for Phase D: CFR / GTO equilibrium solver on Leduc Hold'em.
 
 Leduc Hold'em has a known numerically-verified Nash game value:
-    - player-0 game value = LEDUC_GAME_VALUE ≈ -0.032913
+    - player-0 game value = LEDUC_GAME_VALUE ≈ -0.0862 (corrected vanilla-CFR
+      limit; near the ~-0.0856 commonly cited for Leduc)
     - P0 is disadvantaged as first mover
     - A pair (private card matches board) warrants more aggressive play in round 2
 
@@ -23,7 +24,7 @@ from src.leduc_cfr import LeducCFR, LEDUC_GAME_VALUE
 @pytest.fixture(scope="module")
 def trained():
     cfr = LeducCFR()
-    value = cfr.train(1000)
+    value = cfr.train(2000)
     return cfr, value
 
 
@@ -100,8 +101,11 @@ class TestEquilibriumStrategy:
 
 class TestConvergence:
     def test_more_iterations_closer_to_equilibrium(self):
+        # train() returns the running AVERAGE game value, which overshoots before
+        # settling (~ -0.089 around 1k iters, then back to ~ -0.086); so compare a
+        # tiny count against a well-converged one, not two tiny counts.
         err_short = abs(LeducCFR().train(50) - LEDUC_GAME_VALUE)
-        err_long = abs(LeducCFR().train(500) - LEDUC_GAME_VALUE)
+        err_long = abs(LeducCFR().train(5000) - LEDUC_GAME_VALUE)
         assert err_long <= err_short
 
 
@@ -111,17 +115,17 @@ class TestExploitability:
         assert cfr.exploitability() >= 0.0
 
     def test_exploitability_is_small_after_training(self, trained):
-        # Info-set-respecting best response: after 1000 CFR iterations the
-        # average strategy is close to the Nash equilibrium, so the most either
-        # player can gain by deviating is small. (This is the real
-        # "unexploitable benchmark" guarantee; a clairvoyant per-deal best
-        # response would never reach zero.)
+        # Info-set-respecting best response: after 2000 CFR iterations the
+        # average strategy is close to the Nash equilibrium (exploitability
+        # ~0.018, vs ~4.75 for uniform), so the most either player can gain by
+        # deviating is small. (This is the real "unexploitable benchmark"
+        # guarantee; a clairvoyant per-deal best response would never reach zero.)
         cfr, _ = trained
         assert cfr.exploitability() < 0.03
 
     def test_exploitability_decreases_with_training(self, trained):
         # More iterations -> closer to equilibrium -> strictly less exploitable.
-        cfr_long, _ = trained          # 1000 iterations (module fixture)
+        cfr_long, _ = trained          # 2000 iterations (module fixture)
         cfr_short = LeducCFR()
         cfr_short.train(80)
         assert cfr_long.exploitability() < cfr_short.exploitability()
@@ -153,6 +157,22 @@ class TestGeneralExploitability:
         cfr, _ = trained
         assert (exploitability_of(current_strategy_table(cfr))
                 > 5 * cfr.exploitability())
+
+    def test_nashconv_is_nonnegative_for_far_from_nash_strategies(self):
+        # Regression guard: a true best response can never score below on-policy,
+        # so NashConv must be >= 0 for ANY strategy. The earlier reachability-
+        # gated best-response walk could lock out unreached info-sets and return
+        # NEGATIVE NashConv for some far-from-Nash strategies (e.g. NFSP averages
+        # at certain seeds); full-evaluation policy iteration cannot.
+        from src.leduc_eval import exploitability_of, uniform_strategy_table
+        from src.leduc_q import LeducQLearner
+        from src.leduc_nfsp import LeducNFSP
+        ql = LeducQLearner(seed=3); ql.train(100000)
+        nf = LeducNFSP(seed=5); nf.train(100000)   # seed=5 went negative pre-fix
+        for table in (uniform_strategy_table(),
+                      ql.greedy_strategy_table(),
+                      nf.average_strategy_table()):
+            assert exploitability_of(table) >= 0.0
 
 
 class TestQLearningSelfPlay:
@@ -217,20 +237,22 @@ class TestNFSPSelfPlay:
         b = LeducNFSP(seed=0); b.train(30000)
         assert a.average_strategy_table() == b.average_strategy_table()
 
-    def test_average_policy_less_exploitable_than_greedy_last_iterate(self):
-        # The point: holding alpha/eps/gamma at leduc_q's values and adding ONLY
-        # averaging, the AVERAGE policy is far less exploitable than the greedy
-        # learner's last-iterate at the same seed and episode budget -- and far
-        # below uniform. (Deterministic at fixed seed; thresholds carry margin.)
+    def test_average_policy_converges_and_beats_greedy_last_iterate(self):
+        # The point on the EXACT metric: averaging drives exploitability DOWN
+        # toward Nash with more episodes (50k -> 200k: ~2.4 -> ~1.3), while the
+        # greedy last-iterate (the DQN regime) oscillates ~3 and does not
+        # converge -- and the averaged policy ends up less exploitable than it.
+        # Sample-based NFSP stays well above full-enumeration CFR's ~0.02; the
+        # genuine result is the DIRECTION, not the magnitude. (Deterministic at
+        # fixed seed; thresholds carry margin.)
         from src.leduc_nfsp import LeducNFSP
         from src.leduc_q import LeducQLearner
-        from src.leduc_eval import exploitability_of, uniform_strategy_table
-        budget = 100000
-        nf = LeducNFSP(seed=0); nf.train(budget)
-        ql = LeducQLearner(seed=0); ql.train(budget)
-        nfsp_expl = exploitability_of(nf.average_strategy_table())
-        greedy_expl = exploitability_of(ql.greedy_strategy_table())
-        uniform_expl = exploitability_of(uniform_strategy_table())
-        assert nfsp_expl < greedy_expl
-        assert nfsp_expl < 0.6
-        assert uniform_expl > 5 * nfsp_expl
+        from src.leduc_eval import exploitability_of
+        nf_lo = LeducNFSP(seed=0); nf_lo.train(50000)
+        nf_hi = LeducNFSP(seed=0); nf_hi.train(200000)
+        ql = LeducQLearner(seed=0); ql.train(200000)
+        e_lo = exploitability_of(nf_lo.average_strategy_table())     # ~2.40
+        e_hi = exploitability_of(nf_hi.average_strategy_table())     # ~1.34
+        e_greedy = exploitability_of(ql.greedy_strategy_table())     # ~3.43
+        assert e_hi < e_lo            # averaging converges: more episodes, less exploitable
+        assert e_hi < e_greedy        # and beats the greedy last-iterate on the same metric
