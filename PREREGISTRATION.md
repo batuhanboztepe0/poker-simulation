@@ -171,6 +171,18 @@ and magnitude: **+400 chips, CI [+232, +576]**. The confirmatory edge is smaller
 than the +500 pilot — as expected, since mirror matching removes the
 seat-correlated deck luck the single-orientation pilot left in.
 
+**Seed-range transparency.** The confirmatory uses seeds `0..499`; the exploratory
+pilot used seeds `0..199`, so 200 of the 500 confirmatory seeds overlap with the
+pilot, in the same direction. This is disclosed for completeness: it means the
+seed *range* was not chosen independently of having seen a positive pilot signal —
+a mild winner's-curse consideration. Three facts bound its impact: (i) training
+never saw seeds `0..499` (in-training eval uses seeds `1000+`), so this is not
+train/test contamination; (ii) the pilot and confirmatory use *different* protocols
+(200 hands single-orientation vs 100 hands mirrored), so a given seed is not the
+same experiment; and (iii) the effect is large and far from the decision boundary
+(p ≈ 7×10⁻⁶). A future confirmatory should pre-commit a disjoint seed block (e.g.
+`500..999`) to remove the consideration entirely.
+
 ---
 
 ## 5. Tilt / Real-Data Analysis

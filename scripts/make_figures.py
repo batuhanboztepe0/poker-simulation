@@ -273,10 +273,12 @@ def fig_headline(index):
                 if bp is not None
                 else (f", paired p={p:.4f}" if p is not None else ""))
     verdict = ((". The 95% CI excludes 0: a statistically resolved edge over the "
-                "baseline (this is the exploratory pilot; the edge was already "
-                "resolved at 50 seeds — 33/50, CI [+80, +1120] — and the "
-                "pre-registered confirmatory at 500 mirrored seeds pins it to "
-                "+256 [+144, +364]).")
+                "baseline (this is the exploratory pilot; the 50-seed training "
+                "monitor is noisy — significantly negative mid-training, 15/50 at "
+                "step 500, before recovering to 33/50 at the final checkpoint — so "
+                "the resolved claim rests on the 200-seed pilot and the separate "
+                "pre-registered confirmatory at 500 mirrored seeds, which pins it "
+                "to +256 [+144, +364]).")
                if resolved else
                (". The 95% CI includes 0, so this edge is within per-seed noise — "
                 "directionally positive but not resolved at this sample size."))

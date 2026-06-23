@@ -108,10 +108,11 @@ excludes 0), 2 are within per-seed noise:
   pilot** (`evaluate_vs_baseline`, 200 seeds × 200 hands, single orientation)
   first surfaced the edge at +500 (125/200, CI [+240, +760]); the confirmatory
   number is smaller because mirror matching removes the seat-correlated deck luck
-  the pilot left in. The edge was already directionally resolved in that pilot at
-  50 seeds (33/50, CI [+80, +1120] excludes 0) and at 200 seeds, and the 500-seed
-  mirrored confirmatory pins it down tightly — correct powering, not optional
-  stopping. It is an edge over the *myopic baseline*, not the field (next bullet).
+  the pilot left in. The pilot's 50-seed training monitor is noisy, not separate
+  evidence — it was significantly negative mid-training (15/50, −800 at step 500)
+  before recovering to 33/50 at the final checkpoint — so the resolved claim rests
+  on the 200-seed pilot and the separate 500-seed mirrored confirmatory, not on the
+  50-seed reading. It is an edge over the *myopic baseline*, not the field (next bullet).
 - A **belief + opponent-mix generalist** tops a cross-agent leaderboard (+209)
   and beats two of its three pool opponents head-to-head (13-3 vs myopic, 12-4 vs
   random; 9-7 vs tilt is within noise at n=16) — but its leaderboard CI
@@ -319,8 +320,9 @@ rule to report whatever the frozen protocol returns** — and it returned an edg
 - **Test the markets analogy on real data** — the §1 connection stays a
   *motivation* on Kyle / Glosten-Milgrom (not VPIN); the genuine next step is to
   *test* the exploit-predictable-deviations idea on real order-flow data rather
-  than assert it. A concrete backtest design is pre-committed (in local working
-  notes) before any data is pulled.
+  than assert it. A concrete backtest design exists in local working notes and
+  will be committed to the repo before any data is pulled — until then, treat it
+  as a planned design, not a registered one.
 
   **Microstructure lead (motivation, untested on real order-flow).** A recent
   working paper — Bartlett & O'Hara, *"Adverse Selection in Prediction Markets:
@@ -338,7 +340,7 @@ rule to report whatever the frozen protocol returns** — and it returned an edg
   informed-opponent framing of §1 — conflating the two is a category error. The
   planned backtest tests both channels separately via Kalshi's official trades
   API, feeding results into the existing `src/stats.py` bootstrap/paired harness
-  (`bootstrap_ci`, `paired_t_test`), with a pre-registered pivot rule: if the
+  (`bootstrap_ci`, `paired_t_test`), with a planned pivot rule: if the
   behavioral-surplus channel does not survive transaction costs and out-of-sample
   holdout, pivot to OFI on equity TAQ data. No Kalshi data has been pulled and
   no backtest result exists yet.

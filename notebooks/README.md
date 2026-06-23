@@ -24,5 +24,5 @@ jupyter nbconvert --to notebook --execute --inplace 01_evaluation_rigor.ipynb
 committed JSON. Narrative: [`../THESIS.md`](../THESIS.md). Bibliography:
 [`../REFERENCES.md`](../REFERENCES.md).
 
-> `00_origin.ipynb` is the private origin notebook and is intentionally
-> gitignored.
+> `00_origin.ipynb` is a private planning notebook, kept on local disk only — it
+> is gitignored and not part of the repository history.

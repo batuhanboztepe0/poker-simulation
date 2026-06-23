@@ -59,9 +59,12 @@ SEM ribbon (right) over training.
 **Takeaway:** the dip-then-climb is real — the agent first collapses into
 over-folding, then recovers to beat the baseline. This is the **exploratory
 pilot** (final 125/200 matches, +500, 95% CI [+240, +760] — excludes 0). The
-edge was already resolved here at 50 seeds (33/50, CI [+80, +1120] excludes 0),
-and the **pre-registered confirmatory** at 500 mirrored seeds pins it down tightly
-at +256 [+144, +364] (figure 1) — correct powering, not optional stopping.
+50-seed curve on the right is a *noisy training monitor*, not separate evidence:
+the same 50 seeds read a significantly **negative** 15/50 (−800 chips) mid-training
+(step 500) before recovering to 33/50 at the final checkpoint, so 50 seeds is not
+enough to call the edge at an arbitrary checkpoint. The edge is established by the
+200-seed pilot above and by the separate **pre-registered confirmatory** at 500
+mirrored seeds, which pins it down tightly at +256 [+144, +364] (figure 1).
 
 ### 3. It generalizes to a whole opponent pool
 
