@@ -38,7 +38,7 @@ built end-to-end, not bolted on.
 
 **This is not:**
 - A validated **tradable** signal — the markets parallel (Kyle 1985 / Glosten-Milgrom 1985 informed-vs-noise traders) is a decision-theory hypothesis, untested on real order flow.
-- **State of the art** — DQN self-play is a deliberate baseline; the superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) shows *exactly* why DQN self-play does not reach Nash.
+- **State of the art** — DQN self-play is a deliberate baseline; the superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) shows *exactly* why DQN self-play does not reach Nash: the time-average falls from 0.695 to 0.009 (toward Nash) while the greedy last-iterate stays exploitable around 2.2 and never converges; the independent Q-learner oscillates around 3.40 (range [1.70, 5.53]). (Corrected, independently-verified numbers: an earlier sign error in the CFR round-transition made the average converge to a degenerate all-call strategy, and a lock-out in the best-response metric underestimated it — even returning impossible negative values; both were caught while baselining NFSP, confirmed by three independent reimplementations agreeing to machine precision plus a four-way adversarial check, and fixed. The qualitative result was unchanged — only the magnitudes.)
 - A claim of **superhuman** or pro-beating play.
 
 ## Results at a glance
@@ -47,7 +47,7 @@ built end-to-end, not bolted on.
 |---|---|---|---|
 | RL vs myopic baseline (200 seeds × 200 hands) | **+500** chips/match | [+240, +760], exact binomial p=0.0005 | Yes — CI excludes 0 (still loses H2H to Kelly) |
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
-| Leduc exploitability (exact NashConv) | CFR avg 0.433 → **0.0014**; CFR last-iterate ~**0.355**; independent Q-learner oscillates ~**1.15** | — | Exact: averaging → Nash; greedy (DQN regime) never converges |
+| Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | — | Exact: averaging → Nash; greedy (DQN regime) never converges |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
 | Loss-aversion asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes — clean within-player asymmetry |
 | ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative — n=6, suggestive not robust |

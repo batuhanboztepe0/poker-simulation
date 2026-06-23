@@ -85,13 +85,21 @@ agent was trained for. Another honest, contextualized number.
 **What you're looking at:** exact exploitability (NashConv; 0 = exact Nash
 equilibrium) on Leduc Hold'em, log-log, over training.
 
-**Takeaway:** the **time-average strategy converges to Nash** (0.433 → 0.0014),
-but the **greedy last-iterate stays exploitable (~0.355) and never converges.** An
+**Takeaway:** the **time-average strategy converges to Nash** (0.695 → 0.009),
+but the **greedy last-iterate stays exploitable (~2.2) and never converges.** An
 independent tabular Q-learning self-play (an actual DQN-regime learner) confirms
-it directly — its greedy last-iterate oscillates around 1.15, never near Nash.
-This is the *exact, verifiable* reason
+it directly — its greedy last-iterate oscillates around 3.40 (range [1.70, 5.53]),
+never near Nash. This is the *exact, verifiable* reason
 DQN self-play does not reach equilibrium and averaging methods (CFR; NFSP at
 scale) do.
+
+(Corrected, independently-verified numbers: an earlier sign error in the CFR
+round-transition made the average converge to a degenerate all-call strategy, and
+a lock-out in the best-response metric underestimated exploitability — even
+returning impossible negative values; both were caught while baselining NFSP,
+confirmed by three independent reimplementations agreeing to machine precision plus
+a four-way adversarial check, and fixed. The qualitative result — time-average
+reaches Nash, greedy last-iterate does not — was unchanged; only the magnitudes.)
 
 ### 5. Measured like a quant — variance reduction
 

@@ -119,7 +119,7 @@ Leduc Hold'em ([`figures/exploitability.png`](figures/exploitability.png)): the
 time-AVERAGE strategy's exploitability falls toward 0 (Nash), but the greedy
 LAST-ITERATE stays exploitable and does not converge — and an **independent
 tabular Q-learning self-play** (an actual DQN-regime learner, not a proxy)
-confirms it directly, its greedy last-iterate oscillating around **1.15** and
+confirms it directly, its greedy last-iterate oscillating around **3.40** and
 never approaching Nash. **NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
 step: it brings exactly this averaging to large games via a neural average-policy
 network (references.md §1).
@@ -143,14 +143,25 @@ signal statistical maturity, references.md §5.)*
 - **An exact exploitability metric** ([`src/leduc_eval.py`](src/leduc_eval.py))
   for any Leduc strategy, and the verifiable demonstration
   ([`figures/exploitability.png`](figures/exploitability.png)) that the
-  time-AVERAGE strategy's exploitability falls from **0.433 to 0.0014**
-  (effectively Nash) while the greedy LAST-ITERATE — the regime DQN self-play
-  plays in — plateaus near **0.355** and does not converge. An **independent
+  time-AVERAGE strategy's exploitability falls from **0.695 to 0.009**
+  (toward Nash) while the greedy LAST-ITERATE — the regime DQN self-play
+  plays in — stays exploitable around **2.2** and does not converge. An **independent
   tabular Q-learning self-play** (the DQN regime, measured directly) confirms
-  this: its greedy last-iterate oscillates around **1.15** (range [0.03, 2.53]
+  this: its greedy last-iterate oscillates around **3.40** (range [1.70, 5.53]
   over 1M+ episodes) and never approaches Nash — genuine non-convergence, not a
   CFR artifact. This is the exact reason DQN self-play does not reach Nash and
-  averaging methods do.
+  averaging methods do. *(Honest note on the rigor process: an earlier version of
+  this solver and metric were both wrong in mutually-masking ways — a sign error
+  in the CFR round-1→round-2 transition made the time-average converge to a
+  degenerate all-call profile (a King that never raised), and a reachability
+  lock-out in the best-response made the metric **underestimate** it, even
+  returning impossible negative NashConv. Both surfaced while baselining NFSP
+  against the metric, were pinned down by three independent reimplementations of
+  the game and best response (agreeing to machine precision) plus a four-way
+  adversarial verification, and fixed — the corrected game value ≈**−0.0862**
+  matches the ~−0.0856 known for Leduc, and the average's exploitability now
+  strictly decreases toward 0. The qualitative claim held; only the magnitudes
+  were wrong. The catch is the rigor layer working.)*
 - **Real-data tilt validation** ([`src/real_data_tilt.py`](src/real_data_tilt.py),
   [`figures/tilt_realdata.png`](figures/tilt_realdata.png)) — the
   exploit-predictable-deviations thesis tested on **777k hand-rows** of 2009
