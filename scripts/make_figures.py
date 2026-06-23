@@ -217,6 +217,7 @@ def fig_exploitability(index):
     avg0, avgN = curve[0]["avg_exploitability"], curve[-1]["avg_exploitability"]
     lastN = curve[-1]["last_iterate_exploitability"]
     q_rows = d.get("q_curve")
+    nfsp_rows = d.get("nfsp_curve")
     q_mean, q_rng = d.get("q_last_iterate_mean"), d.get("q_last_iterate_range")
     q_txt = ((f" An INDEPENDENT tabular Q-learning self-play (the DQN regime — "
               f"greedy off-policy TD, no averaging) confirms this directly: its "
@@ -224,17 +225,26 @@ def fig_exploitability(index):
               f"[{q_rng[0]:.2f}, {q_rng[1]:.2f}] over 1M+ episodes) and never "
               f"approaches Nash — genuine non-convergence, not a CFR artifact.")
              if q_mean is not None and q_rng else "")
+    nfsp_txt = ((f" Adding ONLY policy-averaging to that same Q-learner (tabular "
+                 f"NFSP) flips the outcome: its AVERAGE policy's exploitability "
+                 f"falls {nfsp_rows[0]['exploitability']:.2f} → "
+                 f"{nfsp_rows[-1]['exploitability']:.2f} over "
+                 f"{nfsp_rows[0]['episodes']//1000}k → "
+                 f"{nfsp_rows[-1]['episodes']//1000}k episodes — the learned "
+                 f"averaging method converging on the same exact metric "
+                 f"(sample-based, so above CFR's full-enumeration limit).")
+                if nfsp_rows else "")
     cap = (f"Exact Leduc exploitability (NashConv; 0 = exact Nash). The CFR "
            f"TIME-AVERAGE strategy converges toward the equilibrium "
            f"({avg0:.3f} → {avgN:.4f}), but the greedy LAST-ITERATE stays "
-           f"exploitable (~{lastN:.3f}) and does NOT converge." + q_txt +
+           f"exploitable (~{lastN:.3f}) and does NOT converge." + q_txt + nfsp_txt +
            f" This is the rigorous, exact reason DQN self-play does not reach "
-           f"Nash while averaging methods do (CFR here; NFSP scales the same "
-           f"averaging to large games — references.md §1).")
+           f"Nash while averaging methods do (CFR here; NFSP carries the same "
+           f"averaging to a learned policy — references.md §1).")
     index.append(("exploitability.png", "§rigor",
                   _save(exploitability_curve_figure(
                       curve, uniform=d.get("uniform_exploitability"),
-                      q_rows=q_rows),
+                      q_rows=q_rows, nfsp_rows=nfsp_rows),
                       "exploitability", cap, height=480)))
 
 

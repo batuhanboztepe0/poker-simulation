@@ -99,6 +99,10 @@ class TestResultsSchema(unittest.TestCase):
             self.assertLessEqual(
                 {"iters", "avg_exploitability", "last_iterate_exploitability"},
                 set(pt))
+        # NFSP average-policy curve (the learned averaging method), when present
+        if "nfsp_curve" in d:
+            for pt in d["nfsp_curve"]:
+                self.assertLessEqual({"episodes", "exploitability"}, set(pt))
 
     def test_pool_schema(self):
         path = os.path.join(RESULTS, "pool.json")

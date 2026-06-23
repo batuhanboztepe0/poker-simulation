@@ -504,14 +504,18 @@ def forest_plot_figure(rows, title=None,
     return fig
 
 
-def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None):
+def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None,
+                                nfsp_rows=None):
     """
     Exploitability (NashConv) over self-play training, log-log. CFR's
     time-AVERAGE converges to the Nash equilibrium (-> 0); the CFR LAST-ITERATE
     greedy strategy stays exploitable. With `q_rows`, a third curve adds an
     INDEPENDENT tabular Q-learning self-play (the DQN regime — greedy off-policy
     TD, no averaging) whose greedy last-iterate oscillates and never reaches Nash
-    — a direct measurement of the same non-convergence, not an analogy. An
+    — a direct measurement of the same non-convergence, not an analogy. With
+    `nfsp_rows`, a fourth curve adds tabular NFSP (the SAME value learner with
+    policy-averaging added): its AVERAGE policy converges toward Nash, the learned
+    analog of CFR's time-average and the fix for the greedy non-convergence. An
     optional `uniform` reference line marks a uniform-random baseline.
 
     Args:
@@ -520,6 +524,8 @@ def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None):
         uniform (float | None): uniform-random baseline exploitability.
         q_rows (list[dict] | None): each {episodes, exploitability} for the
             Q-learning self-play greedy last-iterate.
+        nfsp_rows (list[dict] | None): each {episodes, exploitability} for the
+            NFSP average-policy.
     """
     iters = [r["iters"] for r in rows]
     fig = go.Figure()
@@ -538,6 +544,13 @@ def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None):
             mode="lines+markers",
             name="Q-learning self-play last-iterate (DQN regime)",
             line=dict(color="#d62728")))
+    if nfsp_rows:
+        fig.add_trace(go.Scatter(
+            x=[r["episodes"] for r in nfsp_rows],
+            y=[r["exploitability"] for r in nfsp_rows],
+            mode="lines+markers",
+            name="NFSP average-policy (learned averaging → Nash)",
+            line=dict(color="#1f77b4")))
     if uniform is not None:
         fig.add_hline(y=uniform, line=dict(color="gray", dash="dot"),
                       annotation_text=f"uniform random ({uniform:.2f})")

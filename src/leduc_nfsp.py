@@ -23,9 +23,11 @@ exactly to per-info-set action counts whose normalisation is Pi.
 
 The point (the loop THESIS §4/§6 leaves open): CFR's time-AVERAGE reaches Nash
 but the greedy LAST-ITERATE — the DQN regime, measured directly by `leduc_q` —
-does not (it oscillates around 1.15 and never converges). Holding alpha, eps and
+does not (it oscillates around 3.40 and never converges). Holding alpha, eps and
 gamma at `leduc_q`'s values and adding ONLY this averaging, the AVERAGE policy
-converges instead: `average_strategy_table()` feeds Pi to
+converges instead — its exact exploitability falls ~2.40 -> ~0.86 over 50k -> 1M
+episodes (sample-based, so above full-enumeration CFR's ~0.01, but clearly
+toward Nash): `average_strategy_table()` feeds Pi to
 `leduc_eval.exploitability_of` — the same exact metric on which the greedy
 learner fails — so the comparison isolates the single variable (averaging) and
 success/failure are reported on identical, non-tunable footing.

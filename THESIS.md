@@ -162,6 +162,15 @@ signal statistical maturity, references.md §5.)*
   matches the ~−0.0856 known for Leduc, and the average's exploitability now
   strictly decreases toward 0. The qualitative claim held; only the magnitudes
   were wrong. The catch is the rigor layer working.)*
+- **Tabular NFSP on Leduc** ([`src/leduc_nfsp.py`](src/leduc_nfsp.py)) — the
+  *learned* averaging method that closes the loop above, in-repo. It is the SAME
+  value learner as the Q-curve (identical α, ε, γ) with ONLY NFSP's policy-
+  averaging added (Heinrich & Silver 2016): its AVERAGE policy's exploitability
+  falls **~2.40 → ~0.86** over 50k → 1M episodes — converging toward Nash on the
+  same exact metric on which the greedy last-iterate oscillates around 3.40 —
+  while sample-based, so it stays above CFR's full-enumeration ~0.01. Adding only
+  averaging flips non-convergence into convergence; the fourth curve on
+  [`figures/exploitability.png`](figures/exploitability.png) shows it directly.
 - **Real-data tilt validation** ([`src/real_data_tilt.py`](src/real_data_tilt.py),
   [`figures/tilt_realdata.png`](figures/tilt_realdata.png)) — the
   exploit-predictable-deviations thesis tested on **777k hand-rows** of 2009
@@ -199,9 +208,10 @@ signal statistical maturity, references.md §5.)*
   with a *pre-committed* value function at decision nodes for the ~10–44× CI
   reduction; the precondition is to fix the heuristic before seeing the
   evaluation data (the documented footgun).
-- **A neural NFSP learner on NLHE** — carry the averaging that reaches Nash on
-  Leduc to the large game via a neural average-policy network, evaluated with the
-  exploitability metric now in place. (DQN here stays a deliberate baseline.)
+- **A neural NFSP learner on NLHE** — the tabular version above already reaches
+  Nash on Leduc; the next step carries that averaging to the large game via a
+  *neural* average-policy network, evaluated with the same exploitability metric.
+  (DQN here stays a deliberate baseline.)
 - **Test the markets analogy on real data** — the §1 connection stays a
   *motivation* on Kyle / Glosten-Milgrom (not VPIN); the genuine next step is to
   *test* the exploit-predictable-deviations idea on real order-flow data rather
