@@ -65,7 +65,7 @@ detection), not as alpha.
 
 ## 3. Honest results: what was built, what is reproduced, and what is new
 
-This section covers four results: the cross-cutting thesis, the lead Leduc exploitability finding, the loss-aversion asymmetry from real hand data, and the RL edge with its limits.
+This section covers four results: the cross-cutting thesis, the lead Leduc exploitability finding, the post-loss risk-taking asymmetry from real hand data, and the RL edge with its limits.
 
 **Cross-cutting thesis.** Predictable behavioral deviations are an exploitable,
 measurable edge. The same paired, variance-reduced methodology detects them
@@ -85,7 +85,7 @@ convergence; all in REFERENCES.md §7). It is *not* a novel theorem. The novelty
 boundary is the exact numerical confirmation on Leduc with an independent
 tabular-NFSP fix.
 
-**Supporting finding:** a within-player loss-aversion asymmetry on 777k real
+**Supporting finding:** a within-player post-loss risk-taking asymmetry on 777k real
 human hand-rows. Players are +3.6 pp more aggressive and +2.9 pp looser after a
 realized loss than after an equal-size win (Cohen d=0.25/0.14, n=685 matched
 players, §6). The effect is small but real, well-calibrated to the behavioral
@@ -257,8 +257,10 @@ rule to report whatever the frozen protocol returns. It returned an edge
   *sign* differs. The loss side is **+3.6pp more aggressive and +2.9pp looser**
   (95% CIs exclude 0; Cohen d=0.25 / 0.14; n=685 matched players; shuffled-label
   placebo ~0). That is *larger* than the vs-baseline shift, because players also
-  tighten after a win. This is a clean **prospect-theory loss-aversion asymmetry**,
-  not generic big-pot arousal.
+  tighten after a win. This is a clean **within-player post-loss risk-taking asymmetry**,
+  not generic big-pot arousal. The label is deliberately descriptive: the mechanism is
+  discussed below, and the finding runs opposite to the realization effect, so it is not
+  asserted to be prospect-theory loss aversion.
 
   **Positioning against the behavioral literature.** The ≥10bb chip loss in this
   design is a *realized* loss (chips removed from stack at showdown), which puts
@@ -276,7 +278,7 @@ rule to report whatever the frozen protocol returns. It returned an edge
   distinguishing the two predictions (realized-loss risk-reduction vs.
   competitive-context loss-chasing) is an open question, not a resolved claim.
 
-  **On lambda=2.25.** The prospect-theory framing above does not depend on
+  **On lambda=2.25.** Any loss-aversion reading of the asymmetry above does not depend on
   the canonical Tversky-Kahneman (1992) loss-aversion coefficient of λ=2.25.
   That estimate comes from a small, unincentivized student sample, and recent
   meta-analyses report substantially lower and widely heterogeneous estimates.

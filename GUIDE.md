@@ -23,7 +23,7 @@ see [REFERENCES.md](REFERENCES.md); for the raw figure index see
   This faithfully reproduces known theory (Freund-Schapire 1999; Mertikopoulos et al.
   2018; Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019) with exact Leduc numbers
   and a tabular-NFSP fix. It is a clean pedagogical demonstration built end-to-end, not a
-  novel theorem. The project also finds a **within-player loss-aversion asymmetry** on
+  novel theorem. The project also finds a **within-player post-loss risk-taking asymmetry** on
   777k real human hands (figure 7, d=0.25, well-calibrated to prior literature). The RL
   agent's edge over a myopic baseline **resolves** under a pre-registered confirmatory run
   (500 mirrored seeds: +256 chips, CI [+144, +364]) but is modest, and a 0-parameter Kelly
@@ -142,7 +142,7 @@ markets parallel is motivation, untested on real order flow).
 
 ### 7. The confound-controlled result: loss versus an equal win (the stronger test)
 
-![loss-aversion asymmetry](figures/tilt_lossvswin.png)
+![post-loss risk-taking asymmetry](figures/tilt_lossvswin.png)
 
 **What you're looking at:** the post-loss-vs-baseline shift could be confounded:
 looser players both lose more and play looser. This panel addresses that by comparing each player's hand after
@@ -152,9 +152,11 @@ big-pot arousal, and event size. Only the swing *sign* differs.
 **Takeaway:** after a loss players are **+3.6pp more aggressive and +2.9pp looser**
 than after an equal win (95% CIs exclude 0, Cohen d=0.25/0.14, n=685 matched
 players; shuffled-label placebo ~0). The effect is *larger* than the vs-baseline effect
-because players also tighten after a win. This is a clean **prospect-theory loss-aversion
-asymmetry**, not generic big-pot arousal. The within-player control removes the
-selection confound and is the stronger of the two tilt tests.
+because players also tighten after a win. This is a clean **within-player post-loss
+risk-taking asymmetry**, not generic big-pot arousal. Its relation to the behavioral
+literature (the Imas 2016 realization effect, Coval-Shumway loss-chasing) is discussed
+in THESIS.md. The within-player control removes the selection confound and is the
+stronger of the two tilt tests.
 
 ### 8. Honest negatives (a feature, not a bug)
 

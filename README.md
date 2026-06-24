@@ -25,7 +25,7 @@ to train it. This repo turns that thinking into something measurable:
 - **Reading exploitable counterparties.** On 777k real human hands, players loosen and turn more
   aggressive after a big loss, the poker analog of adverse selection. A within-player matched
   control (the hand after a loss vs the hand after an *equal-size* win, same player) isolates a
-  clean loss-aversion asymmetry (+3.6pp aggression, +2.9pp VPIP; shuffled-label placebo ~0).
+  clean within-player post-loss risk-taking asymmetry (+3.6pp aggression, +2.9pp VPIP; shuffled-label placebo ~0).
 - **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
   agent head-to-head, reported plainly, because a learned policy that loses to Kelly is worth
   knowing.
@@ -55,7 +55,7 @@ built end-to-end, not bolted on.
 | RL vs **analytic Kelly**, head-to-head (16 seeds) | **5–11** (Kelly wins) | p=0.21, within noise at n=16 | RL **loses** to a 0-parameter closed-form benchmark, reported, not buried |
 | Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | n/a | Exact: averaging → Nash; greedy (DQN regime) never converges |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes, real but small |
-| Loss-aversion asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes, clean within-player asymmetry |
+| Post-loss risk-taking asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes, clean within-player asymmetry |
 | ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative, n=6, suggestive not robust |
 
 *Every number traces to committed data under [`results/`](results/) and a figure under
