@@ -17,16 +17,17 @@ see [REFERENCES.md](REFERENCES.md); for the raw figure index see
   is not. SIG literally puts traders through ~100 hours of poker to teach it
   (REFERENCES.md §4); the market-microstructure framing (Kyle 1985 /
   Glosten-Milgrom 1985) is **motivation**, untested on real order-flow data.
-- **The honest headline:** the lead finding is a **clean, exact reproduction** of
-  the known last-iterate vs. time-average exploitability result on Leduc (figure
-  4): known theory (Freund-Schapire 1999; Mertikopoulos et al. 2018;
-  Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019, OMWU convergence), faithfully confirmed
-  with exact Leduc numbers and a tabular-NFSP fix, not a novel theorem. The project also finds a
-  **within-player loss-aversion asymmetry** on 777k real human hands (figure 7,
-  d=0.25, well-calibrated to prior literature). The RL agent's edge over a myopic
-  baseline **resolves** under a pre-registered confirmatory run (500 mirrored
-  seeds: +256 chips, CI [+144, +364]) but is modest. A 0-parameter Kelly bot
-  beats it. Every edge is reported with its CI; the rigor and honesty is the point.
+- **The honest headline:** the lead finding is the exact NashConv result on Leduc
+  (figure 4). The CFR time-average converges to Nash (0.695 to 0.009) while the greedy
+  last-iterate never does (~2.2), confirmed directly by an independent tabular Q-learner.
+  This faithfully reproduces known theory (Freund-Schapire 1999; Mertikopoulos et al.
+  2018; Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019) with exact Leduc numbers
+  and a tabular-NFSP fix. It is a clean pedagogical demonstration built end-to-end, not a
+  novel theorem. The project also finds a **within-player loss-aversion asymmetry** on
+  777k real human hands (figure 7, d=0.25, well-calibrated to prior literature). The RL
+  agent's edge over a myopic baseline **resolves** under a pre-registered confirmatory run
+  (500 mirrored seeds: +256 chips, CI [+144, +364]) but is modest, and a 0-parameter Kelly
+  bot beats it. Every edge is reported with its CI.
 
 > If you read one figure, read **[`figures/exec_summary.png`](figures/exec_summary.png)** below.
 

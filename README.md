@@ -4,7 +4,7 @@
 
 ![Are the edges real? Every headline edge with its 95% bootstrap CI.](figures/exec_summary.png)
 
-> *Every headline edge as a point with its 95% bootstrap CI. Two of four straddle zero; the headline RL-vs-baseline edge resolves under the pre-registered confirmatory protocol (500 mirrored seeds: +256 chips, CI [+144, +364], binomial p≈7×10⁻⁶). That is the result, measured and reported, not a failure to hide.*
+> *The pre-registered confirmatory run resolves the headline edge at +256 chips/match (500 mirrored seeds, CI [+144, +364], binomial p≈7×10⁻⁶). Each headline edge is shown here as a point with its 95% bootstrap CI. Two of four straddle zero, a calibrated result reported in full.*
 
 ## What this demonstrates
 
@@ -12,21 +12,23 @@ Prop desks and trading firms screen for a specific way of thinking: expected val
 uncertainty, reading counterparties, and pricing risk. Some (e.g. SIG) literally use poker
 to train it. This repo turns that thinking into something measurable:
 
-- **Telling a real edge from noise.** Every claimed edge is shown with its 95% bootstrap CI (the
-  figure above): 2 of 4 straddle zero. Surfacing that, and *not* over-sizing a marginal edge,
-  is the trader-maturity signal, not a result to hide. (For scale: even an 80,000-hand human-AI
-  match with a margin "huge" by professional standards sat at the edge of significance without
-  variance reduction, Claudico 2015.)
+- **Telling a real edge from noise.** The headline RL-vs-baseline edge resolves at **+256 chips/match**
+  under a pre-registered protocol (CI [+144, +364], p≈7×10⁻⁶). Every edge is shown with its 95%
+  bootstrap CI, and two of four straddle zero. Showing that, and *not* over-sizing a marginal edge,
+  is the trader-maturity signal. (For scale: even an 80,000-hand human-AI match with a margin
+  "huge" by professional standards sat at the edge of significance without variance reduction,
+  Claudico 2015.)
+- **Measuring convergence to Nash.** On Leduc Hold'em with exact NashConv, the CFR time-average
+  falls from **0.695 to 0.009** toward Nash, while the greedy last-iterate stays exploitable around
+  2.2 and never converges. An independent Q-learner oscillates around 3.40 (range [1.70, 5.53]).
+  This is the exact, verifiable reason DQN self-play does not reach equilibrium.
 - **Reading exploitable counterparties.** On 777k real human hands, players loosen and turn more
   aggressive after a big loss, the poker analog of adverse selection. A within-player matched
   control (the hand after a loss vs the hand after an *equal-size* win, same player) isolates a
   clean loss-aversion asymmetry (+3.6pp aggression, +2.9pp VPIP; shuffled-label placebo ~0).
 - **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
-  agent head-to-head; reported plainly, because a learned policy that loses to Kelly is worth
+  agent head-to-head, reported plainly, because a learned policy that loses to Kelly is worth
   knowing.
-- **Measuring convergence to Nash.** On Leduc Hold'em with exact NashConv, the CFR time-average
-  falls from 0.695 to 0.009 toward Nash. The greedy last-iterate stays exploitable around 2.2
-  and never converges. The independent Q-learner oscillates around 3.40 (range [1.70, 5.53]).
 
 The reinforcement-learning, opponent-modelling, and game-theory machinery underneath (self-play
 DQN, HMM tilt detection, exact Leduc-equilibrium analysis) doubles as evidence the ML stack was
@@ -41,7 +43,7 @@ built end-to-end, not bolted on.
 
 **This is not:**
 - A validated **tradable** signal. The markets parallel (Kyle 1985 / Glosten-Milgrom 1985 informed-vs-noise traders) is a decision-theory hypothesis, untested on real order flow.
-- **State of the art.** DQN self-play is a deliberate baseline; the superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) shows exactly why DQN self-play does not reach Nash: the time-average falls from 0.695 to 0.009 (toward Nash) while the greedy last-iterate stays exploitable around 2.2 and never converges; the independent Q-learner oscillates around 3.40 (range [1.70, 5.53]). Note on corrected numbers: an earlier sign error in the CFR round-transition made the average converge to a degenerate all-call strategy, and a lock-out in the best-response metric underestimated it, even returning impossible negative values. Both were caught while baselining NFSP, confirmed by three independent reimplementations agreeing to machine precision plus a four-way adversarial check, and fixed. The qualitative result was unchanged; only the magnitudes changed.
+- **State of the art.** DQN self-play is a deliberate baseline. The superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) and [GUIDE.md](GUIDE.md#4-the-game-theory-is-principled-and-exact) show exactly why, with the exact convergence numbers. (Earlier solver bugs were caught while baselining NFSP, independently verified, and corrected. The full correction history is in GUIDE and THESIS.)
 - A claim of **superhuman** or pro-beating play.
 
 ## Results at a glance
