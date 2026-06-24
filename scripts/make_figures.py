@@ -31,7 +31,9 @@ from app.charts import (
     parameter_heatmap_figure,
     ab_grouped_bar_figure, ab_heatmap_figure, icm_edge_figure,
     forest_plot_figure, exploitability_curve_figure,
+    pool_strip_figure,
 )
+from app.theme import THEME_PLAIN
 from src.evaluation import bootstrap_ci
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,7 +80,6 @@ def _save(fig, name, caption, width=960, height=560, subcaption=None):
     keeps the technical panels clean and avoids text overflowing the frame.
     `subcaption` is accepted for call-site compatibility and is unused."""
     os.makedirs(FIGURES, exist_ok=True)
-    fig.update_layout(margin=dict(b=80, t=72), font=dict(size=13))
     fig.write_image(os.path.join(FIGURES, name + ".png"),
                     width=width, height=height, scale=2)
     fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
@@ -93,9 +94,8 @@ def _save_plain(fig, name, title, takeaway, width=960, height=540):
     os.makedirs(FIGURES, exist_ok=True)
     wrapped = "<br>".join(textwrap.wrap(takeaway, width=92))
     n = wrapped.count("<br>") + 1
-    fig.update_layout(
-        title=dict(text=title, x=0.5, xanchor="center", font=dict(size=22)),
-        font=dict(size=15), margin=dict(t=80, b=80 + 26 * n, l=80, r=60))
+    fig.update_layout(**{**THEME_PLAIN, "title": dict(text=title),
+                         "margin": dict(t=80, b=90 + 24 * n, l=80, r=60)})
     fig.add_annotation(text=wrapped, xref="paper", yref="paper", x=0.5, y=-0.22,
                        showarrow=False, align="center", xanchor="center",
                        yanchor="top", font=dict(size=14, color="#333"))
@@ -239,12 +239,6 @@ def fig_exploitability(index):
     fig = exploitability_curve_figure(
         curve, uniform=d.get("uniform_exploitability"),
         q_rows=q_rows, nfsp_rows=nfsp_rows)
-    # Place the legend inside the empty upper-left of the plot. On this log-log
-    # axis the curves sit low, so the top area is free. This overlaps neither the
-    # title (top margin) nor the caption (bottom margin).
-    fig.update_layout(legend=dict(
-        yanchor="top", y=0.98, xanchor="left", x=0.02,
-        bgcolor="rgba(255,255,255,0.65)", bordercolor="#cccccc", borderwidth=1))
     index.append(("exploitability.png", "§rigor",
                   _save(fig, "exploitability", cap, height=480, subcaption=sub)))
 
@@ -355,22 +349,6 @@ def fig_pool(index):
     nets = d["per_agent_nets"]
     order = sorted(nets, key=lambda n: sum(nets[n]) / len(nets[n]) if nets[n] else 0.0,
                    reverse=True)
-    box = go.Figure()
-    for i, name in enumerate(order):
-        ys = nets[name]
-        xs = [i + (((j * 5 + 2) % 11) / 10.0 - 0.5) * 0.55 for j in range(len(ys))]
-        box.add_trace(go.Scatter(x=xs, y=ys, mode="markers",
-                                 marker=dict(size=5, opacity=0.45)))
-        m = sum(ys) / len(ys)
-        box.add_trace(go.Scatter(x=[i - 0.3, i + 0.3], y=[m, m], mode="lines",
-                                 line=dict(color="#222", width=3)))
-    box.add_hline(y=0, line=dict(color="gray", dash="dot"))
-    box.update_layout(
-        title="Per-match net chips by agent (each dot = one match; bar = mean)",
-        yaxis_title="Net chips (per match)", showlegend=False,
-        xaxis=dict(tickmode="array", tickvals=list(range(len(order))),
-                   ticktext=[f"{n}<br>{sum(1 for v in nets[n] if v > 0) / len(nets[n]):.0%} won"
-                             for n in order]))
     wr = ", ".join(f"{n} {sum(1 for v in nets[n] if v > 0) / len(nets[n]):.0%}"
                    for n in order)
     cap_box = (f"Per-match net chips per agent (each dot is one held-out match, bar is the mean). "
@@ -379,7 +357,7 @@ def fig_pool(index):
     sub_box = (f"Agent ranking by match win rate: {wr}. "
                f"Most outcomes cluster near ±1000 chips.")
     index.append(("pool_pnl_box.png", "pool",
-                  _save(box, "pool_pnl_box", cap_box, subcaption=sub_box)))
+                  _save(pool_strip_figure(nets), "pool_pnl_box", cap_box, subcaption=sub_box)))
 
 
 def fig_icm(index):
