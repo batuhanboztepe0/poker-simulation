@@ -72,21 +72,13 @@ def _melt_opponents(rows, opps=("myopic", "tilt", "random")):
 # --- rendering --------------------------------------------------------------
 
 def _save(fig, name, caption, width=960, height=560, subcaption=None):
-    """Write figures/<name>.png + .html with a wrapped bottom caption.
-
-    The figure renders `subcaption` when given (a short, legible in-image
-    label), otherwise the full `caption`. The full `caption` is always returned
-    for the figures/README.md index, so trimming the in-image text never drops
-    detail from the index, it just keeps dense figures readable standalone."""
+    """Write figures/<name>.png + .html. The panel carries its title, plot, and
+    axis labels only. The full description lives in figures/README.md (the
+    returned caption) and in GUIDE.md, so no caption is baked into the image. That
+    keeps the technical panels clean and avoids text overflowing the frame.
+    `subcaption` is accepted for call-site compatibility and is unused."""
     os.makedirs(FIGURES, exist_ok=True)
-    shown = subcaption if subcaption is not None else caption
-    wrapped = "<br>".join(textwrap.wrap(shown, width=108))
-    n_lines = wrapped.count("<br>") + 1
-    fig.update_layout(margin=dict(b=70 + 24 * n_lines, t=70))
-    # Anchored top-left in the bottom margin (below the x-axis title), grows down.
-    fig.add_annotation(text=wrapped, xref="paper", yref="paper", x=0, y=-0.22,
-                       showarrow=False, align="left", xanchor="left",
-                       yanchor="top", font=dict(size=11, color="#555"))
+    fig.update_layout(margin=dict(b=80, t=72), font=dict(size=13))
     fig.write_image(os.path.join(FIGURES, name + ".png"),
                     width=width, height=height, scale=2)
     fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
