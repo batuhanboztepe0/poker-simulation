@@ -129,7 +129,10 @@ def evaluate_matchup(factory_a: AgentFactory, factory_b: AgentFactory,
     composable; REFERENCES.md §2):
     - ``mirror=True`` — DUPLICATE/mirror match: replay the same deck with the
       agents in swapped seats and average A's result over both orientations,
-      cancelling the deck-luck that favours one seat.
+      cancelling the deck-luck that favours one seat. The per-seed diff is then
+      the mean of the two orientations, so it can take intermediate values (not
+      only ±2 stacks), and an exact tie arises when the orientations cancel; the
+      binomial sign test counts only the decisive (non-tied) seeds.
     - ``luck_adjusted=True`` — all-in EV control variate: score all-in pots by
       their equity-weighted EV instead of the realised runout, removing the
       board-runout chance variance (the AIVAT-family chance-node adjustment).
