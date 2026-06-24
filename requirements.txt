@@ -14,8 +14,11 @@ pyarrow==16.1.0
 kaleido==0.2.1
 # Phase A — fold equity (pure-Python betainc fallback exists if absent)
 scipy==1.11.4
-# Phase C — RL agent (OPTIONAL: rl_agent.py is torch-guarded; all other
-# Phase C modules import and run without torch). Uncomment to train the DQN:
+# Phase C — RL agent. torch is OPTIONAL for the engine and the analysis modules
+# (rl_agent.py is torch-guarded; everything else imports and runs without it), but
+# it IS required to train the DQN and to regenerate the RL-dependent measurements
+# (confirmatory, headline, pool). The committed checkpoints and results let you
+# skip it. Uncomment to install:
 # torch>=2.0
 
 # Real-data tilt validation (ANALYSIS-ONLY, offline: src/real_data_tilt.py,

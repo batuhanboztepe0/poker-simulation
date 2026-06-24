@@ -90,7 +90,7 @@ the full seeded reproduction commands.
 
 The real-data tilt validation uses the **PHH** dataset, *A Dataset of Poker Hand Histories*,
 Kim (2024), Zenodo [doi:10.5281/zenodo.13997158](https://doi.org/10.5281/zenodo.13997158),
-**CC-BY-4.0**. The NLHE hands originate from a July 2009 HandHQ scrape redistributed by Kim under
+**[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)**. The NLHE hands originate from a July 2009 HandHQ scrape redistributed by Kim under
 CC-BY-4.0. They are used for **opponent-model validation only**, never to train the self-play
 policy (human logs in the policy would make the agent exploitable). Raw files are gitignored;
 the processed result is committed to [`results/tilt_realdata.json`](results/tilt_realdata.json).
