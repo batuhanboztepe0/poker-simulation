@@ -1,3 +1,6 @@
+# Source: PHH dataset, Kim, J. (2024), "A Dataset of Poker Hand Histories",
+# Zenodo doi:10.5281/zenodo.13997158, CC-BY-4.0. Six sample PokerStars 2009
+# hands (originally a July 2009 HandHQ scrape), used for parser unit tests only.
 [1]
 variant = 'NT'
 ante_trimming_status = false

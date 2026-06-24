@@ -1,6 +1,6 @@
-# poker-simulation
+# Poker as a Decision-Science Sandbox
 
-**A poker lab for the skills a trading desk screens for — finding edge under uncertainty, telling a real edge from noise, modelling adversarial counterparties, and sizing risk. Built on a seeded Hold'em engine + self-play RL + an HMM opponent model, and evaluated like a quant backtest: paired seeds, bootstrap CIs, variance reduction.**
+**A poker lab for the skills a trading desk screens for: finding edge under uncertainty, telling a real edge from noise, modelling adversarial counterparties, and sizing risk.** **Built on a seeded Hold'em engine, self-play RL, and an HMM opponent model, and evaluated like a quant backtest: paired seeds, bootstrap CIs, variance reduction.**
 
 ![Are the edges real? Every headline edge with its 95% bootstrap CI.](figures/exec_summary.png)
 
@@ -8,28 +8,31 @@
 
 ## What this demonstrates
 
-Prop desks and trading firms screen for a specific way of thinking — expected value under
-uncertainty, reading counterparties, and pricing risk — and some (e.g. SIG) literally use poker
+Prop desks and trading firms screen for a specific way of thinking: expected value under
+uncertainty, reading counterparties, and pricing risk. Some (e.g. SIG) literally use poker
 to train it. This repo turns that thinking into something measurable:
 
 - **Telling a real edge from noise.** Every claimed edge is shown with its 95% bootstrap CI (the
-  figure above): 2 of 4 straddle zero. Surfacing that — and *not* over-sizing a marginal edge —
+  figure above): 2 of 4 straddle zero. Surfacing that, and *not* over-sizing a marginal edge,
   is the trader-maturity signal, not a result to hide. (For scale: even an 80,000-hand human-AI
   match with a margin "huge" by professional standards sat at the edge of significance without
-  variance reduction — Claudico 2015.)
+  variance reduction, Claudico 2015.)
 - **Reading exploitable counterparties.** On 777k real human hands, players loosen and turn more
-  aggressive after a big loss — the poker analog of adverse selection. A within-player matched
+  aggressive after a big loss, the poker analog of adverse selection. A within-player matched
   control (the hand after a loss vs the hand after an *equal-size* win, same player) isolates a
   clean loss-aversion asymmetry (+3.6pp aggression, +2.9pp VPIP; shuffled-label placebo ~0).
 - **Respecting principled risk-sizing.** An analytic Kelly bankroll-sizer beats the learned RL
   agent head-to-head; reported plainly, because a learned policy that loses to Kelly is worth
   knowing.
+- **Measuring convergence to Nash.** On Leduc Hold'em with exact NashConv, the CFR time-average
+  falls from 0.695 to 0.009 toward Nash. The greedy last-iterate stays exploitable around 2.2
+  and never converges. The independent Q-learner oscillates around 3.40 (range [1.70, 5.53]).
 
 The reinforcement-learning, opponent-modelling, and game-theory machinery underneath (self-play
 DQN, HMM tilt detection, exact Leduc-equilibrium analysis) doubles as evidence the ML stack was
 built end-to-end, not bolted on.
 
-## What this is — and is not
+## What this is, and what it is not
 
 **This is:**
 - A seeded, chip-conserving Hold'em engine (2–9 players, side pots) + Monte-Carlo equity.
@@ -37,32 +40,34 @@ built end-to-end, not bolted on.
 - A quant-style evaluation layer: paired per-seed scenarios, paired t-tests, **bootstrap 95% CIs**, and opt-in duplicate/mirror matching + an all-in EV control variate (the DIVAT/AIVAT variance-reduction lineage).
 
 **This is not:**
-- A validated **tradable** signal — the markets parallel (Kyle 1985 / Glosten-Milgrom 1985 informed-vs-noise traders) is a decision-theory hypothesis, untested on real order flow.
-- **State of the art** — DQN self-play is a deliberate baseline; the superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) shows *exactly* why DQN self-play does not reach Nash: the time-average falls from 0.695 to 0.009 (toward Nash) while the greedy last-iterate stays exploitable around 2.2 and never converges; the independent Q-learner oscillates around 3.40 (range [1.70, 5.53]). (Corrected, independently-verified numbers: an earlier sign error in the CFR round-transition made the average converge to a degenerate all-call strategy, and a lock-out in the best-response metric underestimated it — even returning impossible negative values; both were caught while baselining NFSP, confirmed by three independent reimplementations agreeing to machine precision plus a four-way adversarial check, and fixed. The qualitative result was unchanged — only the magnitudes.)
+- A validated **tradable** signal. The markets parallel (Kyle 1985 / Glosten-Milgrom 1985 informed-vs-noise traders) is a decision-theory hypothesis, untested on real order flow.
+- **State of the art.** DQN self-play is a deliberate baseline; the superhuman poker AIs (DeepStack / Libratus / Pluribus / ReBeL) are CFR-family, 2–3 generations ahead. [`figures/exploitability.png`](figures/exploitability.png) shows exactly why DQN self-play does not reach Nash: the time-average falls from 0.695 to 0.009 (toward Nash) while the greedy last-iterate stays exploitable around 2.2 and never converges; the independent Q-learner oscillates around 3.40 (range [1.70, 5.53]). Note on corrected numbers: an earlier sign error in the CFR round-transition made the average converge to a degenerate all-call strategy, and a lock-out in the best-response metric underestimated it, even returning impossible negative values. Both were caught while baselining NFSP, confirmed by three independent reimplementations agreeing to machine precision plus a four-way adversarial check, and fixed. The qualitative result was unchanged; only the magnitudes changed.
 - A claim of **superhuman** or pro-beating play.
 
 ## Results at a glance
 
 | Experiment | Result | 95% CI | Statistically resolved? |
 |---|---|---|---|
-| RL vs myopic — **pre-registered confirmatory** (500 mirrored seeds × 100 hands) | **+256** chips/match | [+144, +364], binomial p≈7×10⁻⁶ | Yes — CI excludes 0 (exploratory pilot was +500 at 200 seeds; still loses H2H to Kelly) |
-| RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No — CI includes 0 (loses H2H to Kelly) |
-| RL vs **analytic Kelly**, head-to-head (16 seeds) | **5–11** (Kelly wins) | p=0.21 — within noise at n=16 | RL **loses** to a 0-parameter closed-form benchmark — reported, not buried |
-| Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | — | Exact: averaging → Nash; greedy (DQN regime) never converges |
-| Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes — real but small |
-| Loss-aversion asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes — clean within-player asymmetry |
-| ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative — n=6, suggestive not robust |
+| RL vs myopic, **pre-registered confirmatory** (500 mirrored seeds × 100 hands) | **+256** chips/match | [+144, +364], binomial p≈7×10⁻⁶ | Yes, CI excludes 0 (exploratory pilot was +500 at 200 seeds; still loses H2H to Kelly) |
+| RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No, CI includes 0 (loses H2H to Kelly) |
+| RL vs **analytic Kelly**, head-to-head (16 seeds) | **5–11** (Kelly wins) | p=0.21, within noise at n=16 | RL **loses** to a 0-parameter closed-form benchmark, reported, not buried |
+| Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | n/a | Exact: averaging → Nash; greedy (DQN regime) never converges |
+| Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes, real but small |
+| Loss-aversion asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes, clean within-player asymmetry |
+| ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative, n=6, suggestive not robust |
 
 *Every number traces to committed data under [`results/`](results/) and a figure under
 [`figures/`](figures/). The real-data hands feed the **opponent model only**, never the policy.*
 
 ## Start here
 
-- **[GUIDE.md](GUIDE.md)** — a five-minute, picture-first tour of every result.
-- **[THESIS.md](THESIS.md)** — the full narrative, decision-science framing, SOTA placement, and prioritized next steps (full AIVAT, an NFSP learner).
-- **[REFERENCES.md](REFERENCES.md)** — every external claim's source, with honest verification flags (refuted claims kept visible on purpose).
-- **[notebooks/](notebooks/)** — three executed notebooks that reproduce the headline claims from committed data, no retraining.
-- **[figures/README.md](figures/README.md)** — the complete figure index.
+30 seconds: the summary figure and results table above. 5 minutes: GUIDE.md. Full narrative: THESIS.md. Reproduce: notebooks/.
+
+- **[GUIDE.md](GUIDE.md)**: a five-minute, picture-first tour of every result.
+- **[THESIS.md](THESIS.md)**: the full narrative, decision-science framing, SOTA placement, and prioritized next steps (full AIVAT, an NFSP learner).
+- **[REFERENCES.md](REFERENCES.md)**: every external claim's source, with honest verification flags (refuted claims kept visible on purpose).
+- **[notebooks/](notebooks/)**: three executed notebooks that reproduce the headline claims from committed data, no retraining.
+- **[figures/README.md](figures/README.md)**: the complete figure index.
 
 ## Quickstart
 
@@ -81,12 +86,16 @@ the full seeded reproduction commands.
 
 ## Data
 
-The real-data tilt validation uses the **PHH** dataset — *A Dataset of Poker Hand Histories*,
+The real-data tilt validation uses the **PHH** dataset, *A Dataset of Poker Hand Histories*,
 Kim (2024), Zenodo [doi:10.5281/zenodo.13997158](https://doi.org/10.5281/zenodo.13997158),
 **CC-BY-4.0**. The NLHE hands originate from a July 2009 HandHQ scrape redistributed by Kim under
-CC-BY-4.0. They are used for **opponent-model validation only** — never to train the self-play
+CC-BY-4.0. They are used for **opponent-model validation only**, never to train the self-play
 policy (human logs in the policy would make the agent exploitable). Raw files are gitignored;
 the processed result is committed to [`results/tilt_realdata.json`](results/tilt_realdata.json).
+
+## AI assistance
+
+This project was built with AI assistance (Claude, via Claude Code). The use of AI tools was limited to the following purposes: coding support; multi-agent code review and adversarial auditing of results, figures, and prose; figure generation; literature-search assistance; and writing support. At all stages, the outputs of AI tools were critically reviewed, cross-checked against the committed data and against reliable sources, and revised by me. The responsibility for the final content, analysis, and conclusions rests entirely with me.
 
 ## License
 

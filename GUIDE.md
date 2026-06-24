@@ -9,24 +9,24 @@ see [REFERENCES.md](REFERENCES.md); for the raw figure index see
 
 ## TL;DR (60 seconds)
 
-- **What it is:** a seeded Texas Hold'em engine + a self-play reinforcement-learning
-  agent (DQN) + an HMM "tilt" opponent model, evaluated like a **quant backtest**
+- **What it is:** a seeded Texas Hold'em engine, a self-play reinforcement-learning
+  agent (DQN), and an HMM "tilt" opponent model, evaluated like a **quant backtest**
   (paired seeds, t-tests, bootstrap CIs, variance reduction).
-- **The thesis:** poker trains the trader's core skill — *finding edge under
+- **The thesis:** poker trains the trader's core skill, *finding edge under
   uncertainty*, where predictable deviations are exploitable and pure randomness
   is not. SIG literally puts traders through ~100 hours of poker to teach it
   (REFERENCES.md §4); the market-microstructure framing (Kyle 1985 /
   Glosten-Milgrom 1985) is **motivation**, untested on real order-flow data.
 - **The honest headline:** the lead finding is a **clean, exact reproduction** of
   the known last-iterate vs. time-average exploitability result on Leduc (figure
-  4) — known theory (Freund-Schapire 1999; Mertikopoulos et al. 2018;
-  Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019 — OMWU convergence), faithfully confirmed
-  with exact Leduc numbers and a tabular-NFSP fix, not a novel theorem — plus a
-  **within-player loss-aversion asymmetry** on 777k real human hands (figure 7b,
+  4): known theory (Freund-Schapire 1999; Mertikopoulos et al. 2018;
+  Bailey-Piliouras 2018; Daskalakis-Panageas ITCS 2019, OMWU convergence), faithfully confirmed
+  with exact Leduc numbers and a tabular-NFSP fix, not a novel theorem. The project also finds a
+  **within-player loss-aversion asymmetry** on 777k real human hands (figure 7,
   d=0.25, well-calibrated to prior literature). The RL agent's edge over a myopic
   baseline **resolves** under a pre-registered confirmatory run (500 mirrored
-  seeds: +256 chips, CI [+144, +364]) but is modest — a 0-parameter Kelly bot
-  beats it. Every edge is reported with its CI; the rigor + honesty is the point.
+  seeds: +256 chips, CI [+144, +364]) but is modest. A 0-parameter Kelly bot
+  beats it. Every edge is reported with its CI; the rigor and honesty is the point.
 
 > If you read one figure, read **[`figures/exec_summary.png`](figures/exec_summary.png)** below.
 
@@ -34,7 +34,7 @@ see [REFERENCES.md](REFERENCES.md); for the raw figure index see
 
 ## The story in figures
 
-### 1. Are the edges real? — start here
+### 1. Are the edges real? Start here
 
 ![exec summary](figures/exec_summary.png)
 
@@ -45,9 +45,8 @@ per-seed noise); green/red = it excludes 0.
 **Takeaway:** the agent beats the myopic baseline (pre-registered confirmatory:
 +256 chips, CI [+144, +364], binomial p≈7×10⁻⁶) and tops the opponent pool (+209). Of the four edges
 here, **2 have CIs excluding 0** (this baseline edge, robustly; and the ICM
-reward — *negative*, but only suggestive at n=6) and **2 stay within per-seed
-noise** — one resolved win plus
-honest nulls: the whole project in one chart.
+reward, *negative*, but only suggestive at n=6) and **2 stay within per-seed
+noise**. One resolved win plus honest nulls: the whole project in one chart.
 
 ### 2. The agent does learn
 
@@ -56,9 +55,9 @@ honest nulls: the whole project in one chart.
 **What you're looking at:** held-out win rate (left) and mean chip diff with a ±1
 SEM ribbon (right) over training.
 
-**Takeaway:** the dip-then-climb is real — the agent first collapses into
+**Takeaway:** the dip-then-climb is real. The agent first collapses into
 over-folding, then recovers to beat the baseline. This is the **exploratory
-pilot** (final 125/200 matches, +500, 95% CI [+240, +760] — excludes 0). The
+pilot** (final 125/200 matches, +500, 95% CI [+240, +760], excludes 0). The
 50-seed curve on the right is a *noisy training monitor*, not separate evidence:
 the same 50 seeds read a significantly **negative** 15/50 (−800 chips) mid-training
 (step 500) before recovering to 33/50 at the final checkpoint, so 50 seeds is not
@@ -70,24 +69,24 @@ mirrored seeds, which pins it down tightly at +256 [+144, +364] (figure 1).
 
 ![pool leaderboard](figures/pool_leaderboard.png)
 
-**What you're looking at:** a belief + opponent-mix generalist (RL) against a pool
-of {myopic, tilt, random} + an analytic Kelly agent.
+**What you're looking at:** a belief and opponent-mix generalist (RL) against a pool
+of {myopic, tilt, random} plus an analytic Kelly agent.
 
 **Takeaway:** RL **tops the leaderboard** and beats two of three adaptive
 opponents head-to-head (13-3 vs myopic, 12-4 vs random; 9-7 vs tilt is within
-noise at n=16) — but it **loses head-to-head to Kelly (5-11)**.
-Reported honestly: the win is the leaderboard + adaptive pool, not Kelly.
+noise at n=16). It **loses head-to-head to Kelly (5-11)**.
+Reported honestly: the win is the leaderboard and adaptive pool, not Kelly.
 
 ![personality sweep](figures/pool_sweep.png)
 
 **What you're looking at:** the same RL agent dropped into a round-robin of static
 (tightness × aggression) personalities.
 
-**Takeaway:** RL ranks **#6/17** here (it does not top the static sweep) — because
+**Takeaway:** RL ranks **#6/17** here (it does not top the static sweep), because
 a round-robin rewards farming the weakest static cells, which is not what the
 agent was trained for. Another honest, contextualized number.
 
-### 4. The game theory is principled — and exact
+### 4. The game theory is principled and exact
 
 ![exploitability](figures/exploitability.png)
 
@@ -97,20 +96,20 @@ equilibrium) on Leduc Hold'em, log-log, over training.
 **Takeaway:** the **time-average strategy converges to Nash** (0.695 → 0.009),
 but the **greedy last-iterate stays exploitable (~2.2) and never converges.** An
 independent tabular Q-learning self-play (an actual DQN-regime learner) confirms
-it directly — its greedy last-iterate oscillates around 3.40 (range [1.70, 5.53]),
+it directly: its greedy last-iterate oscillates around 3.40 (range [1.70, 5.53]),
 never near Nash. This is the *exact, verifiable* reason
 DQN self-play does not reach equilibrium and averaging methods (CFR; NFSP at
 scale) do.
 
 (Corrected, independently-verified numbers: an earlier sign error in the CFR
 round-transition made the average converge to a degenerate all-call strategy, and
-a lock-out in the best-response metric underestimated exploitability — even
-returning impossible negative values; both were caught while baselining NFSP,
+a lock-out in the best-response metric underestimated exploitability, even
+returning impossible negative values. Both were caught while baselining NFSP,
 confirmed by three independent reimplementations agreeing to machine precision plus
-a four-way adversarial check, and fixed. The qualitative result — time-average
-reaches Nash, greedy last-iterate does not — was unchanged; only the magnitudes.)
+a four-way adversarial check, and fixed. The qualitative result, time-average
+reaches Nash while the greedy last-iterate does not, was unchanged; only the magnitudes changed.)
 
-### 5. Measured like a quant — variance reduction
+### 5. Measured like a quant: variance reduction
 
 ![variance reduction](figures/variance_reduction.png)
 
@@ -119,9 +118,44 @@ reaches Nash, greedy last-iterate does not — was unchanged; only the magnitude
 **Takeaway:** **duplicate/mirror matching cuts the CI to 65% of raw** (same
 conclusion from fewer matches); the all-in EV control variate is ~neutral *in this
 bust-match format* (match-outcome variance is dominated by bust path-dependence,
-not single-hand runout) — stated honestly rather than overclaimed.
+not single-hand runout), stated honestly rather than overclaimed.
 
-### 6. The honest negatives (a feature, not a bug)
+### 6. The thesis tested on real human hands
+
+![real-data tilt](figures/tilt_realdata.png)
+
+**What you're looking at:** the exploit-predictable-deviations thesis tested on
+**777k hand-rows** of 2009 online play (PHH / Kim 2024, CC-BY-4.0), used for the
+**opponent model only, never the policy**. Each effect is shown against a
+shuffled-label placebo.
+
+**Takeaway:** after a ≥10bb loss, 873 real players play **looser (VPIP +2.8pp)
+and more aggressively (+1.6pp)**. Both 95% CIs exclude 0, while the shuffled
+placebo collapses to ~0, so it is the loss, not chance. The project's HMM tilt
+detector registers a small but resolved P(tilted) shift, and a separate
+Baum-Welch regime HMM corroborates it out-of-sample. Honestly small (1–3pp) in
+absolute size but statistically resolved (both CIs exclude 0). This is one of the
+project's two real-data headline findings, and the behavioral pattern the
+decision-science framing casts as the poker analog of adverse selection (the
+markets parallel is motivation, untested on real order flow).
+
+### 7. The confound-controlled result: loss versus an equal win (the stronger test)
+
+![loss-aversion asymmetry](figures/tilt_lossvswin.png)
+
+**What you're looking at:** the post-loss-vs-baseline shift could be confounded:
+looser players both lose more and play looser. This panel addresses that by comparing each player's hand after
+a ≥10bb **loss** to their hand after an **equal-size ≥10bb win**, matching player,
+big-pot arousal, and event size. Only the swing *sign* differs.
+
+**Takeaway:** after a loss players are **+3.6pp more aggressive and +2.9pp looser**
+than after an equal win (95% CIs exclude 0, Cohen d=0.25/0.14, n=685 matched
+players; shuffled-label placebo ~0). The effect is *larger* than the vs-baseline effect
+because players also tighten after a win. This is a clean **prospect-theory loss-aversion
+asymmetry**, not generic big-pot arousal. The within-player control removes the
+selection confound and is the stronger of the two tilt tests.
+
+### 8. Honest negatives (a feature, not a bug)
 
 ![ICM edge](figures/icm_edge_mild.png)
 
@@ -129,45 +163,11 @@ not single-hand runout) — stated honestly rather than overclaimed.
 reward at a multi-prize table, per seed.
 
 **Takeaway:** the ICM "risk-aversion edge" **does not reproduce** at a properly
-seeded scale (mean −146, 1/6 seeds positive). And a whole sweep of RL-mechanics
-levers — finer action grid, un-truncated bust clip, tilt-bonus decoupling,
-snapshot self-play, warmed fold-equity (the `blockB_*` and `rollout_fe` panels in
-[figures/](figures/)) — each works mechanically but **none moves the headline.**
+seeded scale (mean −146, 1/6 seeds positive). A whole sweep of RL-mechanics
+levers, including finer action grid, un-truncated bust clip, tilt-bonus decoupling,
+snapshot self-play, and warmed fold-equity (the `blockB_*` and `rollout_fe` panels in
+[figures/](figures/)), each works mechanically but **none moves the headline.**
 Reported as a clean negative-results sweep, which is itself a result.
-
-### 7. The thesis, tested on real human hands
-
-![real-data tilt](figures/tilt_realdata.png)
-
-**What you're looking at:** the exploit-predictable-deviations thesis tested on
-**777k hand-rows** of 2009 online play (PHH / Kim 2024, CC-BY-4.0) — used for the
-**opponent model only, never the policy**. Each effect is shown against a
-shuffled-label placebo.
-
-**Takeaway:** after a ≥10bb loss, 873 real players play **looser (VPIP +2.8pp)
-and more aggressively (+1.6pp)** — both 95% CIs exclude 0, while the shuffled
-placebo collapses to ~0, so it is the loss, not chance. The project's HMM tilt
-detector registers a small but resolved P(tilted) shift, and a separate
-Baum-Welch regime HMM corroborates it out-of-sample. Honestly small (1–3pp) in
-absolute size but statistically resolved (both CIs exclude 0) — one of the
-project's two real-data headline findings, and the behavioral pattern the
-decision-science framing casts as the poker analog of adverse selection (the
-markets parallel is motivation, untested on real order flow).
-
-### 7b. The confound-controlled version (loss vs an equal win)
-
-![loss-aversion asymmetry](figures/tilt_lossvswin.png)
-
-**What you're looking at:** the post-loss-vs-baseline shift could be confounded —
-looser players both lose more and play looser. So compare each player's hand after
-a ≥10bb **loss** to their hand after an **equal-size ≥10bb win**, matching player,
-big-pot arousal, and event size; only the swing *sign* differs.
-
-**Takeaway:** after a loss players are **+3.6pp more aggressive and +2.9pp looser**
-than after an equal win (95% CIs exclude 0, Cohen d=0.25/0.14, n=685 matched
-players; shuffled-label placebo ~0). It is *larger* than the vs-baseline effect
-because players also tighten after a win — a clean **prospect-theory loss-aversion
-asymmetry**, not generic big-pot arousal.
 
 ---
 
@@ -181,7 +181,7 @@ python -m pip install -r requirements.txt
 OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 513 green (509 without torch)
 
 # regenerate the committed measurement data under results/ (trains the DQN, so
-# it needs torch: pip install "torch>=2.0" — commented out in requirements.txt)
+# it needs torch: pip install "torch>=2.0": commented out in requirements.txt)
 OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout + headline + pool
 OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
 OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json
@@ -202,26 +202,26 @@ python -m scripts.make_figures                        # -> figures/*.png (+ .htm
 - The RL agent's edge over the baseline **resolves** at 200 seeds but is
   **modest** (a 0-parameter Kelly bot beats it head-to-head); the pool edge stays
   within per-seed noise and the ICM reward resolves *negative* (CI excludes 0 but
-  n=6, suggestive) — all measured, not spun.
-- **DQN is a deliberate baseline, not state of the art** — CFR-family methods
+  n=6, suggestive). All measured, not spun.
+- **DQN is a deliberate baseline, not state of the art.** CFR-family methods
   (DeepStack/Libratus/Pluribus/ReBeL) are 2–3 generations ahead (figure 4 shows
   exactly why).
-- The **markets thesis is asserted, not yet validated on real market data** — the
+- The **markets thesis is asserted, not yet validated on real market data.** The
   rigorous anchor is Kyle / Glosten-Milgrom, not the (refuted) VPIN claims
   (see REFERENCES.md, where refuted claims are kept visible on purpose).
 - The agent's training/eval opponents are **synthetic** (real human logs would
   make a learned policy exploitable, so they feed the opponent model ONLY); the
   tilt opponent-model itself is now **validated on 777k real human hand-rows**
-  (PHH / Kim 2024, CC-BY-4.0; doi:10.5281/zenodo.13997158) —
+  (PHH / Kim 2024, CC-BY-4.0; doi:10.5281/zenodo.13997158):
   post-loss VPIP +2.8pp and aggression +1.6pp, both 95% CIs exclude 0
-  (`tilt_realdata.png`, THESIS.md §6) — real but small, like the rest.
+  (`tilt_realdata.png`, THESIS.md §6). Real but small, like the rest.
 
 ---
 
 ## Where to go next
 
-- **[THESIS.md](THESIS.md)** — the full narrative, SOTA placement, and the
+- **[THESIS.md](THESIS.md)**: the full narrative, SOTA placement, and the
   prioritized next steps (full AIVAT, NFSP learner).
-- **[REFERENCES.md](REFERENCES.md)** — every claim's source, with honest
+- **[REFERENCES.md](REFERENCES.md)**: every claim's source, with honest
   verification flags.
-- **[figures/README.md](figures/README.md)** — the complete figure index.
+- **[figures/README.md](figures/README.md)**: the complete figure index.

@@ -7,7 +7,7 @@
 
 ## 0. Timing and scope
 
-This document IS the pre-registration. It describes the harness as it exists in the repository and freezes the confirmatory analysis. **Nothing here is claimed to have been pre-registered earlier in git history.** The registration is **concurrent**, not sequenced ahead of the run: this document, the run script (`scripts/measure_confirmatory.py`), and the outcome (§4.6, `results/confirmatory.json`) are committed *together* — there is deliberately no git-provable time gap between freezing the protocol and running it. What the registration buys is therefore **not** a temporal-precedence claim but a **pre-committed reporting rule**: the frozen protocol (§4.3) is run once and its result reported in full regardless of direction (§8). The exploratory pilot (`results/headline_history.json`) informed the *design*; the confirmatory run tests the frozen protocol and is reported here whatever it returned (it returned a smaller, still-resolved edge).
+This document IS the pre-registration. It describes the harness as it exists in the repository and freezes the confirmatory analysis. **Nothing here is claimed to have been pre-registered earlier in git history.** The registration is **concurrent**, not sequenced ahead of the run: this document, the run script (`scripts/measure_confirmatory.py`), and the outcome (§4.6, `results/confirmatory.json`) are committed *together*: there is deliberately no git-provable time gap between freezing the protocol and running it. What the registration buys is therefore **not** a temporal-precedence claim but a **pre-committed reporting rule**: the frozen protocol (§4.3) is run once and its result reported in full regardless of direction (§8). The exploratory pilot (`results/headline_history.json`) informed the *design*; the confirmatory run tests the frozen protocol and is reported here whatever it returned (it returned a smaller, still-resolved edge).
 
 ---
 
@@ -29,7 +29,7 @@ For round-robin evaluation, per-pair seeds are generated deterministically by `_
 
 Two variance-reduction techniques are implemented in `evaluate_matchup` (`src/evaluation.py` lines 113–167):
 
-**Mirror matching (`mirror=True`):** The same seed is replayed with the two agents in swapped seats; agent A's result is averaged over both orientations. This cancels position-correlated deck luck. In the committed benchmark (`results/variance_reduction.json`, 120 seeds × 100 hands), mirror matching reduced the 95% bootstrap CI width from 712 chips to 464.3 chips — approximately 65% of the raw width (ratio 0.652).
+**Mirror matching (`mirror=True`):** The same seed is replayed with the two agents in swapped seats; agent A's result is averaged over both orientations. This cancels position-correlated deck luck. In the committed benchmark (`results/variance_reduction.json`, 120 seeds × 100 hands), mirror matching reduced the 95% bootstrap CI width from 712 chips to 464.3 chips, approximately 65% of the raw width (ratio 0.652).
 
 **All-in EV control variate (`luck_adjusted=True`):** All-in pots are scored by their equity-weighted expected value rather than the realised runout, removing board-runout chance variance. This is an AIVAT-family chance-node adjustment (see `REFERENCES.md §2`, Burch et al. 2018). In isolation, the luck adjustment reduced CI width only modestly (ratio 0.988 in the benchmark), because match-outcome variance in this bust-match format is dominated by path-dependent bust events, not single-hand runout luck. Full decision-node AIVAT remains a future step.
 
@@ -41,11 +41,11 @@ The primary variance-reduction mode for all confirmatory tests is **`mirror=True
 
 Every session asserts `total_after == total_before` at the `_play_match` level (`evaluation.py` lines 104–106). This is also tested at the unit level in:
 
-- `tests/test_phase0.py` — `TestChipConservation`, parametrized over `n_players ∈ {2, 4, 6, 9}`, 50 seeded hands each.
-- `tests/test_phase2.py` — `test_chip_conservation_with_mc_bots`.
-- `tests/test_tournament.py` — `test_chip_conservation_direct` and `test_chip_conservation_via_tournament`.
-- `tests/test_icm_eval.py` — `test_chip_conservation_over_tournament`.
-- `tests/test_phase_c_deepen.py` — `test_icm_trainer_chip_conservation`.
+- `tests/test_phase0.py`: `TestChipConservation`, parametrized over `n_players ∈ {2, 4, 6, 9}`, 50 seeded hands each.
+- `tests/test_phase2.py`: `test_chip_conservation_with_mc_bots`.
+- `tests/test_tournament.py`: `test_chip_conservation_direct` and `test_chip_conservation_via_tournament`.
+- `tests/test_icm_eval.py`: `test_chip_conservation_over_tournament`.
+- `tests/test_phase_c_deepen.py`: `test_icm_trainer_chip_conservation`.
 
 A failing chip conservation assertion is a hard error and invalidates the run.
 
@@ -86,7 +86,7 @@ At 1 sigma (detecting a 5 bb/100 edge with SNR = 1): n ≈ (90/5)² × 1 = 324 s
 
 **Why this matters:** The current benchmark uses 120 seeds × 100 hands per arm (`results/variance_reduction.json`). That is enough to verify the variance-reduction mechanism and detect large edges (>20 bb/100) but not enough to resolve a 5 bb/100 edge at high confidence. The paired/variance-reduction design is essential: without it, reaching a tight CI estimate would require over 500k hands; with mirror matching, the same CI width is achievable in **~43% as many seeds** (because n ∝ CI², factor 0.652² ≈ 0.43).
 
-**Null and marginal results are a feature.** An adequately powered study that finds no significant edge is informative — it rules out the claimed edge at the tested sample size. A pre-registered null result is more scientifically valuable than an underpowered positive result that may not replicate.
+**Null and marginal results are a feature.** An adequately powered study that finds no significant edge is informative: it rules out the claimed edge at the tested sample size. A pre-registered null result is more scientifically valuable than an underpowered positive result that may not replicate.
 
 ---
 
@@ -102,12 +102,12 @@ For the primary RL-vs-baseline matchup, the confirmatory seed set is **`list(ran
 
 ### 4.2 Frozen opponent configuration
 
-The baseline opponent is `BotPlayer` with `tight_threshold=0.2, aggression=0.5` and `MonteCarloEngine(n_simulations=100)` — matching the "Myopic" arm in `scripts/measure_variance_reduction.py`. The RL agent configuration (checkpoint path, network architecture) is committed before the confirmatory run. No opponent parameters are tuned after inspecting any seed's outcome.
+The baseline opponent is `BotPlayer` with `tight_threshold=0.2, aggression=0.5` and `MonteCarloEngine(n_simulations=100)`. This matches the "Myopic" arm in `scripts/measure_variance_reduction.py`. The RL agent configuration (checkpoint path, network architecture) is committed before the confirmatory run. No opponent parameters are tuned after inspecting any seed's outcome.
 
 ### 4.3 Frozen evaluation call
 
 ```python
-# Confirmatory call — do not change after registration
+# Confirmatory call: do not change after registration
 result = evaluate_matchup(
     factory_rl, factory_myopic,
     name_a="RL", name_b="Myopic",
@@ -138,7 +138,7 @@ These tests are run with `python -m pytest tests/ -v` before and after every con
 
 **Primary outcome:** The mean edge of the RL agent over the Myopic baseline, in chips per 100-hand session, with its 95% bootstrap CI (seed=12345, 10,000 resamples).
 
-**Confirmatory decision rule:** The edge is considered established if the bootstrap CI excludes zero at the 95% level. The result is reported in full regardless of sign: a CI that brackets zero is reported as a null/marginal result, not suppressed or extended post-hoc. **Executed result: see §4.6** — the edge is resolved at +256 chips, CI [+144, +364].
+**Confirmatory decision rule:** The edge is considered established if the bootstrap CI excludes zero at the 95% level. The result is reported in full regardless of sign: a CI that brackets zero is reported as a null/marginal result, not suppressed or extended post-hoc. **Executed result: see §4.6.** The edge is resolved at +256 chips, CI [+144, +364].
 
 **Secondary outcomes (reported but not the basis for the confirmatory claim):**
 - Paired t-test p-value.
@@ -168,13 +168,13 @@ seatings (the mirror exposing them as pure seat-luck), so the exact binomial sig
 test on the 200 decisive seeds gives **p ≈ 7.1×10⁻⁶** and the paired t-test
 **p ≈ 5.0×10⁻⁶**. The raw single-orientation calibration arm agrees in direction
 and magnitude: **+400 chips, CI [+232, +576]**. The confirmatory edge is smaller
-than the +500 pilot — as expected, since mirror matching removes the
+than the +500 pilot, as expected, since mirror matching removes the
 seat-correlated deck luck the single-orientation pilot left in.
 
 **Seed-range transparency.** The confirmatory uses seeds `0..499`; the exploratory
 pilot used seeds `0..199`, so 200 of the 500 confirmatory seeds overlap with the
 pilot, in the same direction. This is disclosed for completeness: it means the
-seed *range* was not chosen independently of having seen a positive pilot signal —
+seed *range* was not chosen independently of having seen a positive pilot signal,
 a mild winner's-curse consideration. Three facts bound its impact: (i) training
 never saw seeds `0..499` (in-training eval uses seeds `1000+`), so this is not
 train/test contamination; (ii) the pilot and confirmatory use *different* protocols
@@ -193,7 +193,7 @@ The real-data tilt analysis is **exploratory** with respect to causal claims and
 
 The pipeline in `src/real_data_tilt.py` and `scripts/measure_tilt_realdata.py` is frozen. Confirmatory claims are:
 
-- The within-player loss-vs-win control (`within_player_loss_vs_win`, lines 331–395 of `src/real_data_tilt.py`) — the symmetric, stronger design, distinct from the model-free `phenomenon_test` (lines 237–282, which yields the raw n=873 post-loss numbers) — uses a within-player paired design with a minimum of 5 hands per group, a loss threshold of 10 bb, and a bootstrap CI with 10,000 resamples.
+- The within-player loss-vs-win control (`within_player_loss_vs_win`, lines 331–395 of `src/real_data_tilt.py`), the symmetric, stronger design distinct from the model-free `phenomenon_test` (lines 237–282, which yields the raw n=873 post-loss numbers), uses a within-player paired design with a minimum of 5 hands per group, a loss threshold of 10 bb, and a bootstrap CI with 10,000 resamples.
 - The placebo control is a shuffled-label version of the same data under `PLACEBO_SEED = 12345` (`scripts/measure_tilt_realdata.py` line 38).
 - The dataset is the 120 `.phhs` files in `data/phh/` from the Kim 2024 PHH dataset (Zenodo DOI 10.5281/zenodo.13997158), parsed by `src/real_data_tilt.py::parse_phhs`.
 - Committed measurements (from `results/tilt_realdata.json`): n=685 matched players, 777,687 human hand-rows, within-player aggression shift +3.6 pp (Cohen d=0.25), VPIP shift +2.9 pp (Cohen d=0.14).
@@ -241,7 +241,7 @@ These values are the ground truth for solver correctness checks. Any re-run that
 
 | Analysis | Status | Rationale |
 |---|---|---|
-| RL vs Myopic edge, primary mirror arm, 500 seeds | **Confirmatory** | Locked above; **executed** — result in §4.6 (`results/confirmatory.json`) |
+| RL vs Myopic edge, primary mirror arm, 500 seeds | **Confirmatory** | Locked above; **executed.** Result in §4.6 (`results/confirmatory.json`) |
 | RL vs Myopic edge, luck_adjusted arm | Exploratory | Variance reduction cross-check only |
 | RL vs other opponents (Kelly, Aggro) | Exploratory | Opponent pool not frozen |
 | ICM edge in bubble / mild ICM contexts | Exploratory | Research question open |
