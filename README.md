@@ -50,7 +50,7 @@ built end-to-end, not bolted on.
 
 | Experiment | Result | 95% CI | Statistically resolved? |
 |---|---|---|---|
-| RL vs myopic, **pre-registered confirmatory** (500 mirrored seeds × 100 hands) | **+256** chips/match | [+144, +364], binomial p≈7×10⁻⁶ | Yes, CI excludes 0 (exploratory pilot was +500 at 200 seeds; still loses H2H to Kelly) |
+| RL vs myopic, **[pre-registered confirmatory](PREREGISTRATION.md)** (500 mirrored seeds × 100 hands) | **+256** chips/match | [+144, +364], binomial p≈7×10⁻⁶ | Yes, CI excludes 0 (exploratory pilot was +500 at 200 seeds; still loses H2H to Kelly) |
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No, CI includes 0 (loses H2H to Kelly) |
 | RL vs **analytic Kelly**, head-to-head (16 seeds) | **5–11** (Kelly wins) | p=0.21, within noise at n=16 | RL **loses** to a 0-parameter closed-form benchmark, reported, not buried |
 | Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | n/a | Exact: averaging → Nash; greedy (DQN-family regime) never converges |
