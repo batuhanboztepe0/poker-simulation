@@ -214,11 +214,12 @@ rule to report whatever the frozen protocol returns. It returned an edge
   time-AVERAGE strategy's exploitability falls from **0.695 to 0.009**
   (toward Nash) while the greedy LAST-ITERATE (the regime DQN self-play
   plays in) stays exploitable around **2.2** and does not converge. An **independent
-  tabular Q-learning self-play** (the DQN regime, measured directly) confirms
-  this: its greedy last-iterate oscillates around **3.40** (range [1.70, 5.53]
-  over 1M+ episodes) and never approaches Nash. This is genuine non-convergence,
-  not a CFR artifact. It is the exact reason DQN self-play does not reach Nash
-  and averaging methods do.
+  tabular Q-learning self-play** (a tabular analog of the DQN regime: greedy,
+  off-policy, no averaging) exhibits the same behavior: its greedy last-iterate
+  oscillates around **3.40** (range [1.70, 5.53] over 1M+ episodes) and never
+  approaches Nash. This is genuine non-convergence of the greedy iterate, not a
+  CFR artifact. It illustrates why a greedy, non-averaging self-play learner (the
+  family DQN self-play belongs to) need not reach Nash while averaging methods do.
 
   **Correction history.** An earlier version of this solver and metric were both
   wrong in mutually-masking ways. A sign error in the CFR round-1→round-2

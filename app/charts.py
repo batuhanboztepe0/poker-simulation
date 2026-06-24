@@ -862,7 +862,7 @@ def exploitability_curve_figure(rows, uniform=None, title=None, q_rows=None,
             x=[r["episodes"] for r in q_rows],
             y=[r["exploitability"] for r in q_rows],
             mode="lines+markers",
-            name="Q-learning self-play last-iterate (DQN regime)",
+            name="Q-learning self-play last-iterate (DQN-like regime)",
             line=dict(color=COLORS["curve_c"], width=2, dash="dot"),
             marker=dict(size=5),
         ))

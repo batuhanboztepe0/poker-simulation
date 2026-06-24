@@ -59,7 +59,7 @@ def _payoff0(c0, c1, board, r1, r2):
 
 
 class LeducQLearner:
-    """Independent greedy value-based self-play (the DQN regime, tabular)."""
+    """Independent greedy value-based self-play (a tabular analog of the DQN regime)."""
 
     def __init__(self, alpha=0.1, eps=0.1, gamma=1.0, seed=0):
         self.q = {}                     # info_set -> [q_fold, q_call, q_raise]

@@ -216,10 +216,10 @@ def fig_exploitability(index):
     q_rows = d.get("q_curve")
     nfsp_rows = d.get("nfsp_curve")
     q_mean, q_rng = d.get("q_last_iterate_mean"), d.get("q_last_iterate_range")
-    q_txt = ((f" Tabular Q-learning self-play (the DQN regime) confirms this directly: "
-              f"its greedy last-iterate oscillates around {q_mean:.2f} (range "
+    q_txt = ((f" A tabular Q-learning self-play (a tabular analog of the DQN regime) "
+              f"shows the same pattern: its greedy last-iterate oscillates around {q_mean:.2f} (range "
               f"[{q_rng[0]:.2f}, {q_rng[1]:.2f}] over 1M+ episodes) and never "
-              f"approaches Nash, genuine non-convergence, not a CFR artifact.")
+              f"approaches Nash, genuine non-convergence of the greedy iterate, not a CFR artifact.")
              if q_mean is not None and q_rng else "")
     nfsp_txt = ((f" Adding only policy-averaging to that same Q-learner (tabular "
                  f"NFSP) flips the outcome: its average policy's exploitability "
