@@ -69,7 +69,7 @@ built end-to-end, not bolted on.
 ```bash
 git clone https://github.com/batuhanboztepe0/poker-simulation.git
 cd poker-simulation
-python -m pip install -r requirements.txt   # requires Python >= 3.10
+python -m pip install -r requirements.txt   # requires Python >= 3.11 (pokerkit, used for the real-data analysis)
 
 python -m pytest tests/ -q                   # 513 tests (509 without torch; RL/torch tests skip)
 python -m src.main                           # play a Human vs Bot session
