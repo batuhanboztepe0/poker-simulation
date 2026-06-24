@@ -122,6 +122,7 @@ def main():
             "mean_diff": mr.mean_diff, "ci95": ci,
             "paired_t": mr.t_test, "binom": binom,
             "resolved": ci["lo"] > 0 or ci["hi"] < 0,
+            "per_seed_diffs": list(mr.diffs),
         }
 
     print(f"[4/4] confirmatory evaluate_matchup: {args.seeds} seeds x {args.hands} hands, mirror=True...",
