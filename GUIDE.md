@@ -191,6 +191,7 @@ OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exp
 OMP_NUM_THREADS=1 python -m scripts.measure_confirmatory --raw --out results/confirmatory.json  # pre-registered RL-vs-myopic run (PREREGISTRATION.md §4.3)
 OMP_NUM_THREADS=1 python -m scripts.measure_seed_sweep --out results/seed_sweep.json  # multi-seed robustness: retrain torch_seed 0..19, edge as a distribution (PREREGISTRATION.md §10)
 OMP_NUM_THREADS=1 python -m scripts.measure_neural_nfsp --out results/neural_nfsp.json  # neural NFSP on Leduc, exact exploitability vs the tabular baseline (PREREGISTRATION.md §11)
+OMP_NUM_THREADS=1 python -m scripts.measure_scale --out results/scale_experiment.json  # scaling: neural NFSP vs tabular CFR at R=20 where CFR can't converge (PREREGISTRATION.md §12)
 
 # real-data tilt validation (fetches the PHH subset to data/phh/, gitignored)
 python -m scripts.fetch_phh --max-files 120            # the 120 PokerStars 25NL files used

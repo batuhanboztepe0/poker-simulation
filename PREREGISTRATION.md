@@ -291,6 +291,10 @@ Any deviation from the confirmatory plan after registration is documented explic
 | Neural NFSP method (§11) | `src/leduc_neural_nfsp.py` |
 | Neural NFSP run script (§11) | `scripts/measure_neural_nfsp.py` |
 | Committed neural NFSP result (§11) | `results/neural_nfsp.json` |
+| LBR lower bound (§6) | `src/leduc_lbr.py`, `src/big_leduc_lbr.py` |
+| Parameterised R-rank game (§12) | `src/big_leduc.py`, `src/big_leduc_nfsp.py` |
+| Scaling run script (§12) | `scripts/measure_scale.py` |
+| Committed scaling result (§12) | `results/scale_experiment.json` |
 
 ---
 
@@ -512,3 +516,59 @@ tabular baseline" becomes a meaningful and reachable claim.
 
 **Figure:** `figures/neural_nfsp.png` (neural across-seed mean ± min/max vs tabular
 NFSP vs the CFR Nash floor, on the exact metric).
+
+---
+
+## 12. Scaling: Does Neural NFSP Help Where Tabular CFR Cannot Converge? (v2 Phase 2, Step 2d)
+
+The §11 honest null (neural NFSP has no edge on the tiny exactly-tabulatable 3-rank
+Leduc) motivates the real question: at a scale where tabular CFR cannot practically
+**converge**, does a neural method reach a less-exploitable strategy in comparable
+compute? Registered here and frozen before the run (two-commit git-provable gap, as
+§10/§11). This is posed as an OPEN QUESTION, not a predicted neural win.
+
+### 12.1 What is fixed
+
+- **Game:** `big_leduc` at **R = 20** ranks (40 cards; ~12,120 info-sets; 59,280
+  deals per full CFR iteration). Validated isomorphic to standard Leduc at R=3
+  (`test_big_leduc.py`).
+- **Tabular-convergence infeasibility:** measured from the CFR cost curve
+  (`measure_scale.py` step 1). At R=20 a full CFR iteration costs ~6.6 s, so the
+  ~10⁴ iterations the 3-rank CFR needed to reach ~0.009 exploitability would take
+  **~18 hours**. Tabular CFR convergence is therefore infeasible at this scale; this
+  conclusion is independent of the head-to-head below.
+- **Matched-wall-clock head-to-head (pre-committed counts, ~3–4 min each on the
+  measurement machine; actual wall-clock recorded):** tabular CFR for **30
+  iterations** vs neural NFSP for **200,000 episodes** over **3 seeds** (a-priori
+  config from §11). Both average policies scored by the **exact NashConv** metric
+  (a one-time best response, still feasible at R=20 even though convergence is not)
+  and cross-checked by the validated LBR lower bound (§6, `big_leduc_lbr`).
+
+### 12.2 Primary outcome and pre-committed reading
+
+**Primary outcome:** the exact exploitability of (a) neural NFSP's average policy
+(across-seed mean and min/max over 3 seeds) and (b) truncated tabular CFR, at the
+matched budget; plus the uniform-random ceiling for reference.
+
+**Pre-committed reading — honest and falsifiable both ways.** We report which method
+reaches lower exact exploitability at the matched budget, in full, regardless of
+direction (§8). The honest a-priori expectation, stated before the run, is that
+**tabular CFR will likely win**: CFR converges very fast per iteration (a handful of
+iterations already drives exploitability down), whereas neural NFSP needs many
+episodes and plateaus (§11). If so, the finding is that **neural NFSP has no
+measurable advantage at any scale where tabular CFR is feasible per-iteration** —
+its structural advantage is confined to scales where tabular CFR cannot complete
+even a few iterations (the cost curve extrapolates this to roughly R≈60, where one
+CFR iteration alone costs as much as the entire neural budget), a regime in which
+exact exploitability is also infeasible and only a lower bound (LBR) could be
+reported. That regime is identified here from the cost curve but not run, and is
+flagged as the honest frontier (a scalable sampled-LBR is required, and a lower
+bound cannot certify low exploitability — only demonstrate exploitation). A neural
+win at R=20 would be the surprising, reportable positive.
+
+### 12.3 Execution status and outcome
+
+**Status: PENDING.** The protocol above is frozen and committed before the run; the
+outcome (the R=20 head-to-head, the cost curve, and the convergence extrapolation) is
+filled in here in the second commit, alongside `results/scale_experiment.json`,
+reported in full regardless of direction.
