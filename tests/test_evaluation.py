@@ -491,7 +491,13 @@ class TestRolloutFreeCheck(unittest.TestCase):
         import random
         from src.stochastic_control import RolloutPolicy
         from src.card import Card
-        pol = RolloutPolicy(MonteCarloEngine(100), rng=random.Random(0))
+        # Seed the MC engine too (not just the policy): MonteCarloEngine falls
+        # back to the GLOBAL random module when no rng is passed, which made this
+        # assertion depend on prior tests' consumption of global random (the
+        # "seed everything" non-negotiable). The free-check-never-fold invariant
+        # holds regardless; seeding makes the exact action deterministic.
+        pol = RolloutPolicy(MonteCarloEngine(100, rng=random.Random(0)),
+                            rng=random.Random(0))
         gs = {"pot": 40, "call_amount": 0, "min_raise": 20, "current_bet": 0,
               "community_cards": [Card('K', 's'), Card('Q', 'd'), Card('9', 'c')],
               "round_name": "Flop", "active_player_count": 2, "opponent_ids": [2]}
