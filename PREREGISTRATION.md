@@ -468,7 +468,45 @@ scaling. The full curve is reported regardless of which way the gate falls (§8)
 
 ### 11.4 Execution status and outcome
 
-**Status: PENDING.** The protocol above is frozen and committed before the run; the
-outcome (the 5-seed neural exploitability curve, the head-to-head vs tabular, and
-the gate reading) is filled in here in the second commit, alongside
-`results/neural_nfsp.json`, and reported in full regardless of direction.
+**Status: EXECUTED.** The frozen protocol was run once over seeds `0..4` at
+checkpoints `{50k, 100k, 200k}` and committed to `results/neural_nfsp.json`.
+Reported in full per §8.
+
+**Neural NFSP converges on the exact metric.** Its average-policy exploitability
+falls from the uniform **4.75** to an across-seed mean **1.46** at 200k episodes
+(per-seed finals 1.68/1.38/1.44/1.39/1.42 — note the real seed-to-seed variance,
+the Phase 0 lesson again). So the method is **validated**: a neural function
+approximator, scored by the identical exact NashConv metric as the tabular
+learners, does learn a converging Leduc average policy.
+
+**But the matched-budget superiority gate is NOT met.** On the fair 5-seed mean,
+neural NFSP beats tabular NFSP at only **1 of 3** checkpoints:
+
+| episodes | neural NFSP (mean [min,max]) | tabular NFSP | neural beats? |
+|---|---|---|---|
+| 50,000 | 1.94 [1.66, 2.23] | 2.40 | yes |
+| 100,000 | 1.86 [1.61, 2.37] | 1.80 | no |
+| 200,000 | 1.46 [1.38, 1.68] | 1.34 | no |
+
+By the §11.3 majority rule (beat tabular at ≥2 of 3 checkpoints) the gate **fails**.
+Neural NFSP is **competitive** with tabular (within ~0.06 at 100k, ~0.12 at 200k)
+and wins at the smallest budget, but tabular edges ahead from 100k on. Both remain far above the
+CFR Nash floor (**0.009**).
+
+**Honesty note (the Phase 0 lesson, live).** An earlier single-seed look (seed 0
+alone) suggested neural beat tabular at 100k; that impression **did not survive the
+5-seed mean**. Reporting the multi-seed distribution, not the favorable single seed,
+is exactly the discipline §10 established — and here it converts an apparent win into
+an honest null.
+
+**What this means.** This is the expected result on a game small enough to tabulate
+exactly: neural function approximation has **no advantage on Leduc**, because the
+tabular learners already represent every info-set exactly. The neural method is
+validated as correct and convergent, but its *value* — generalising across
+info-sets in games too large to tabulate — cannot be demonstrated on Leduc. That is
+the motivation for the scale-up step (a larger game where tabular CFR is infeasible
+and exploitability is measured by a validated LBR lower bound), where "beats the
+tabular baseline" becomes a meaningful and reachable claim.
+
+**Figure:** `figures/neural_nfsp.png` (neural across-seed mean ± min/max vs tabular
+NFSP vs the CFR Nash floor, on the exact metric).

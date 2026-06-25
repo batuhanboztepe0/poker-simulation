@@ -1,0 +1,175 @@
+{
+ "method": "neural NFSP (Heinrich & Silver 2016) on Leduc, exact NashConv",
+ "feature_dim": 21,
+ "config": {
+  "hidden": 64,
+  "eta": 0.1,
+  "lr_rl": 0.01,
+  "lr_sl": 0.01,
+  "eps_start": 0.06,
+  "eps_end": 0.0,
+  "target_update": 1000
+ },
+ "n_seeds": 5,
+ "checkpoints": [
+  50000,
+  100000,
+  200000
+ ],
+ "uniform_exploitability": 4.747222222222217,
+ "cfr_avg_final": 0.009423797486703389,
+ "tabular_nfsp_curve": [
+  {
+   "episodes": 50000,
+   "exploitability": 2.4037425552704477
+  },
+  {
+   "episodes": 100000,
+   "exploitability": 1.8015781993873259
+  },
+  {
+   "episodes": 200000,
+   "exploitability": 1.3435748005903458
+  },
+  {
+   "episodes": 500000,
+   "exploitability": 0.9640566489214734
+  },
+  {
+   "episodes": 1000000,
+   "exploitability": 0.8613560648756736
+  }
+ ],
+ "per_seed": [
+  {
+   "seed": 0,
+   "curve": [
+    {
+     "episodes": 50000,
+     "exploitability": 1.8296940353286366
+    },
+    {
+     "episodes": 100000,
+     "exploitability": 1.6079648242338054
+    },
+    {
+     "episodes": 200000,
+     "exploitability": 1.6768555720651557
+    }
+   ]
+  },
+  {
+   "seed": 1,
+   "curve": [
+    {
+     "episodes": 50000,
+     "exploitability": 1.6598356313191
+    },
+    {
+     "episodes": 100000,
+     "exploitability": 1.7585952494386712
+    },
+    {
+     "episodes": 200000,
+     "exploitability": 1.3787099720038072
+    }
+   ]
+  },
+  {
+   "seed": 2,
+   "curve": [
+    {
+     "episodes": 50000,
+     "exploitability": 1.7479230843638367
+    },
+    {
+     "episodes": 100000,
+     "exploitability": 1.8633360645870198
+    },
+    {
+     "episodes": 200000,
+     "exploitability": 1.4389464644210619
+    }
+   ]
+  },
+  {
+   "seed": 3,
+   "curve": [
+    {
+     "episodes": 50000,
+     "exploitability": 2.2343632982723522
+    },
+    {
+     "episodes": 100000,
+     "exploitability": 2.373152747000724
+    },
+    {
+     "episodes": 200000,
+     "exploitability": 1.3886158558488653
+    }
+   ]
+  },
+  {
+   "seed": 4,
+   "curve": [
+    {
+     "episodes": 50000,
+     "exploitability": 2.215205168425944
+    },
+    {
+     "episodes": 100000,
+     "exploitability": 1.6925508793380422
+    },
+    {
+     "episodes": 200000,
+     "exploitability": 1.4234423474056077
+    }
+   ]
+  }
+ ],
+ "curve": [
+  {
+   "episodes": 50000,
+   "mean_exploitability": 1.9374042435419738,
+   "min": 1.6598356313191,
+   "max": 2.2343632982723522,
+   "sd": 0.269215047490353
+  },
+  {
+   "episodes": 100000,
+   "mean_exploitability": 1.8591199529196523,
+   "min": 1.6079648242338054,
+   "max": 2.373152747000724,
+   "sd": 0.302149325639395
+  },
+  {
+   "episodes": 200000,
+   "mean_exploitability": 1.4613140423488997,
+   "min": 1.3787099720038072,
+   "max": 1.6768555720651557,
+   "sd": 0.12298494177198087
+  }
+ ],
+ "head_to_head": [
+  {
+   "episodes": 50000,
+   "neural_mean": 1.9374042435419738,
+   "tabular": 2.4037425552704477,
+   "neural_beats_tabular": true
+  },
+  {
+   "episodes": 100000,
+   "neural_mean": 1.8591199529196523,
+   "tabular": 1.8015781993873259,
+   "neural_beats_tabular": false
+  },
+  {
+   "episodes": 200000,
+   "neural_mean": 1.4613140423488997,
+   "tabular": 1.3435748005903458,
+   "neural_beats_tabular": false
+  }
+ ],
+ "registered_in": "PREREGISTRATION.md \u00a711",
+ "note": "Exact Leduc exploitability (NashConv), identical metric to the tabular learners. Neural NFSP generalises across info-sets via a 21-d feature; on this small game tabular is near-exact, so neural is expected to win on sample efficiency (matched-episode), not asymptotically. Reported in full per PREREGISTRATION.md \u00a78."
+}

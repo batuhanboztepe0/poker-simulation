@@ -55,6 +55,7 @@ built end-to-end, not bolted on.
 | RL vs opponent pool (16 seeds) | **+209** chips, tops leaderboard | [−31, +450] | No, CI includes 0 (loses H2H to Kelly) |
 | RL vs **analytic Kelly**, head-to-head (16 seeds) | **5–11** (Kelly wins) | p=0.21, within noise at n=16 | RL **loses** to a 0-parameter closed-form benchmark, reported, not buried |
 | Leduc exploitability (exact NashConv) | CFR avg 0.695 → **0.009**; CFR last-iterate ~**2.2**; independent Q-learner oscillates ~**3.40** (range [1.70, 5.53]) | n/a | Exact: averaging → Nash; greedy (DQN-family regime) never converges |
+| **Neural NFSP** on Leduc (v2 Phase 2, [pre-registered §11](PREREGISTRATION.md), exact NashConv, 5 seeds) | converges 4.75 → **1.46** (200k eps); beats tabular only at 50k | n/a (exact) | **Honest null on Leduc**: does NOT beat tabular here (small enough to tabulate); neural's value is *scale* — next step measures it on a bigger game via LBR |
 | Post-loss tilt, real humans (873 players, 777k hand-rows) | VPIP **+2.8pp**, aggression **+1.6pp** | both exclude 0; placebo ~0 | Yes, real but small |
 | Post-loss risk-taking asymmetry (matched: loss vs *equal win*, same player) | aggression **+3.6pp**, VPIP **+2.9pp** | both exclude 0; Cohen d=0.25/0.14; placebo ~0 (n=685) | Yes, clean within-player asymmetry |
 | ICM/Kelly vs chip reward (mild ladder, 6 seeds) | **−146** chips | [−249, −51], excludes 0 (n=6) | Directionally negative, n=6, suggestive not robust |

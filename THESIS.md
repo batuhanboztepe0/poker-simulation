@@ -185,9 +185,21 @@ Panageas (ITCS 2019) proved OMWU achieves last-iterate convergence (REFERENCES.m
 §7). The contribution here is a clean, exact, end-to-end pedagogical
 demonstration on Leduc with a tabular-NFSP fix, not a novel theorem.
 
-**NFSP** (Heinrich & Silver 2016) is the theoretically-grounded next
-step: it brings exactly this averaging to large games via a neural average-policy
-network (REFERENCES.md §1).
+**Neural NFSP** (Heinrich & Silver 2016) brings exactly this averaging to large
+games via a neural average-policy network (REFERENCES.md §1). v2 Phase 2 implements
+it ([`src/leduc_neural_nfsp.py`](src/leduc_neural_nfsp.py)): two MLPs over a
+structured 21-d info-set feature, scored by the *same* exact NashConv metric as the
+tabular learners, pre-registered before the run (PREREGISTRATION.md §11). The honest
+result over 5 seeds: neural NFSP **converges** (exploitability 4.75 → mean **1.46**
+at 200k episodes) but does **not** beat tabular NFSP on Leduc — it wins only at the
+smallest budget (50k: 1.94 vs 2.40) and tabular edges ahead from 100k on
+([`figures/neural_nfsp.png`](figures/neural_nfsp.png)). This is the expected null on
+a game small enough to tabulate exactly: neural function approximation has no edge
+where the tabular policy is already exact. Its value — generalising across info-sets
+in games too large to tabulate — is the next step (a larger game scored by a
+validated LBR lower bound, where "beats tabular" becomes meaningful). Notably, a
+single-seed look briefly *suggested* a neural win at 100k; the 5-seed mean erased it,
+the same multi-seed discipline §10 (the Phase 0 robustness sweep) established.
 
 ## 5. Honest-negative as a feature, not a bug
 

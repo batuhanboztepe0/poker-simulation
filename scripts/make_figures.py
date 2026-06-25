@@ -720,21 +720,24 @@ def fig_neural_nfsp(index):
     h2h = d.get("head_to_head", [])
     wins = [x for x in h2h if x["neural_beats_tabular"]]
     final = agg[-1]
-    matched = (f"At matched episode budgets neural NFSP beats tabular at "
-               f"{len(wins)}/{len(h2h)} checkpoints"
-               + (f" (e.g. {wins[0]['episodes']//1000}k: "
-                  f"{wins[0]['neural_mean']:.2f} vs {wins[0]['tabular']:.2f})"
-                  if wins else "") + ". ") if h2h else ""
+    gate_met = len(wins) >= 2 if h2h else False   # PREREG §11.3 majority of 3
+    matched = ((f"At matched episode budgets neural beats tabular at only "
+                f"{len(wins)}/{len(h2h)} checkpoints"
+                + (f" ({wins[0]['episodes']//1000}k: {wins[0]['neural_mean']:.2f} "
+                   f"vs {wins[0]['tabular']:.2f})" if wins else "")
+                + f", so the pre-registered majority gate "
+                + ("HOLDS. " if gate_met else "FAILS (an honest null). ")) if h2h else "")
+    floor = f" and the CFR Nash floor {cfr:.3f}" if cfr is not None else ""
     cap = (f"Phase 2 — neural NFSP on Leduc, scored by the EXACT NashConv metric "
            f"(identical to the tabular learners; PREREGISTRATION.md §11). Mean of "
            f"{d['n_seeds']} seeds, band = min/max across seeds. Exploitability "
            f"falls from the uniform {d.get('uniform_exploitability', 0):.2f} to "
            f"{final['mean_exploitability']:.2f} by {final['episodes']//1000}k "
-           f"episodes. {matched}It plateaus above the tabular asymptote and the "
-           f"CFR Nash floor ({cfr:.3f} if shown): expected, since Leduc is small "
-           f"enough to tabulate exactly, so neural function approximation wins on "
-           f"sample efficiency, not asymptotic exactness — its real value is "
-           f"scaling to games too large to tabulate.")
+           f"episodes. {matched}It plateaus above the tabular asymptote{floor}: "
+           f"expected, since Leduc is small enough to tabulate exactly, so neural "
+           f"function approximation has NO edge here — the tabular policy already "
+           f"represents every info-set exactly. The neural method's value is "
+           f"scaling to games too large to tabulate, which Leduc cannot show.")
     index.append(("neural_nfsp.png", "phase2",
                   _save(fig, "neural_nfsp", cap, height=520)))
 
