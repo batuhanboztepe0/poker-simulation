@@ -623,6 +623,65 @@ def fig_rollout_fe(index):
 # Same committed data, simplified to one chart + one plain-language takeaway.
 # ---------------------------------------------------------------------------
 
+def fig_seed_sweep(index):
+    """Phase 0 multi-seed robustness: the per-seed confirmatory edge as a
+    distribution over 20 training seeds, each with its own eval CI, seed 0
+    (the published headline) highlighted, the across-seed mean band, and 0."""
+    d = _load_json("seed_sweep.json")
+    if not d:
+        return
+    rows = d["per_seed"]
+    s = d["summary"]
+    # Sort seeds by edge so the panel reads as a distribution; keep seed labels.
+    rows = sorted(rows, key=lambda r: r["mirror"]["mean_diff"])
+    edges = [r["mirror"]["mean_diff"] for r in rows]
+    los = [r["mirror"]["ci95"]["lo"] for r in rows]
+    his = [r["mirror"]["ci95"]["hi"] for r in rows]
+    seeds = [r["torch_seed"] for r in rows]
+    ylabels = [f"seed {ts}" + (" (published)" if ts == 0 else "")
+               for ts in seeds]
+    colors = ["#1f77b4" if ts == 0 else "#2ca02c" for ts in seeds]
+
+    mean = s["mean_edge"]
+    asc = s["across_seed_ci95"]
+    fig = go.Figure()
+    # Across-seed CI band for the EXPECTED edge of a random training run.
+    fig.add_vrect(x0=asc["lo"], x1=asc["hi"], fillcolor="#2ca02c", opacity=0.10,
+                  line_width=0)
+    fig.add_vline(x=0, line=dict(color="#d62728", dash="dot"))
+    fig.add_vline(x=mean, line=dict(color="#2ca02c", dash="dash"))
+    fig.add_trace(go.Scatter(
+        x=edges, y=ylabels, mode="markers", marker=dict(size=9, color=colors),
+        error_x=dict(type="data", symmetric=False,
+                     array=[h - e for h, e in zip(his, edges)],
+                     arrayminus=[e - l for e, l in zip(edges, los)],
+                     thickness=1.5, width=5, color="#888"),
+        showlegend=False))
+    fig.update_layout(
+        xaxis_title="confirmatory edge: RL minus Myopic, chips/match "
+                    "(point = mean over 500 mirrored seeds, line = 95% eval CI)",
+        yaxis_title="", margin=dict(l=140))
+    verdict = s["verdict"]
+    pct = s["seed0_percentile"]
+    loc = ("near the top of" if pct >= 0.8 else
+           "near the bottom of" if pct <= 0.2 else "within the body of")
+    cap = (f"Phase 0 multi-seed robustness ({s['n_seeds_trained']} training seeds, "
+           f"each evaluated by the frozen confirmatory protocol, "
+           f"PREREGISTRATION.md §10). Per-seed edge mean {s['mean_edge']:+.0f}, "
+           f"median {s['median_edge']:+.0f}, SD {s['sd_edge']:.0f}, range "
+           f"[{s['min_edge']:+.0f}, {s['max_edge']:+.0f}]; across-seed 95% CI of the "
+           f"mean edge [{asc['lo']:+.0f}, {asc['hi']:+.0f}] (green band). "
+           f"{s['n_resolved_positive']}/{s['n_seeds_trained']} seeds individually "
+           f"resolve a positive edge, {s['n_resolved_negative']} negative, "
+           f"{s['n_unresolved']} null. The published seed 0 (+{s['seed0_edge']:.0f}, "
+           f"blue) sits {loc} the distribution (percentile {pct:.2f}). "
+           f"Pre-committed verdict: the headline is {verdict} to training-seed choice. "
+           f"This robustness is vs the Myopic baseline only; the RL agent still loses "
+           f"head-to-head to the zero-parameter Kelly bot (see the pool figures).")
+    index.append(("seed_sweep.png", "phase0",
+                  _save(fig, "seed_sweep", cap, height=620)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -728,7 +787,7 @@ def fig_plain_tilt(index):
 
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
-            fig_tilt_lossvswin, fig_rollout_fe,
+            fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -742,6 +801,7 @@ DATA_DEPS = {
     "fig_tilt_realdata": "results/tilt_realdata.json",
     "fig_tilt_lossvswin": "results/tilt_realdata.json",
     "fig_rollout_fe": "results/rollout_fe.jsonl",
+    "fig_seed_sweep": "results/seed_sweep.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",

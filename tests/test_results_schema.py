@@ -158,5 +158,39 @@ class TestResultsSchema(unittest.TestCase):
             {"loss_bb", "n_files", "mu_normal", "mu_tilted"}, set(d["config"]))
 
 
+    def test_seed_sweep_schema(self):
+        # Phase 0 multi-seed robustness (PREREGISTRATION.md §10). The figure layer
+        # (fig_seed_sweep) reads per_seed[*].mirror.{mean_diff,ci95} and the
+        # across-seed summary; guard those keys so a measure_seed_sweep drift is
+        # caught here.
+        path = os.path.join(RESULTS, "seed_sweep.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/seed_sweep.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertLessEqual({"protocol", "per_seed", "summary"}, set(d))
+        self.assertTrue(d["per_seed"], "per_seed is empty")
+        for row in d["per_seed"]:
+            self.assertLessEqual({"torch_seed", "mirror"}, set(row))
+            mir = row["mirror"]
+            self.assertLessEqual({"mean_diff", "ci95", "resolved", "edge_sign",
+                                  "per_seed_diffs"}, set(mir))
+            self.assertLessEqual({"lo", "hi", "mean"}, set(mir["ci95"]))
+        s = d["summary"]
+        self.assertLessEqual(
+            {"n_seeds_trained", "mean_edge", "median_edge", "sd_edge",
+             "min_edge", "max_edge", "across_seed_ci95", "n_resolved_positive",
+             "n_resolved_negative", "n_unresolved", "seed0_edge",
+             "seed0_percentile", "verdict"}, set(s))
+        self.assertLessEqual({"lo", "hi", "mean"}, set(s["across_seed_ci95"]))
+        self.assertIn(s["verdict"], {"robust", "seed-dependent"})
+        # The reproducibility gate the script records when confirmatory.json is
+        # present: seed 0's edge equals the committed confirmatory edge.
+        if "seed0_reproduces_committed" in s:
+            self.assertEqual(s["seed0_edge"], s["committed_seed0_edge"])
+            self.assertTrue(s["seed0_reproduces_committed"],
+                            "seed 0 must reproduce the committed confirmatory edge")
+
+
 if __name__ == "__main__":
     unittest.main()

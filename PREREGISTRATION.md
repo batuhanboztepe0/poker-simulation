@@ -9,7 +9,7 @@
 
 This document IS the pre-registration. It describes the harness as it exists in the repository and freezes the confirmatory analysis. **Nothing here is claimed to have been pre-registered earlier in git history.** The registration is **concurrent**, not sequenced ahead of the run: this document, the run script (`scripts/measure_confirmatory.py`), and the outcome (§4.6, `results/confirmatory.json`) are committed *together*: there is deliberately no git-provable time gap between freezing the protocol and running it. What the registration buys is therefore **not** a temporal-precedence claim but a **pre-committed reporting rule**: the frozen protocol (§4.3) is run once and its result reported in full regardless of direction (§8). The exploratory pilot (`results/headline_history.json`) informed the *design*; the confirmatory run tests the frozen protocol and is reported here whatever it returned (it returned a smaller, still-resolved edge).
 
-**What this registration does not establish.** Two honest limits follow from the concurrent design. First, the execution trace is not committed, so an external reader cannot verify from the repository that the frozen protocol was run exactly once rather than re-run until it returned a positive result. The safeguard is the pre-committed reporting rule and the single committed outcome, not an auditable run log. Second, the RL checkpoint fixes `torch_seed=0`, but the training-seed sweep that would show this seed was not chosen after seeing favorable results is not committed, so seed-selection independence cannot be externally verified either. Both are flagged here rather than hidden. The second limitation is addressed by the multi-seed training sweep pre-registered in §10. To make the freeze-before-run ordering externally verifiable, the sweep ships in two commits with a git-provable gap: this commit freezes the protocol and the verdict rule (§10.3) with no results, and a follow-on commit adds the outcome. Once that outcome commit lands, seed-selection independence for the sweep is verifiable from git history. The first limitation (no committed execution trace for the original §4 confirmatory) remains a goal for a future run.
+**What this registration does not establish.** Two honest limits follow from the concurrent design. First, the execution trace is not committed, so an external reader cannot verify from the repository that the frozen protocol was run exactly once rather than re-run until it returned a positive result. The safeguard is the pre-committed reporting rule and the single committed outcome, not an auditable run log. Second, the RL checkpoint fixes `torch_seed=0`, but the training-seed sweep that would show this seed was not chosen after seeing favorable results is not committed, so seed-selection independence cannot be externally verified either. Both are flagged here rather than hidden. The second limitation is now closed: the multi-seed training sweep pre-registered in §10 ships in two commits with a git-provable gap — the frozen protocol and verdict rule (§10.3) first, with no results, then the outcome (§10.5, `results/seed_sweep.json`) — so the freeze-before-run ordering, and therefore seed-selection independence for the sweep, is externally verifiable from git history. The first limitation (no committed execution trace for the original §4 confirmatory) remains a goal for a future run.
 
 ---
 
@@ -367,7 +367,39 @@ narrative (THESIS / README).
 
 ### 10.5 Execution status and outcome
 
-**Status: PENDING.** The protocol above is frozen and committed before the run. The
-outcome (the 20-seed edge distribution, the verdict, and seed 0's percentile rank)
-is filled in here in the second commit, alongside `results/seed_sweep.json`, and
-reported in full regardless of direction.
+**Status: EXECUTED.** The frozen protocol (§10.2) was run once over `torch_seed`
+`0..19` and committed to `results/seed_sweep.json`. The result is reported in full
+per §8.
+
+**Correctness gate passed.** The seed-0 arm reproduces the committed confirmatory
+edge **+256 chips/match exactly** (`seed0_reproduces_committed: true`), confirming
+the sweep harness is byte-identical to the §4 confirmatory harness.
+
+**Outcome — the edge is robust to training-seed choice (verdict: robust).** Over
+the 20 seeds the per-seed mirror-arm edge has **mean +351, median +300, SD 264,
+range [+24, +984]** chips/match. The across-seed 95% bootstrap CI of the mean
+per-seed edge is **[+244.4, +468.0]** (exact stored values; the narrative rounds to
+[+244, +468]), which **excludes zero on the positive side**;
+combined with a positive median this meets the §10.3 robustness rule. **16 of 20
+seeds individually resolve a positive edge** (own eval CI excludes zero), **0
+resolve negative**, and **4 are null** (seeds 8, 9, 11, 19; their means are +64,
++72, +24, +28 — directionally positive but not individually resolved at 500 eval
+seeds). No seed produced a negative edge.
+
+**The published seed 0 was not a favorable draw — if anything it was conservative.**
+Seed 0's +256 sits at the **35th percentile** of the 20-seed distribution, *below*
+the median +300 and well below the mean +351. The headline therefore understates,
+rather than overstates, the typical edge of a randomly-initialised training run.
+The single-seed-selection concern flagged in §0 is resolved in the direction
+opposite to the worry: there is no evidence the original seed was chosen for a
+favorable result.
+
+**What this does and does not change.** It hardens the §4.6 confirmatory claim: the
++256 edge over the *Myopic* baseline is representative, not a lucky seed. It does
+**not** touch the honest negatives reported elsewhere — the edge is still measured
+only against the myopic baseline, and the RL agent still loses head-to-head to the
+zero-parameter Kelly bot (THESIS §3, `results/pool.json`). Robustness to training
+seed is not strength against the field.
+
+**Figure:** `figures/seed_sweep.png` (each seed's edge with its eval CI, seed 0
+highlighted, the across-seed CI band, and zero).

@@ -189,6 +189,7 @@ OMP_NUM_THREADS=1 bash scripts/run_measurements.sh    # Block B + ICM + rollout 
 OMP_NUM_THREADS=1 python -m scripts.measure_variance_reduction --out results/variance_reduction.json
 OMP_NUM_THREADS=1 python -m scripts.measure_exploitability     --out results/exploitability.json
 OMP_NUM_THREADS=1 python -m scripts.measure_confirmatory --raw --out results/confirmatory.json  # pre-registered RL-vs-myopic run (PREREGISTRATION.md §4.3)
+OMP_NUM_THREADS=1 python -m scripts.measure_seed_sweep --out results/seed_sweep.json  # multi-seed robustness: retrain torch_seed 0..19, edge as a distribution (PREREGISTRATION.md §10)
 
 # real-data tilt validation (fetches the PHH subset to data/phh/, gitignored)
 python -m scripts.fetch_phh --max-files 120            # the 120 PokerStars 25NL files used

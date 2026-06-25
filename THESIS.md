@@ -112,6 +112,17 @@ excludes 0), 2 are within per-seed noise:
   matching is for; paired t agrees, p≈5×10⁻⁶). The single-orientation raw
   calibration arm agrees (+400 chips, CI [+232, +576]).
 
+  **Robust across training seeds (v2 Phase 0).** That +256 rests on one training
+  seed (`torch_seed=0`). Retraining the *identical* recipe over 20 seeds — eval
+  protocol held byte-identical, only the seed varied, pre-registered before the run
+  (PREREGISTRATION.md §10) — gives a per-seed edge of **mean +351, median +300,
+  across-seed 95% CI [+244, +468]**: 16 of 20 seeds individually resolve a positive
+  edge, **none resolve negative**. Seed 0 reproduces +256 exactly and sits at the
+  **35th percentile, *below* the median**, so the published number was a
+  conservative draw, not a cherry-picked one. This closes the single-training-seed
+  limitation §0 of the pre-registration flagged
+  ([`figures/seed_sweep.png`](figures/seed_sweep.png)).
+
   An earlier exploratory pilot (`evaluate_vs_baseline`, 200 seeds × 200 hands,
   single orientation) first surfaced the edge at +500 (125/200, CI [+240, +760]).
   The confirmatory number is smaller because mirror matching removes the
@@ -198,7 +209,11 @@ script, and the result are committed together (the registration is concurrent, n
 sequenced ahead of the run in git history; PREREGISTRATION.md §0 says so plainly).
 What makes the posture honest is not a git-provable time gap but the pre-committed
 rule to report whatever the frozen protocol returns. It returned an edge
-*smaller* than the exploratory pilot, reported as such rather than hidden.
+*smaller* than the exploratory pilot, reported as such rather than hidden. The
+later multi-seed robustness sweep (PREREGISTRATION.md §10) goes one step further:
+its protocol was committed in a *separate, earlier* commit than its result, so for
+that claim the freeze-before-run gap **is** git-provable — and it confirmed the
++256 headline is representative across training seeds, not a single-seed artifact.
 
 ## 6. What the rigor layer ships, and what remains
 
