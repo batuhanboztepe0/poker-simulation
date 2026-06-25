@@ -114,3 +114,13 @@ def all_info_sets(ranks):
     cfr = BigLeducCFR(ranks)
     cfr.train(1)
     return sorted(cfr.nodes.keys())
+
+
+def exploitability_of(strategy_table, ranks):
+    """Exact NashConv of an arbitrary R-rank Leduc strategy (the parameterised
+    analogue of `leduc_eval.exploitability_of`). Tractable only at small R; at the
+    scaled R it is replaced by the LBR lower bound (`big_leduc_lbr`)."""
+    from src.leduc_eval import _FixedNode
+    cfr = BigLeducCFR(ranks)
+    cfr.nodes = {iset: _FixedNode(dist) for iset, dist in strategy_table.items()}
+    return cfr.exploitability()
