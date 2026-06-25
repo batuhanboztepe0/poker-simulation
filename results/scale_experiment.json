@@ -1,0 +1,88 @@
+{
+ "ranks": 20,
+ "deals_per_cfr_iter": 59280,
+ "info_sets": 12120,
+ "cost_curve": [
+  {
+   "ranks": 3,
+   "deals": 120,
+   "info_sets": 288,
+   "secs_per_iter": 0.025
+  },
+  {
+   "ranks": 6,
+   "deals": 1320,
+   "info_sets": 1116,
+   "secs_per_iter": 0.273
+  },
+  {
+   "ranks": 10,
+   "deals": 6840,
+   "info_sets": 3060,
+   "secs_per_iter": 1.439
+  },
+  {
+   "ranks": 16,
+   "deals": 29760,
+   "info_sets": 7776,
+   "secs_per_iter": 6.382
+  },
+  {
+   "ranks": 20,
+   "deals": 59280,
+   "info_sets": 12120,
+   "secs_per_iter": 12.723
+  }
+ ],
+ "cfr_secs_per_iter": 12.723,
+ "converge_iters_ref": 10000,
+ "cfr_converge_hours_est": 35.34166666666667,
+ "uniform": {
+  "exact": 4.878182636079344,
+  "lbr": 3.8244897098529167
+ },
+ "matched_budget": {
+  "neural_episodes": 200000,
+  "cfr_iters": 30
+ },
+ "tabular_cfr": {
+  "iters": 30,
+  "train_secs": 198.0,
+  "exact": 0.2532478045887491,
+  "lbr": 0.17992065521516348
+ },
+ "neural_nfsp": {
+  "seeds": 3,
+  "per_seed": [
+   {
+    "seed": 0,
+    "train_secs": 470.0,
+    "exact": 1.0079115623925223,
+    "lbr": 0.8628610509851731
+   },
+   {
+    "seed": 1,
+    "train_secs": 463.0,
+    "exact": 1.0184664593769663,
+    "lbr": 0.7631364355692718
+   },
+   {
+    "seed": 2,
+    "train_secs": 482.0,
+    "exact": 0.9853677955051371,
+    "lbr": 0.780666838265284
+   }
+  ],
+  "exact_mean": 1.0039152724248752,
+  "exact_min": 0.9853677955051371,
+  "exact_max": 1.0184664593769663
+ },
+ "head_to_head": {
+  "neural_exact_mean": 1.0039152724248752,
+  "tabular_exact": 0.2532478045887491,
+  "neural_beats_tabular_at_matched_budget": false,
+  "both_far_from_nash": true
+ },
+ "lbr_le_exact_check": true,
+ "registered_in": "PREREGISTRATION.md \u00a712"
+}

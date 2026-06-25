@@ -742,6 +742,63 @@ def fig_neural_nfsp(index):
                   _save(fig, "neural_nfsp", cap, height=520)))
 
 
+def fig_scale(index):
+    """Phase 2 scaling (§12): exact exploitability at R=20 of uniform vs neural NFSP
+    vs truncated tabular CFR at a matched wall-clock budget, on a game where tabular
+    CFR cannot converge. Caption carries the cost-curve / convergence numbers."""
+    d = _load_json("scale_experiment.json")
+    if not d:
+        return
+    R = d["ranks"]
+    uni = d["uniform"]["exact"]
+    nm = d["neural_nfsp"]["exact_mean"]
+    nlo, nhi = d["neural_nfsp"]["exact_min"], d["neural_nfsp"]["exact_max"]
+    cfr = d["tabular_cfr"]["exact"]
+    labels = ["uniform random",
+              f"neural NFSP (mean of {d['neural_nfsp']['seeds']} seeds)",
+              f"tabular CFR ({d['tabular_cfr']['iters']} iters)"]
+    vals = [uni, nm, cfr]
+    err = [[0, nm - nlo, 0], [0, nhi - nm, 0]]  # min/max band on the neural bar only
+    colors = ["#888888", "#1f77b4", "#ff7f0e"]
+    fig = go.Figure(go.Bar(
+        x=vals, y=labels, orientation="h", marker_color=colors, width=0.5,
+        error_x=dict(type="data", symmetric=False, array=err[1], arrayminus=err[0],
+                     thickness=2, width=8, color="#444")))
+    fig.update_layout(
+        xaxis_title=f"exact Leduc exploitability at R={R} (NashConv; 0 = Nash). "
+                    f"Lower is better.", yaxis_title="", showlegend=False)
+    hh = d["head_to_head"]
+    winner = ("neural NFSP" if hh["neural_beats_tabular_at_matched_budget"]
+              else "tabular CFR")
+    spi = d["cfr_secs_per_iter"]
+    cfr_secs = d["tabular_cfr"]["train_secs"]
+    nsecs = [x["train_secs"] for x in d["neural_nfsp"]["per_seed"]]
+    nsec = sum(nsecs) / len(nsecs)
+    cap = (f"Phase 2 scaling (PREREGISTRATION.md §12). R={R} Leduc: "
+           f"{d['info_sets']} info-sets, {d['deals_per_cfr_iter']} deals per CFR "
+           f"iteration ({spi:.1f}s/iter), so tabular CFR convergence "
+           f"(~{d['converge_iters_ref']} iters) would take "
+           f"~{d['cfr_converge_hours_est']:.0f} h — infeasible. Exact exploitability "
+           f"(tabular CFR at {cfr_secs:.0f}s, neural NFSP at ~{nsec:.0f}s/seed — "
+           f"the wall-clocks were NOT matched, neural got ~{nsec/cfr_secs:.1f}x more): "
+           f"uniform {uni:.2f}, neural NFSP {nm:.2f} [{nlo:.2f},{nhi:.2f}], "
+           f"truncated tabular CFR {cfr:.2f} — **{winner} reaches lower "
+           f"exploitability**. "
+           + ("Neural wins per-wall-clock at this scale. "
+              if hh["neural_beats_tabular_at_matched_budget"] else
+              "Honest null: even far from convergence, tabular CFR still beats "
+              "neural NFSP per-wall-clock where it is feasible per iteration; "
+              "neural's structural advantage is confined to larger scales (cost "
+              "curve extrapolates ~R=60) where tabular cannot complete one "
+              "iteration, a regime only a lower bound can probe. ")
+           + f"LBR lower-bound cross-check holds (LBR ≤ exact): "
+           + ("yes." if d.get("lbr_le_exact_check") else "FLAG.")
+           + " The exploitability metric is exact (one-time best response), the "
+             "non-tunable metric used throughout.")
+    index.append(("scale.png", "phase2",
+                  _save(fig, "scale", cap, height=420)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -848,6 +905,7 @@ def fig_plain_tilt(index):
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
             fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep, fig_neural_nfsp,
+            fig_scale,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -863,6 +921,7 @@ DATA_DEPS = {
     "fig_rollout_fe": "results/rollout_fe.jsonl",
     "fig_seed_sweep": "results/seed_sweep.json",
     "fig_neural_nfsp": "results/neural_nfsp.json",
+    "fig_scale": "results/scale_experiment.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",

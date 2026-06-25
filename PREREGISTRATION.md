@@ -568,7 +568,56 @@ win at R=20 would be the surprising, reportable positive.
 
 ### 12.3 Execution status and outcome
 
-**Status: PENDING.** The protocol above is frozen and committed before the run; the
-outcome (the R=20 head-to-head, the cost curve, and the convergence extrapolation) is
-filled in here in the second commit, alongside `results/scale_experiment.json`,
-reported in full regardless of direction.
+**Status: EXECUTED.** Run once at R=20 (3 neural seeds, 30 CFR iterations) and
+committed to `results/scale_experiment.json`. Reported in full per §8.
+
+**Tabular CFR convergence is infeasible at R=20 (established independently).** R=20
+has 12,120 info-sets and 59,280 deals per CFR iteration; a full iteration cost
+**12.7 s**, so the ~10⁴ iterations the 3-rank CFR needed for ~0.009 exploitability
+would take **~35 hours**.
+
+**Head-to-head outcome — an honest null (the a-priori expectation, confirmed
+strongly).** Exact exploitability at the pre-committed counts (lower is better):
+
+| method | wall-clock | exact exploitability |
+|---|---|---|
+| uniform random | — | 4.878 |
+| **tabular CFR (30 iters)** | **198 s** | **0.253** |
+| neural NFSP (200k ep, 3 seeds) | ~470 s/seed | 1.004 [0.985, 1.018] |
+
+**Tabular CFR decisively beats neural NFSP — with less than half the wall-clock**
+(198 s vs ~470 s). Thirty truncated CFR iterations reach 0.253; neural NFSP plateaus
+at ~1.0 (tight across seeds), worse than truncated CFR. The pre-registered question
+is answered **NO**: neural NFSP does not help at R=20.
+
+**Two honest deviations from the §12.1 estimates, disclosed (neither changes the
+conclusion).** (i) The R=20 CFR iteration cost measured **12.7 s**, about **twice**
+the §12.1 pre-run estimate of ~6.6 s (which, in hindsight, was the R=16 cost-curve
+figure, not R=20); the convergence estimate therefore rises from ~18 h to **~35 h**
+— still infeasible. (ii) The "~3–4 min each" wall-clock match did **not** hold in
+execution: tabular CFR ran 198 s but neural NFSP ran **~470 s/seed (~2.4×** the
+estimate). The match failing only **strengthens** the null: tabular won decisively
+while given *less than half* the compute neural received.
+
+**What this establishes.** Neural NFSP has **no measurable advantage** over tabular
+CFR at any scale this work can exactly evaluate — even R=20, where CFR *convergence*
+is infeasible (~35 h), a few truncated CFR iterations already dominate, because CFR
+converges very fast per iteration while neural NFSP plateaus. This is the **third
+pre-registered honest null** of v2 (after: the RL edge is only over a myopic
+baseline and loses to Kelly; neural NFSP does not beat tabular NFSP on 3-rank Leduc).
+The regime where a neural structural advantage **might** emerge — and it is **not
+demonstrated here** — is confined to scales where tabular CFR cannot complete even a
+few iterations; the cost curve extrapolates this to roughly **R≈60**, where one CFR
+iteration alone (~7–8 min, the measured neural budget) consumes the entire neural
+budget. That regime is **not measurable by exact NashConv** (also infeasible there)
+and could only be probed by an LBR **lower bound**, which can demonstrate
+exploitation but cannot *certify* low exploitability. So even if neural NFSP ran
+there, this work could not prove it good. The regime is identified from the cost
+curve but honestly **not run**; closing it needs a scalable sampled-LBR.
+
+**LBR validated at scale.** The LBR lower bound stays ≤ exact at R=20 for every
+policy (uniform 3.82 ≤ 4.88; neural ~0.80 mean, range 0.76–0.86 ≤ 1.00; CFR
+0.18 ≤ 0.25), confirming the
+§6 guarantee holds at the scaled game and licensing LBR where exact is infeasible.
+
+**Figure:** `figures/scale.png`.

@@ -195,11 +195,28 @@ at 200k episodes) but does **not** beat tabular NFSP on Leduc — it wins only a
 smallest budget (50k: 1.94 vs 2.40) and tabular edges ahead from 100k on
 ([`figures/neural_nfsp.png`](figures/neural_nfsp.png)). This is the expected null on
 a game small enough to tabulate exactly: neural function approximation has no edge
-where the tabular policy is already exact. Its value — generalising across info-sets
-in games too large to tabulate — is the next step (a larger game scored by a
-validated LBR lower bound, where "beats tabular" becomes meaningful). Notably, a
-single-seed look briefly *suggested* a neural win at 100k; the 5-seed mean erased it,
-the same multi-seed discipline §10 (the Phase 0 robustness sweep) established.
+where the tabular policy is already exact. Notably, a single-seed look briefly
+*suggested* a neural win at 100k; the 5-seed mean erased it, the same multi-seed
+discipline §10 (the Phase 0 robustness sweep) established.
+
+**Scaling test (Phase 2 Step 2d), and a third honest null.** To test whether the
+neural method helps where tabular CFR cannot *converge*, a parameterised R-rank Leduc
+([`src/big_leduc.py`](src/big_leduc.py), validated isomorphic at R=3) was scaled to
+**R=20** (12,120 info-sets; 59,280 deals per CFR iteration; ~35 h to converge — so
+tabular CFR convergence is genuinely infeasible). A pre-registered (§12),
+matched-wall-clock head-to-head scored both by exact NashConv: **truncated tabular
+CFR (30 iterations, 198 s) reaches 0.253, while neural NFSP (200k episodes, 3 seeds,
+~470 s) plateaus at 1.00** — **tabular wins decisively, with less than half the
+wall-clock** ([`figures/scale.png`](figures/scale.png)). The honest conclusion:
+neural NFSP has no measurable advantage over tabular CFR at any scale this work can
+exactly evaluate; CFR converges so fast per iteration that a handful of iterations
+beat a neural plateau even where full convergence is out of reach. A neural
+equilibrium method's real edge is confined to scales (the cost curve extrapolates
+~R≈60) where tabular cannot complete even a few iterations — a regime where exact
+exploitability is also infeasible and only an LBR **lower bound**
+([`src/leduc_lbr.py`](src/leduc_lbr.py), validated LBR ≤ exact including at R=20)
+applies, and a lower bound can demonstrate exploitation but cannot *certify* a
+strategy is good. That frontier is identified but, honestly, not claimed.
 
 ## 5. Honest-negative as a feature, not a bug
 

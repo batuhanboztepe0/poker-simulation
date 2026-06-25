@@ -217,5 +217,30 @@ class TestResultsSchema(unittest.TestCase):
                 set(h))
 
 
+    def test_scale_experiment_schema(self):
+        # Phase 2 scaling experiment (PREREGISTRATION.md §12). The figure layer
+        # (fig_scale) reads the head-to-head, the cost curve, and the per-method
+        # exact exploitability; guard those keys.
+        path = os.path.join(RESULTS, "scale_experiment.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/scale_experiment.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertLessEqual(
+            {"ranks", "deals_per_cfr_iter", "info_sets", "cost_curve",
+             "cfr_secs_per_iter", "cfr_converge_hours_est", "uniform",
+             "tabular_cfr", "neural_nfsp", "head_to_head", "lbr_le_exact_check"},
+            set(d))
+        self.assertLessEqual({"exact", "lbr"}, set(d["uniform"]))
+        self.assertLessEqual({"iters", "exact", "lbr"}, set(d["tabular_cfr"]))
+        self.assertLessEqual({"seeds", "per_seed", "exact_mean", "exact_min",
+                              "exact_max"}, set(d["neural_nfsp"]))
+        self.assertLessEqual(
+            {"neural_exact_mean", "tabular_exact",
+             "neural_beats_tabular_at_matched_budget"}, set(d["head_to_head"]))
+        # The LBR lower-bound guarantee must hold at scale too.
+        self.assertTrue(d["lbr_le_exact_check"], "LBR must be <= exact at scale")
+
+
 if __name__ == "__main__":
     unittest.main()
