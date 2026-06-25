@@ -237,6 +237,8 @@ Committed reference values (from `results/exploitability.json`):
 
 These values are the ground truth for solver correctness checks. Any re-run that differs by more than rounding (last decimal place) must be explained before the result is accepted.
 
+**Lower-bound exploitability (LBR).** For games too large for exact NashConv, `src/leduc_lbr.py` provides a Local Best Response (LBR) estimate that is a strict **lower bound** on exploitability (Lisý & Bowling 2017): the best-responder plays a passive check/call rollout valued against a Bayesian belief over the opponent's card, so its value can only under-state true exploitability. It is **never** reported as an upper bound. `tests/test_leduc_lbr.py` validates the guarantee on Leduc where exact NashConv is available (LBR ≤ exact on uniform, intermediate-CFR, and near-equilibrium policies; LBR captures ~83% of exact for the far-from-Nash uniform policy and sits near 0 at equilibrium). This validation is what licenses LBR on a larger game where exact is infeasible.
+
 ---
 
 ## 7. Exploratory vs. Confirmatory Split
