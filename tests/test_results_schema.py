@@ -192,5 +192,30 @@ class TestResultsSchema(unittest.TestCase):
                             "seed 0 must reproduce the committed confirmatory edge")
 
 
+    def test_neural_nfsp_schema(self):
+        # Phase 2 neural NFSP convergence (PREREGISTRATION.md §11). The figure
+        # layer (fig_neural_nfsp) reads the across-seed curve, the tabular
+        # reference, and the head-to-head; guard those keys.
+        path = os.path.join(RESULTS, "neural_nfsp.json")
+        if not os.path.exists(path):
+            self.skipTest("no results/neural_nfsp.json present")
+        with open(path) as f:
+            d = json.load(f)
+        self.assertLessEqual(
+            {"method", "feature_dim", "config", "n_seeds", "checkpoints",
+             "uniform_exploitability", "per_seed", "curve", "head_to_head"},
+            set(d))
+        self.assertTrue(d["curve"], "curve is empty")
+        for pt in d["curve"]:
+            self.assertLessEqual(
+                {"episodes", "mean_exploitability", "min", "max"}, set(pt))
+        for ps in d["per_seed"]:
+            self.assertLessEqual({"seed", "curve"}, set(ps))
+        for h in d["head_to_head"]:
+            self.assertLessEqual(
+                {"episodes", "neural_mean", "tabular", "neural_beats_tabular"},
+                set(h))
+
+
 if __name__ == "__main__":
     unittest.main()

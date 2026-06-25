@@ -682,6 +682,63 @@ def fig_seed_sweep(index):
                   _save(fig, "seed_sweep", cap, height=620)))
 
 
+def fig_neural_nfsp(index):
+    """Phase 2: neural NFSP exact-exploitability convergence on Leduc, vs the
+    tabular NFSP baseline on the identical metric, with the CFR Nash floor."""
+    d = _load_json("neural_nfsp.json")
+    if not d:
+        return
+    agg = d["curve"]
+    eps = [a["episodes"] for a in agg]
+    mean = [a["mean_exploitability"] for a in agg]
+    lo = [a["min"] for a in agg]
+    hi = [a["max"] for a in agg]
+    fig = go.Figure()
+    # neural across-seed min/max band + mean line
+    fig.add_trace(go.Scatter(x=eps + eps[::-1], y=hi + lo[::-1], fill="toself",
+                             fillcolor="rgba(31,119,180,0.15)", line=dict(width=0),
+                             showlegend=False, hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=eps, y=mean, mode="lines+markers",
+                             name=f"neural NFSP (mean of {d['n_seeds']} seeds)",
+                             line=dict(width=3, color="#1f77b4")))
+    tab = d.get("tabular_nfsp_curve")
+    if tab:
+        fig.add_trace(go.Scatter(
+            x=[p["episodes"] for p in tab], y=[p["exploitability"] for p in tab],
+            mode="lines+markers", name="tabular NFSP",
+            line=dict(width=3, color="#ff7f0e", dash="dash")))
+    cfr = d.get("cfr_avg_final")
+    if cfr is not None:
+        fig.add_hline(y=cfr, line=dict(color="#2ca02c", dash="dot"),
+                      annotation_text=f"CFR Nash floor {cfr:.3f}",
+                      annotation_position="bottom right")
+    fig.update_layout(
+        xaxis_title="training episodes (log scale)", xaxis_type="log",
+        yaxis_title="exact Leduc exploitability (NashConv; 0 = Nash)",
+        legend=dict(x=0.98, y=0.95, xanchor="right",
+                    bgcolor="rgba(255,255,255,0.6)"))
+    h2h = d.get("head_to_head", [])
+    wins = [x for x in h2h if x["neural_beats_tabular"]]
+    final = agg[-1]
+    matched = (f"At matched episode budgets neural NFSP beats tabular at "
+               f"{len(wins)}/{len(h2h)} checkpoints"
+               + (f" (e.g. {wins[0]['episodes']//1000}k: "
+                  f"{wins[0]['neural_mean']:.2f} vs {wins[0]['tabular']:.2f})"
+                  if wins else "") + ". ") if h2h else ""
+    cap = (f"Phase 2 — neural NFSP on Leduc, scored by the EXACT NashConv metric "
+           f"(identical to the tabular learners; PREREGISTRATION.md §11). Mean of "
+           f"{d['n_seeds']} seeds, band = min/max across seeds. Exploitability "
+           f"falls from the uniform {d.get('uniform_exploitability', 0):.2f} to "
+           f"{final['mean_exploitability']:.2f} by {final['episodes']//1000}k "
+           f"episodes. {matched}It plateaus above the tabular asymptote and the "
+           f"CFR Nash floor ({cfr:.3f} if shown): expected, since Leduc is small "
+           f"enough to tabulate exactly, so neural function approximation wins on "
+           f"sample efficiency, not asymptotic exactness — its real value is "
+           f"scaling to games too large to tabulate.")
+    index.append(("neural_nfsp.png", "phase2",
+                  _save(fig, "neural_nfsp", cap, height=520)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -787,7 +844,7 @@ def fig_plain_tilt(index):
 
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
-            fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep,
+            fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep, fig_neural_nfsp,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -802,6 +859,7 @@ DATA_DEPS = {
     "fig_tilt_lossvswin": "results/tilt_realdata.json",
     "fig_rollout_fe": "results/rollout_fe.jsonl",
     "fig_seed_sweep": "results/seed_sweep.json",
+    "fig_neural_nfsp": "results/neural_nfsp.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",

@@ -286,6 +286,9 @@ Any deviation from the confirmatory plan after registration is documented explic
 | Citation anchor for variance-reduction literature | `REFERENCES.md §2` |
 | Multi-seed robustness run script (§10) | `scripts/measure_seed_sweep.py` |
 | Committed multi-seed sweep result (§10) | `results/seed_sweep.json` |
+| Neural NFSP method (§11) | `src/leduc_neural_nfsp.py` |
+| Neural NFSP run script (§11) | `scripts/measure_neural_nfsp.py` |
+| Committed neural NFSP result (§11) | `results/neural_nfsp.json` |
 
 ---
 
@@ -403,3 +406,69 @@ seed is not strength against the field.
 
 **Figure:** `figures/seed_sweep.png` (each seed's edge with its eval CI, seed 0
 highlighted, the across-seed CI band, and zero).
+
+---
+
+## 11. Neural Equilibrium Method on Leduc (v2 Phase 2)
+
+The first NEURAL equilibrium method in the repo: neural NFSP (Heinrich & Silver
+2016) on Leduc, scored by the SAME exact NashConv metric
+(`leduc_eval.exploitability_of`) as the tabular CFR / NFSP / Q learners (§6), so the
+comparison is apples-to-apples. Registered here and frozen before the run, in the
+same two-commit, git-provable-gap form as §10.
+
+### 11.1 What is fixed
+
+- **Method:** `src.leduc_neural_nfsp.LeducNeuralNFSP` — the NFSP algorithm with the
+  per-info-set Q table and count table replaced by two MLPs over a structured 21-d
+  info-set feature (private card, board card, round, the two betting histories).
+  It is OFF by default and imported nowhere in the engine; the baseline is
+  byte-identical and existing tests are untouched.
+- **Game and metric:** the repo's own Leduc (`leduc_cfr`), exact NashConv of the
+  average policy Pi. Identical, non-tunable metric to §6.
+- **Hyperparameters (a-priori, NOT tuned on the metric):** `hidden=64`, two ReLU
+  layers; `eta=0.1`; `eps` annealed `0.06 -> 0.0`; `gamma=1.0`; Adam `lr_rl=0.01`,
+  `lr_sl=0.01`; `batch=128`; RL replay 200k, SL reservoir 1M; target-net update
+  every 1000 steps. These are standard NFSP defaults chosen *before* any
+  exploitability was measured. Selecting them after seeing exploitability would be
+  the garden-of-forking-paths §1 warns against; that is deliberately avoided.
+- **Seeds and checkpoints:** seeds `0..4` (5 training seeds, applying the Phase 0
+  multi-seed lesson); exact exploitability of Pi recorded at episode checkpoints
+  `{50000, 100000, 200000}` — the same episode counts as the committed tabular NFSP
+  curve (`results/exploitability.json` `nfsp_curve`), so the head-to-head is at
+  matched budgets.
+
+### 11.2 Frozen run
+
+```python
+# Frozen before the run. Do not change after registration.
+for seed in range(5):
+    m = LeducNeuralNFSP(seed=seed)                 # a-priori defaults above
+    for ck in (50_000, 100_000, 200_000):
+        m.train(ck - prev)
+        record exploitability_of(m.average_strategy_table())   # exact NashConv
+```
+
+### 11.3 Primary outcome and pre-committed reading
+
+**Primary outcome:** the exact exploitability of neural NFSP's average policy at
+each checkpoint, as a distribution across the 5 seeds (mean and min/max), against
+the tabular NFSP baseline at the same episode counts.
+
+**Pre-committed reading of the roadmap gate** ("the neural method must beat the
+tabular baseline on the same metric"): the gate is read as **sample efficiency at
+matched budget** — neural NFSP beats tabular iff its across-seed mean exploitability
+is below the tabular value at the same episode count, for a **majority of the three
+checkpoints**. It is stated in advance that **asymptotic** dominance on Leduc is
+**not** expected and is **not** the claim: Leduc is small enough to tabulate
+exactly, so neural function approximation should plateau above the tabular asymptote
+and far above the CFR Nash floor (~0.009). The neural method's value is scaling to
+games too large to tabulate; Leduc is the exact-measurable correctness check before
+scaling. The full curve is reported regardless of which way the gate falls (§8).
+
+### 11.4 Execution status and outcome
+
+**Status: PENDING.** The protocol above is frozen and committed before the run; the
+outcome (the 5-seed neural exploitability curve, the head-to-head vs tabular, and
+the gate reading) is filled in here in the second commit, alongside
+`results/neural_nfsp.json`, and reported in full regardless of direction.
