@@ -46,15 +46,15 @@
    "curve": [
     {
      "episodes": 50000,
-     "exploitability": 1.8296940353286366
+     "exploitability": 1.540383404971684
     },
     {
      "episodes": 100000,
-     "exploitability": 1.6079648242338054
+     "exploitability": 1.6012862748702896
     },
     {
      "episodes": 200000,
-     "exploitability": 1.6768555720651557
+     "exploitability": 1.4528651899237788
     }
    ]
   },
@@ -63,15 +63,15 @@
    "curve": [
     {
      "episodes": 50000,
-     "exploitability": 1.6598356313191
+     "exploitability": 1.61061818467139
     },
     {
      "episodes": 100000,
-     "exploitability": 1.7585952494386712
+     "exploitability": 1.590196380811389
     },
     {
      "episodes": 200000,
-     "exploitability": 1.3787099720038072
+     "exploitability": 1.60109306725771
     }
    ]
   },
@@ -80,15 +80,15 @@
    "curve": [
     {
      "episodes": 50000,
-     "exploitability": 1.7479230843638367
+     "exploitability": 2.0937298646828304
     },
     {
      "episodes": 100000,
-     "exploitability": 1.8633360645870198
+     "exploitability": 1.90616226758597
     },
     {
      "episodes": 200000,
-     "exploitability": 1.4389464644210619
+     "exploitability": 2.0897426577117595
     }
    ]
   },
@@ -97,15 +97,15 @@
    "curve": [
     {
      "episodes": 50000,
-     "exploitability": 2.2343632982723522
+     "exploitability": 1.7826724418800954
     },
     {
      "episodes": 100000,
-     "exploitability": 2.373152747000724
+     "exploitability": 1.6537627583993777
     },
     {
      "episodes": 200000,
-     "exploitability": 1.3886158558488653
+     "exploitability": 1.4737251068358943
     }
    ]
   },
@@ -114,15 +114,15 @@
    "curve": [
     {
      "episodes": 50000,
-     "exploitability": 2.215205168425944
+     "exploitability": 2.300386357712458
     },
     {
      "episodes": 100000,
-     "exploitability": 1.6925508793380422
+     "exploitability": 1.765181136912074
     },
     {
      "episodes": 200000,
-     "exploitability": 1.4234423474056077
+     "exploitability": 1.323893501734585
     }
    ]
   }
@@ -130,42 +130,42 @@
  "curve": [
   {
    "episodes": 50000,
-   "mean_exploitability": 1.9374042435419738,
-   "min": 1.6598356313191,
-   "max": 2.2343632982723522,
-   "sd": 0.269215047490353
+   "mean_exploitability": 1.8655580507836915,
+   "min": 1.540383404971684,
+   "max": 2.300386357712458,
+   "sd": 0.32355097857223497
   },
   {
    "episodes": 100000,
-   "mean_exploitability": 1.8591199529196523,
-   "min": 1.6079648242338054,
-   "max": 2.373152747000724,
-   "sd": 0.302149325639395
+   "mean_exploitability": 1.70331776371582,
+   "min": 1.590196380811389,
+   "max": 1.90616226758597,
+   "sd": 0.1328867377051839
   },
   {
    "episodes": 200000,
-   "mean_exploitability": 1.4613140423488997,
-   "min": 1.3787099720038072,
-   "max": 1.6768555720651557,
-   "sd": 0.12298494177198087
+   "mean_exploitability": 1.5882639046927456,
+   "min": 1.323893501734585,
+   "max": 2.0897426577117595,
+   "sd": 0.2970644649219527
   }
  ],
  "head_to_head": [
   {
    "episodes": 50000,
-   "neural_mean": 1.9374042435419738,
+   "neural_mean": 1.8655580507836915,
    "tabular": 2.4037425552704477,
    "neural_beats_tabular": true
   },
   {
    "episodes": 100000,
-   "neural_mean": 1.8591199529196523,
+   "neural_mean": 1.70331776371582,
    "tabular": 1.8015781993873259,
-   "neural_beats_tabular": false
+   "neural_beats_tabular": true
   },
   {
    "episodes": 200000,
-   "neural_mean": 1.4613140423488997,
+   "neural_mean": 1.5882639046927456,
    "tabular": 1.3435748005903458,
    "neural_beats_tabular": false
   }

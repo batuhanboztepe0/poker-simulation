@@ -474,58 +474,73 @@ scaling. The full curve is reported regardless of which way the gate falls (§8)
 
 ### 11.4 Execution status and outcome
 
-**Status: EXECUTED.** The frozen protocol was run once over seeds `0..4` at
-checkpoints `{50k, 100k, 200k}` and committed to `results/neural_nfsp.json`.
-Reported in full per §8.
+**Status: EXECUTED, then CORRECTED (erratum 2026-06-27).** The frozen §11.2 protocol
+was first run over seeds `0..4` and committed. A later independent code review
+(recall-mode, correctness mandate — *not* result-hunting) found that the §11.2
+incremental-train loop (`m.train(ck - prev)` once per checkpoint) **reset the epsilon
+anneal at every call**, producing a per-checkpoint *sawtooth* (epsilon jumped back to
+0.06 at 50k and 100k) instead of the single monotone `0.06 → 0.0` schedule §11.1
+registered — a faithfulness bug between the frozen code and the registered *intent*.
+It was corrected (a single `train()` call over the full horizon, recording the curve
+via the existing `eval_hook`) and re-run with **identical seeds, hyperparameters,
+checkpoints, metric, and gate** — only the epsilon bug fixed (plus a
+`pow(2.718…) → math.exp` precision tidy, ~1e-10). Both runs are reported in full.
 
-**Neural NFSP converges on the exact metric.** Its average-policy exploitability
-falls from the uniform **4.75** to an across-seed mean **1.46** at 200k episodes
-(per-seed finals 1.68/1.38/1.44/1.39/1.42 — note the real seed-to-seed variance,
-the Phase 0 lesson again). So the method is **validated**: a neural function
-approximator, scored by the identical exact NashConv metric as the tabular
-learners, does learn a converging Leduc average policy.
+**The correction flips the pre-committed gate from FAIL to a (weak) HOLD.** On the
+fair 5-seed mean, exact NashConv (lower is better):
 
-**But the matched-budget superiority gate is NOT met.** On the fair 5-seed mean,
-neural NFSP beats tabular NFSP at only **1 of 3** checkpoints:
+| episodes | neural — buggy sawtooth (old) | neural — corrected monotone (new) | tabular NFSP | corrected beats? |
+|---|---|---|---|---|
+| 50,000 | 1.94 | **1.87** [1.54, 2.30] | 2.40 | yes (5/5 seeds) |
+| 100,000 | 1.86 | **1.70** [1.59, 1.91] | 1.80 | yes (4/5 seeds) |
+| 200,000 | 1.46 | **1.59** [1.32, 2.09] | 1.34 | no (1/5 seeds) |
 
-| episodes | neural NFSP (mean [min,max]) | tabular NFSP | neural beats? |
-|---|---|---|---|
-| 50,000 | 1.94 [1.66, 2.23] | 2.40 | yes |
-| 100,000 | 1.86 [1.61, 2.37] | 1.80 | no |
-| 200,000 | 1.46 [1.38, 1.68] | 1.34 | no |
+Old: **1 of 3** → by the §11.3 majority rule (≥2 of 3) the gate **failed** (reported
+as a null). Corrected: **2 of 3 → the gate is MET.** Neural converges from the uniform
+**4.75** to **1.59** at 200k; both stay far above the CFR Nash floor (**0.009**).
 
-By the §11.3 majority rule (beat tabular at ≥2 of 3 checkpoints) the gate **fails**.
-Neural NFSP is **competitive** with tabular (within ~0.06 at 100k, ~0.12 at 200k)
-and wins at the smallest budget, but tabular edges ahead from 100k on. Both remain far above the
-CFR Nash floor (**0.009**).
+**Honest reading — a QUALIFIED, weak sample-efficiency pass, not a strong win.** This
+is exactly the a-priori §11.3 prediction: neural NFSP is more sample-efficient at the
+*smaller* budgets (clear win at 50k, all 5 seeds below tabular; a real but modest win
+at 100k — 4/5 seeds below, mean margin 0.10, across-seed sd 0.13), while **tabular
+still wins asymptotically** (200k: only 1/5 seeds below tabular). The corrected run is
+also **noisier** than the buggy one (200k range 1.32–2.09; seed 2 a high outlier
+throughout). So the honest claim is narrow: neural NFSP **meets the pre-committed
+sample-efficiency gate on Leduc, by a slim 2/3** — it is **not** a robust or asymptotic
+win, and on this tabulatable game the tabular learner still represents every info-set
+exactly.
 
-**Honesty note (the Phase 0 lesson, live).** An earlier single-seed look (seed 0
-alone) suggested neural beat tabular at 100k; that impression **did not survive the
-5-seed mean**. Reporting the multi-seed distribution, not the favorable single seed,
-is exactly the discipline §10 established — and here it converts an apparent win into
-an honest null.
+**Why this is not p-hacking (the transparency that matters here).** The bug was found
+by an independent code review whose mandate was correctness, *before* anyone checked
+whether the result would flip; the fix makes the implementation match the
+pre-registered intent (`eps_start=0.06 → eps_end=0.0`) **verbatim**, with nothing else
+changed; both the buggy and corrected numbers are reported; and the corrected outcome
+matches the **a-priori** §11.3 prediction (sample efficiency, not asymptotic),
+registered before any run. Moving the goalposts in *either* direction — keeping a buggy
+null, or overclaiming the corrected pass — would be the dishonest move; we report both
+and the qualified reading.
 
-**What this means.** This is the expected result on a game small enough to tabulate
-exactly: neural function approximation has **no advantage on Leduc**, because the
-tabular learners already represent every info-set exactly. The neural method is
-validated as correct and convergent, but its *value* — generalising across
-info-sets in games too large to tabulate — cannot be demonstrated on Leduc. That is
-the motivation for the scale-up step (a larger game where tabular CFR is infeasible
-and exploitability is measured by a validated LBR lower bound), where "beats the
-tabular baseline" becomes a meaningful and reachable claim.
+**Scope.** This affects only §11 (3-rank Leduc, multi-checkpoint curve). **§12 (R=20)
+is unaffected**: there `BigLeducNeuralNFSP.train()` is called *once* (its epsilon
+schedule was already monotone) and LBR used full enumeration, and truncated tabular
+CFR still **decisively** beats neural NFSP (0.253 vs 1.004). The v2 tally is therefore
+**two honest nulls + one qualified sample-efficiency pass** (this §11), not three
+nulls.
 
-**Figure:** `figures/neural_nfsp.png` (neural across-seed mean ± min/max vs tabular
-NFSP vs the CFR Nash floor, on the exact metric).
+**Figure:** `figures/neural_nfsp.png` (corrected neural across-seed mean ± min/max vs
+tabular NFSP vs the CFR Nash floor, on the exact metric).
 
 ---
 
 ## 12. Scaling: Does Neural NFSP Help Where Tabular CFR Cannot Converge? (v2 Phase 2, Step 2d)
 
-The §11 honest null (neural NFSP has no edge on the tiny exactly-tabulatable 3-rank
-Leduc) motivates the real question: at a scale where tabular CFR cannot practically
-**converge**, does a neural method reach a less-exploitable strategy in comparable
-compute? Registered here and frozen before the run (two-commit git-provable gap, as
-§10/§11). This is posed as an OPEN QUESTION, not a predicted neural win.
+The §11 finding (neural NFSP is only weakly more sample-efficient on the tiny
+exactly-tabulatable 3-rank Leduc — a qualified 2/3 pass after the §11.4 erratum — and
+tabular still wins asymptotically there) motivates the real question: at a scale where
+tabular CFR cannot practically **converge**, does a neural method reach a
+less-exploitable strategy in comparable compute? Registered here and frozen before the
+run (two-commit git-provable gap, as §10/§11). This is posed as an OPEN QUESTION, not a
+predicted neural win.
 
 ### 12.1 What is fixed
 
@@ -621,3 +636,86 @@ policy (uniform 3.82 ≤ 4.88; neural ~0.80 mean, range 0.76–0.86 ≤ 1.00; CF
 §6 guarantee holds at the scaled game and licensing LBR where exact is infeasible.
 
 **Figure:** `figures/scale.png`.
+
+---
+
+## 13. Exploitation: Does Conditioning Policy on Detected Tilt Earn EV? (v2 Phase C2)
+
+The v2 equilibrium work establishes that chasing Nash on exactly-evaluable games yields
+nulls (§11 is at best a weak sample-efficiency pass; §12 a null). The literature review
+(`docs/V2_RESEARCH_ROADMAP.md`) identifies the **one direction with a realistic positive
+result: exploitation beyond Nash.** A Nash strategy is *provably* over-conservative
+against a suboptimal opponent (SES, NeurIPS 2022); Data-Biased Response (Johanson &
+Bowling, AISTATS 2009) formalises a **continuum** with a per-information confidence weight
+`p ∈ [0,1]` — `p=0` recovers Nash/baseline, `p=1` recovers best response. This experiment
+asks whether our HMM tilt posterior `p_tilted`, used as exactly that DBR confidence
+weight, earns a measurable EV edge. Registered here and frozen before the run (two-commit
+git-provable gap, as §10/§11/§12). Posed as an OPEN QUESTION, not a predicted win; a null
+is an acceptable, reportable outcome (§8).
+
+### 13.1 What is fixed
+
+- **Knob (a-priori, NOT tuned on the EV metric):** `BotPlayer(tilt_exploit=True)` conditions
+  the per-decision effective thresholds on the live belief posterior `p_tilted`:
+  `eff_tight = clamp(tight − 0.15·p_tilted)` (call lighter / lower fold threshold) and
+  `eff_aggr = clamp(aggr + 0.25·p_tilted)` (value-bet thinner) — the principled counter to
+  an over-aggressive, too-loose opponent. The slopes 0.15 / 0.25 are round a-priori choices
+  from the counter-policy direction, frozen before any EV was measured (selecting them on
+  the metric would be the garden-of-forking-paths §1 warns against). OFF by default →
+  baseline byte-identical (`tests/test_tilt_exploit.py`).
+- **The two heroes (identical except the knob):** both `BotPlayer(tight=0.2, aggr=0.5)`
+  carrying the SAME live detector `HMMBeliefState(mu_normal=0.25, mu_tilted=0.92,
+  recover=0.05)` and BOTH using vanilla unknown-opponent equity (`use_belief_equity=False`),
+  so range-modelling and tilt *detection* are held identical and the ONLY difference is
+  whether the explicit knob *acts* on `p_tilted`. `exploiter` = `tilt_exploit=True`;
+  `non-exploiter` = `tilt_exploit=False` (detects tilt, ignores it).
+- **Opponent (primary):** `AdaptiveBotPlayer(mode="tilt")` defaults — a genuine
+  non-stationary tilter (after a loss: raises more, folds less, looser), whose PnL→tilt
+  trigger the hero detector shares, so `p_tilted` leads the aggression signal by a hand.
+- **Seeds / harness:** paired seed block `range(300)`, `n_hands=200`, blinds 10/20, stack
+  1000, **mirror (duplicate-seat) + all-in-EV (luck-adjusted)** variance reduction
+  (REFERENCES §2; the AIVAT-family chance-node control variate — load-bearing, since the
+  raw per-seed PnL SD is bust-dominated).
+- **Frozen script:** `scripts/measure_exploitation.py` (committed in this freeze with NO
+  results).
+
+### 13.2 Frozen run
+
+```python
+# Frozen before the run. Do not change after registration.
+exploiter     = BotPlayer(tilt_exploit=True,  exploit_tight=0.15, exploit_aggr=0.25, ...)
+non_exploiter = BotPlayer(tilt_exploit=False, ...)   # same detector, ignores p_tilted
+for seed in range(300):                              # mirror + luck_adjusted
+    e = net_chips(exploiter     vs AdaptiveBotPlayer("tilt"), seed)
+    b = net_chips(non_exploiter vs AdaptiveBotPlayer("tilt"), seed)
+    delta[seed] = e - b
+report bootstrap_ci(delta), binomial_sign_test(delta)
+```
+
+### 13.3 Primary outcome and pre-committed verdict
+
+**Primary metric:** the mean per-seed **paired delta** `d_i = net(exploiter) −
+net(non-exploiter)`, both vs the fixed tilter on the same seed (mirror + luck-adjusted).
+**Pre-committed verdict rule (one primary, falsifiable both ways):** the exploitation edge
+is **POSITIVE** iff the 95% bootstrap CI of `mean(d_i)` excludes 0 above; **NEGATIVE** iff
+it excludes 0 below; else **null / unresolved**. The exact binomial sign test on the `d_i`
+signs is reported alongside (the bust-dominated headline test). Reported in full
+regardless of direction (§8).
+
+**Load-bearing caveats (pre-committed, stated before the result):**
+1. This measures EV against **THIS fixed tilting opponent only** — it is **NOT** a
+   Nash-safety claim. A Nash bound is neither computed nor implied.
+2. An exploiter is itself **counter-exploitable**: deviating toward best response opens you
+   to a counter-strategy (the un-eliminable exploitation-vs-exploitability tradeoff; SES's
+   upper-bounded-exploitability claim was refuted 0-3 in the review). We do not claim safety.
+3. The knob may **give EV back vs a non-tilting opponent** (StratFormer's empirical lesson:
+   loosening to exploit fold-prone opponents loses to callers). An **exploratory** control
+   arm runs the same paired delta vs a non-tilting loose-passive station to surface this; it
+   is **not** the confirmatory test and its result does not change the primary verdict.
+
+### 13.4 Execution status and outcome
+
+**Status: PENDING.** The frozen knob (`src/player.py` `tilt_exploit`), its tests
+(`tests/test_tilt_exploit.py`), and the frozen protocol/script
+(`scripts/measure_exploitation.py`) are committed here with **NO results**. The run and its
+outcome are reported in a later commit (the git-provable gap, as §10/§11/§12).

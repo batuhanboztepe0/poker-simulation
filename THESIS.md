@@ -190,16 +190,22 @@ games via a neural average-policy network (REFERENCES.md §1). v2 Phase 2 implem
 it ([`src/leduc_neural_nfsp.py`](src/leduc_neural_nfsp.py)): two MLPs over a
 structured 21-d info-set feature, scored by the *same* exact NashConv metric as the
 tabular learners, pre-registered before the run (PREREGISTRATION.md §11). The honest
-result over 5 seeds: neural NFSP **converges** (exploitability 4.75 → mean **1.46**
-at 200k episodes) but does **not** beat tabular NFSP on Leduc — it wins only at the
-smallest budget (50k: 1.94 vs 2.40) and tabular edges ahead from 100k on
-([`figures/neural_nfsp.png`](figures/neural_nfsp.png)). This is the expected null on
-a game small enough to tabulate exactly: neural function approximation has no edge
-where the tabular policy is already exact. Notably, a single-seed look briefly
-*suggested* a neural win at 100k; the 5-seed mean erased it, the same multi-seed
-discipline §10 (the Phase 0 robustness sweep) established.
+result over 5 seeds, **after an erratum**: an independent code review found the
+original run reset the epsilon anneal once per checkpoint (a sawtooth, not the
+registered monotone `0.06 → 0.0` schedule); corrected and re-run with identical seeds
+and hyperparameters, neural NFSP **converges** (4.75 → mean **1.59** at 200k) and now
+**meets** the pre-committed majority gate, beating tabular NFSP at **2 of 3**
+checkpoints — 50k (all 5 seeds) and 100k (4/5 seeds) — on the across-seed mean, while
+tabular still wins at 200k ([`figures/neural_nfsp.png`](figures/neural_nfsp.png)).
+This is a **qualified, weak sample-efficiency result**, not a strong win: neural is
+more efficient at the smaller budgets but tabular wins asymptotically, exactly the
+a-priori §11.3 prediction, and the corrected run is noisier across seeds. Both the
+buggy (1/3, originally reported as a null) and corrected (2/3) numbers are reported in
+full (§11.4); the bug was found on correctness grounds *before* the flip was known and
+the fix matches the registered intent verbatim — an honest correction, not
+goalpost-moving.
 
-**Scaling test (Phase 2 Step 2d), and a third honest null.** To test whether the
+**Scaling test (Phase 2 Step 2d), and an honest null at scale.** To test whether the
 neural method helps where tabular CFR cannot *converge*, a parameterised R-rank Leduc
 ([`src/big_leduc.py`](src/big_leduc.py), validated isomorphic at R=3) was scaled to
 **R=20** (12,120 info-sets; 59,280 deals per CFR iteration; ~35 h to converge — so

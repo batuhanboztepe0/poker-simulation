@@ -24,6 +24,8 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 import argparse
 import json
 import time
+from math import gcd
+from functools import reduce
 
 from src.leduc_neural_nfsp import LeducNeuralNFSP, FEAT_DIM
 from src.leduc_eval import (exploitability_of, uniform_strategy_table)
@@ -47,15 +49,30 @@ def _tabular_nfsp_ref():
 
 def run_seed(seed, checkpoints, cfg):
     """Train one neural-NFSP seed; return [{episodes, exploitability}] at each
-    checkpoint (exact NashConv of the average policy Pi)."""
+    checkpoint (exact NashConv of the average policy Pi).
+
+    Trains in a SINGLE train() call over the full horizon (the largest checkpoint)
+    so the epsilon schedule anneals monotonically eps_start -> eps_end across the
+    whole run, recording the curve via train()'s eval_hook at the requested
+    checkpoints. Calling train() once per checkpoint instead restarts the epsilon
+    anneal at every call (a per-checkpoint sawtooth), which is NOT the intended
+    single monotone schedule (see PREREGISTRATION.md §11.4 erratum)."""
     m = LeducNeuralNFSP(seed=seed, **cfg)
+    wanted = set(checkpoints)
     out = []
-    prev = 0
-    for ck in checkpoints:
-        m.train(ck - prev)
-        prev = ck
-        out.append({"episodes": ck,
-                    "exploitability": exploitability_of(m.average_strategy_table())})
+
+    def hook(episode, model):
+        if episode in wanted:
+            out.append({"episodes": episode,
+                        "exploitability": exploitability_of(model.average_strategy_table())})
+        return episode
+
+    # eval_every = gcd of the checkpoints, so train()'s (episode % eval_every == 0)
+    # trigger lands exactly on every requested checkpoint.
+    step = reduce(gcd, checkpoints)
+    m.train(max(checkpoints), eval_every=step, eval_hook=hook)
+    order = {ck: i for i, ck in enumerate(checkpoints)}
+    out.sort(key=lambda r: order[r["episodes"]])
     return out
 
 

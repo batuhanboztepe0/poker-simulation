@@ -238,8 +238,18 @@ class TestResultsSchema(unittest.TestCase):
         self.assertLessEqual(
             {"neural_exact_mean", "tabular_exact",
              "neural_beats_tabular_at_matched_budget"}, set(d["head_to_head"]))
-        # The LBR lower-bound guarantee must hold at scale too.
-        self.assertTrue(d["lbr_le_exact_check"], "LBR must be <= exact at scale")
+        # The LBR lower-bound guarantee must hold at scale too. Recompute it from
+        # the per-policy exact/LBR values (uniform, tabular CFR, every neural seed)
+        # rather than trusting the stored boolean — so a regression that violated
+        # the bound but left the flag True (e.g. a policy omitted from the check)
+        # would still fail this test.
+        tol = 1e-6
+        pairs = [d["uniform"], d["tabular_cfr"], *d["neural_nfsp"]["per_seed"]]
+        for p in pairs:
+            self.assertLessEqual(p["lbr"], p["exact"] + tol,
+                                 f"LBR must be <= exact at scale ({p})")
+        self.assertTrue(d["lbr_le_exact_check"],
+                        "stored lbr_le_exact_check must agree with the per-policy recomputation")
 
 
 if __name__ == "__main__":

@@ -64,8 +64,12 @@ def main():
     R = args.ranks
 
     # 1. tabular-CFR cost curve + convergence extrapolation -------------------
+    # Dedupe the probe ranks so R appears once even when R is one of the fixed
+    # probe points (3/6/10/16); otherwise the `next(... ranks == R)` below would
+    # pick the first (cold-cache) timing instead of a single definitive one.
     cost_curve = []
-    for r in (3, 6, 10, 16, R):
+    probe_ranks = [3, 6, 10, 16]
+    for r in probe_ranks + ([R] if R not in probe_ranks else []):
         c = BigLeducCFR(r)
         t0 = time.time()
         c.train(1)
@@ -128,11 +132,17 @@ def main():
                         "exact_min": min(n_exacts), "exact_max": max(n_exacts)},
         "head_to_head": {
             "neural_exact_mean": n_mean, "tabular_exact": cfr_exact,
+            # "matched budget" = the pre-committed COUNTS (200k episodes vs 30 CFR
+            # iters, §12.1); the wall-clock was NOT matched (neural got ~2.4x) — a
+            # disclosed deviation (see PREREGISTRATION.md §12.3).
             "neural_beats_tabular_at_matched_budget": n_mean < cfr_exact,
             "both_far_from_nash": min(n_mean, cfr_exact) > 0.1,
         },
-        "lbr_le_exact_check": all(x["lbr"] <= x["exact"] + 1e-6 for x in neural)
-                              and cfr_lbr <= cfr_exact + 1e-6,
+        # The LBR lower-bound guarantee (LBR <= exact under full enumeration) must
+        # hold for EVERY scored policy — uniform included, not just neural/CFR.
+        "lbr_le_exact_check": (uni_lbr <= uni_exact + 1e-6
+                               and cfr_lbr <= cfr_exact + 1e-6
+                               and all(x["lbr"] <= x["exact"] + 1e-6 for x in neural)),
         "registered_in": "PREREGISTRATION.md §12",
     }
     with open(args.out, "w") as f:

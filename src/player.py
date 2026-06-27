@@ -338,7 +338,8 @@ class BotPlayer(Player):
                  aggression=DEFAULT_AGGRESSION,
                  mc_engine=None, rng=None, belief_state=None,
                  fold_equity_model=None, respect_pot_odds=False,
-                 street_aware=False, belief_factory=None):
+                 street_aware=False, belief_factory=None,
+                 tilt_exploit=False, exploit_tight=0.15, exploit_aggr=0.25):
         """
         Initialize a bot player.
 
@@ -408,6 +409,19 @@ class BotPlayer(Player):
         # strict EV gate including fold equity (enables EV-driven bluffing).
         # OFF by default -> the bot is byte-identical to the baseline.
         self.fold_equity_model = fold_equity_model
+        # Phase C2 (opt-in): tilt-exploitation knob. When True, the per-decision
+        # effective tight_threshold / aggression are conditioned on the belief's
+        # live P(opponent tilted): call lighter (lower fold threshold) and value-bet
+        # thinner as p_tilted rises — the principled counter to an over-aggressive,
+        # too-loose (tilted) opponent (Johanson & Bowling DBR continuum: p_tilted is
+        # the confidence that drives deviation from the baseline toward best response;
+        # p_tilted=0 recovers the baseline). Fires only once the belief is warmed
+        # (>= MIN_HANDS_FOR_BELIEF). OFF by default -> baseline byte-identical.
+        # exploit_tight / exploit_aggr are the slopes at full tilt (a-priori, not
+        # tuned on any metric). See PREREGISTRATION.md §13.
+        self.tilt_exploit  = tilt_exploit
+        self.exploit_tight = exploit_tight
+        self.exploit_aggr  = exploit_aggr
 
     def decide(self, game_state):
         """
@@ -439,9 +453,10 @@ class BotPlayer(Player):
         self.last_equity = equity
 
         # Phase A2: resolve the per-decision effective knobs (street-modulated
-        # when street_aware, else the base values). The decision helpers below
-        # read self._eff_tight / self._eff_aggr.
-        self._eff_tight, self._eff_aggr = self._street_style(game_state)
+        # when street_aware, else the base values), then apply the opt-in Phase C2
+        # tilt-exploitation adjustment (no-op unless tilt_exploit=True). The
+        # decision helpers below read self._eff_tight / self._eff_aggr.
+        self._eff_tight, self._eff_aggr = self._tilt_adjusted_knobs(game_state)
 
         # Phase A: fold-equity path is a strict EV gate that can value a bluff.
         # OFF by default (fold_equity_model is None) -> baseline flow below.
@@ -561,6 +576,46 @@ class BotPlayer(Player):
         rn = game_state.get("round_name")
         tight = _clamp01(self.tight_threshold + STREET_TIGHT_DELTA.get(rn, 0.0))
         aggr  = _clamp01(self.aggression + STREET_AGGR_DELTA.get(rn, 0.0))
+        return tight, aggr
+
+    def _belief_p_tilted(self):
+        """Live P(opponent tilted) from the belief model, or 0.0 when no warmed
+        belief is present. Uses the max over per-opponent beliefs when a
+        belief_factory is set, else the single heads-up belief_state. Cold beliefs
+        (< MIN_HANDS_FOR_BELIEF observations) return 0.0, so the tilt-exploit knob
+        stays dormant until the detector is warmed (same gate as belief equity)."""
+        if self.belief_factory is not None and self.beliefs:
+            warm = [b.p_tilted() for b in self.beliefs.values()
+                    if b.n_observations >= MIN_HANDS_FOR_BELIEF]
+            return max(warm) if warm else 0.0
+        b = self.belief_state
+        if b is not None and b.n_observations >= MIN_HANDS_FOR_BELIEF:
+            return b.p_tilted()
+        return 0.0
+
+    def _tilt_adjusted_knobs(self, game_state):
+        """The per-decision (tight_threshold, aggression) after the opt-in Phase C2
+        tilt-exploitation adjustment.
+
+        With `tilt_exploit=False` (default) this returns `_street_style` unchanged,
+        so the baseline bot is byte-identical. With `tilt_exploit=True` and a warmed
+        belief, the effective knobs are conditioned on the live p_tilted:
+
+            eff_tight = clamp(tight - exploit_tight * p_tilted)   # call lighter
+            eff_aggr  = clamp(aggr  + exploit_aggr  * p_tilted)   # value-bet thinner
+
+        i.e. a DBR-style continuum (Johanson & Bowling 2009): p_tilted is the
+        confidence that drives deviation from the baseline toward best-responding to
+        an over-aggressive, too-loose opponent. p_tilted=0 recovers the baseline.
+        """
+        tight, aggr = self._street_style(game_state)
+        if not self.tilt_exploit:
+            return tight, aggr
+        pt = self._belief_p_tilted()
+        if pt <= 0.0:
+            return tight, aggr
+        tight = _clamp01(tight - self.exploit_tight * pt)
+        aggr  = _clamp01(aggr + self.exploit_aggr * pt)
         return tight, aggr
 
     def _tight_fold(self, equity, pot, call_amount):

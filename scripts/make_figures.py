@@ -720,13 +720,25 @@ def fig_neural_nfsp(index):
     h2h = d.get("head_to_head", [])
     wins = [x for x in h2h if x["neural_beats_tabular"]]
     final = agg[-1]
-    gate_met = len(wins) >= 2 if h2h else False   # PREREG §11.3 majority of 3
-    matched = ((f"At matched episode budgets neural beats tabular at only "
-                f"{len(wins)}/{len(h2h)} checkpoints"
-                + (f" ({wins[0]['episodes']//1000}k: {wins[0]['neural_mean']:.2f} "
-                   f"vs {wins[0]['tabular']:.2f})" if wins else "")
-                + f", so the pre-registered majority gate "
-                + ("HOLDS. " if gate_met else "FAILS (an honest null). ")) if h2h else "")
+    # PREREG §11.3 gate = majority of the THREE registered checkpoints; require
+    # all three present so a partial curve cannot satisfy "majority of 3" on 2-of-2.
+    gate_met = len(h2h) == 3 and len(wins) >= 2
+    win_eps = ", ".join(f"{x['episodes']//1000}k" for x in wins)
+    if not h2h:
+        matched = ""
+    elif gate_met:
+        matched = (f"At matched episode budgets neural beats tabular at {len(wins)}/"
+                   f"{len(h2h)} checkpoints ({win_eps}), so the pre-registered "
+                   f"majority gate HOLDS — a qualified sample-efficiency result: "
+                   f"neural is more efficient at the smaller budgets, while tabular "
+                   f"still wins asymptotically (200k), exactly the a-priori §11.3 "
+                   f"prediction. ")
+    else:
+        matched = (f"At matched episode budgets neural beats tabular at only "
+                   f"{len(wins)}/{len(h2h)} checkpoints"
+                   + (f" ({wins[0]['episodes']//1000}k: {wins[0]['neural_mean']:.2f} "
+                      f"vs {wins[0]['tabular']:.2f})" if wins else "")
+                   + f", so the pre-registered majority gate FAILS (an honest null). ")
     floor = f" and the CFR Nash floor {cfr:.3f}" if cfr is not None else ""
     cap = (f"Phase 2 — neural NFSP on Leduc, scored by the EXACT NashConv metric "
            f"(identical to the tabular learners; PREREGISTRATION.md §11). Mean of "
@@ -734,10 +746,9 @@ def fig_neural_nfsp(index):
            f"falls from the uniform {d.get('uniform_exploitability', 0):.2f} to "
            f"{final['mean_exploitability']:.2f} by {final['episodes']//1000}k "
            f"episodes. {matched}It plateaus above the tabular asymptote{floor}: "
-           f"expected, since Leduc is small enough to tabulate exactly, so neural "
-           f"function approximation has NO edge here — the tabular policy already "
-           f"represents every info-set exactly. The neural method's value is "
-           f"scaling to games too large to tabulate, which Leduc cannot show.")
+           f"on this small game tabular represents every info-set exactly, so "
+           f"neural's value is sample efficiency and scaling to games too large to "
+           f"tabulate (which Leduc cannot fully show), not a lower asymptote here.")
     index.append(("neural_nfsp.png", "phase2",
                   _save(fig, "neural_nfsp", cap, height=520)))
 

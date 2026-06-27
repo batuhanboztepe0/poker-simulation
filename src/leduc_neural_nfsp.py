@@ -28,6 +28,7 @@ and all existing tests are untouched. Seeded (torch + Python RNG) from one seed.
 Requires torch (optional dependency, like `src.rl_agent`); guarded by `_HAVE_TORCH`.
 """
 
+import math
 import random
 from collections import deque
 
@@ -114,6 +115,9 @@ class LeducNeuralNFSP:
                  target_update=1000, min_buffer=1000, seed=0):
         if not _HAVE_TORCH:
             raise ImportError("LeducNeuralNFSP requires torch (optional dep)")
+        # Seeds the GLOBAL torch RNG, so each instance is reproducible from its
+        # own seed — but construct one instance at a time (the global state is
+        # shared); the seed sweep does, reseeding before each model is built.
         torch.manual_seed(seed)
         self.rng = random.Random(seed)
         self.eta = eta
@@ -153,7 +157,7 @@ class LeducNeuralNFSP:
             logits = self.pi(torch.tensor(feat).float()).tolist()
         masked = [logits[a] if a in avail else _NEG for a in range(NUM_ACTIONS)]
         m = max(masked)
-        exps = [pow(2.718281828, x - m) for x in masked]
+        exps = [math.exp(x - m) for x in masked]
         tot = sum(exps)
         r = self.rng.random() * tot
         upto = 0.0
@@ -286,7 +290,7 @@ class LeducNeuralNFSP:
             row = logits[idx].tolist()
             masked = [row[a] if a in av else _NEG for a in range(NUM_ACTIONS)]
             m = max(masked)
-            exps = [pow(2.718281828, x - m) if a in av else 0.0
+            exps = [math.exp(x - m) if a in av else 0.0
                     for a, x in enumerate(masked)]
             tot = sum(exps)
             table[s] = [e / tot if tot > 0 else (1.0 / len(av) if a in av else 0.0)

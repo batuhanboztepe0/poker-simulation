@@ -116,10 +116,14 @@ def lbr_exploitability(strategy_table, ranks, samples=None, seed=0):
 
     `samples` optionally caps the number of deals used for the final value estimate
     (deterministic given `seed`), so the cost does not scale with the ~R^3 deal
-    count. Returns a float GUARANTEED ≤ the exact NashConv in the full-enumeration
-    case; with sampling it is an unbiased estimate of that lower bound. Never an
-    upper bound.
+    count. With full enumeration (`samples=None`, `samples <= 0`, or
+    `samples >= num_deals`) the result is GUARANTEED ≤ the exact NashConv. With
+    sampling it is an UNBIASED ESTIMATE of that lower bound, not a guaranteed
+    bound: a single sampled draw can land above the exact NashConv — only the
+    expectation is bounded.
     """
+    if samples is not None and samples <= 0:
+        samples = None        # 0 / negative means "no cap" -> full enumeration
     cfr = BigLeducCFR(ranks)
     cfr.nodes = {iset: _FixedNode(dist) for iset, dist in strategy_table.items()}
     full_deck = deck(ranks)
@@ -127,7 +131,11 @@ def lbr_exploitability(strategy_table, ranks, samples=None, seed=0):
     all_deals = [(full_deck[i], full_deck[j], full_deck[k])
                  for i in range(nd) for j in range(nd) for k in range(nd)
                  if i != j and i != k and j != k]
-    rng = random.Random(seed)
-    total = (_lbr_value(cfr, ranks, strategy_table, 0, all_deals, rng, samples)
-             + _lbr_value(cfr, ranks, strategy_table, 1, all_deals, rng, samples))
+    # Independent rng per player so the two value estimates are not correlated
+    # through one shared, advancing stream (matters only under sampling; with
+    # full enumeration the rng is unused, so this is a no-op there).
+    total = (_lbr_value(cfr, ranks, strategy_table, 0, all_deals,
+                        random.Random(seed), samples)
+             + _lbr_value(cfr, ranks, strategy_table, 1, all_deals,
+                          random.Random(seed + 1), samples))
     return total / len(all_deals)
