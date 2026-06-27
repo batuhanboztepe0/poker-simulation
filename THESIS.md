@@ -59,7 +59,7 @@ detection), not as alpha.
   **duplicate/mirror matching** (same deck, swapped seats, the variance-reduction
   protocol behind DIVAT/AIVAT, REFERENCES.md §2).
 - **Engineering discipline**: every advanced feature is opt-in / default-off
-  (baseline byte-identical), 513 tests pass (509 without torch), and a multi-agent adversarial
+  (baseline byte-identical), 537 tests pass (RL/torch tests skip without torch), and a multi-agent adversarial
   audit of both the code and the figures caught and fixed overclaims *before*
   they were committed.
 
@@ -113,9 +113,9 @@ excludes 0), 2 are within per-seed noise:
   calibration arm agrees (+400 chips, CI [+232, +576]).
 
   **Robust across training seeds (v2 Phase 0).** That +256 rests on one training
-  seed (`torch_seed=0`). Retraining the *identical* recipe over 20 seeds — eval
-  protocol held byte-identical, only the seed varied, pre-registered before the run
-  (PREREGISTRATION.md §10) — gives a per-seed edge of **mean +351, median +300,
+  seed (`torch_seed=0`). Retraining the *identical* recipe over 20 seeds (eval
+  protocol held byte-identical, only the seed varied, pre-registered before the run,
+  PREREGISTRATION.md §10) gives a per-seed edge of **mean +351, median +300,
   across-seed 95% CI [+244, +468]**: 16 of 20 seeds individually resolve a positive
   edge, **none resolve negative**. Seed 0 reproduces +256 exactly and sits at the
   **35th percentile, *below* the median**, so the published number was a
@@ -195,30 +195,30 @@ original run reset the epsilon anneal once per checkpoint (a sawtooth, not the
 registered monotone `0.06 → 0.0` schedule); corrected and re-run with identical seeds
 and hyperparameters, neural NFSP **converges** (4.75 → mean **1.59** at 200k) and now
 **meets** the pre-committed majority gate, beating tabular NFSP at **2 of 3**
-checkpoints — 50k (all 5 seeds) and 100k (4/5 seeds) — on the across-seed mean, while
+checkpoints (50k, all 5 seeds, and 100k, 4/5 seeds) on the across-seed mean, while
 tabular still wins at 200k ([`figures/neural_nfsp.png`](figures/neural_nfsp.png)).
 This is a **qualified, weak sample-efficiency result**, not a strong win: neural is
 more efficient at the smaller budgets but tabular wins asymptotically, exactly the
 a-priori §11.3 prediction, and the corrected run is noisier across seeds. Both the
 buggy (1/3, originally reported as a null) and corrected (2/3) numbers are reported in
 full (§11.4); the bug was found on correctness grounds *before* the flip was known and
-the fix matches the registered intent verbatim — an honest correction, not
+the fix matches the registered intent verbatim, an honest correction, not
 goalpost-moving.
 
 **Scaling test (Phase 2 Step 2d), and an honest null at scale.** To test whether the
 neural method helps where tabular CFR cannot *converge*, a parameterised R-rank Leduc
 ([`src/big_leduc.py`](src/big_leduc.py), validated isomorphic at R=3) was scaled to
-**R=20** (12,120 info-sets; 59,280 deals per CFR iteration; ~35 h to converge — so
+**R=20** (12,120 info-sets; 59,280 deals per CFR iteration; ~35 h to converge, so
 tabular CFR convergence is genuinely infeasible). A pre-registered (§12),
 matched-wall-clock head-to-head scored both by exact NashConv: **truncated tabular
 CFR (30 iterations, 198 s) reaches 0.253, while neural NFSP (200k episodes, 3 seeds,
-~470 s) plateaus at 1.00** — **tabular wins decisively, with less than half the
+~470 s) plateaus at 1.00**. **Tabular wins decisively, with less than half the
 wall-clock** ([`figures/scale.png`](figures/scale.png)). The honest conclusion:
 neural NFSP has no measurable advantage over tabular CFR at any scale this work can
 exactly evaluate; CFR converges so fast per iteration that a handful of iterations
 beat a neural plateau even where full convergence is out of reach. A neural
 equilibrium method's real edge is confined to scales (the cost curve extrapolates
-~R≈60) where tabular cannot complete even a few iterations — a regime where exact
+~R≈60) where tabular cannot complete even a few iterations. In that regime, exact
 exploitability is also infeasible and only an LBR **lower bound**
 ([`src/leduc_lbr.py`](src/leduc_lbr.py), validated LBR ≤ exact including at R=20)
 applies, and a lower bound can demonstrate exploitation but cannot *certify* a
@@ -226,22 +226,22 @@ strategy is good. That frontier is identified but, honestly, not claimed.
 
 **Exploitation beyond Nash (Phase C2), and a pre-registration that caught a false
 positive.** The equilibrium experiments show that chasing Nash on exactly-evaluable
-games yields nulls; the literature ([`docs/V2_RESEARCH_ROADMAP.md`](docs/V2_RESEARCH_ROADMAP.md))
-flags the one direction with a realistic *positive* — exploiting a suboptimal opponent.
+games yields nulls; the v2 research roadmap (local working notes, not committed)
+flags the one direction with a realistic *positive*: exploiting a suboptimal opponent.
 The repo already has a two-state {normal, tilted} HMM tracking `P(opponent tilted)`; §13
 turns it into a policy via a Data-Biased-Response-style knob (Johanson & Bowling 2009):
 as `p_tilted` rises the bot calls lighter and value-bets thinner (`p_tilted=0` recovers
-the baseline). Two byte-identical heroes — one acting on the signal, one ignoring it —
+the baseline). Two byte-identical heroes (one acting on the signal, one ignoring it)
 play the fixed tilting opponent on a 300-seed paired, mirror + all-in-EV block. The
-pre-committed verdict fell the *unexpected* way — a **resolved negative**: the knob
+pre-committed verdict fell the *unexpected* way, a **resolved negative**: the knob
 **loses −169 chips/match** (95% CI [−271, −66], sign-test p≈0.04;
-[`figures/exploitation.png`](figures/exploitation.png)). The reason is game-theoretic —
+[`figures/exploitation.png`](figures/exploitation.png)). The reason is game-theoretic:
 the disciplined baseline already crushes the loose-aggressive tilter (+533) by
 value-betting and folding marginal spots, so *loosening* against an aggressive opponent
 walks into its aggression and pays off its value (the right counter to a maniac is to
 tighten and trap). An exploratory n=6 smoke check had shown +152; the powered,
-pre-registered n=300 run overturned it. Reporting the powered result — not the peek, and
-not flipping the knob's sign post-hoc — is exactly what the freeze→result discipline
+pre-registered n=300 run overturned it. Reporting the powered result (not the peek, and
+not flipping the knob's sign post-hoc) is exactly what the freeze→result discipline
 (§10–§13) exists for. Measured vs *this* opponent only; no Nash-safety claim.
 
 ## 5. Honest-negative as a feature, not a bug
@@ -267,7 +267,7 @@ rule to report whatever the frozen protocol returns. It returned an edge
 *smaller* than the exploratory pilot, reported as such rather than hidden. The
 later multi-seed robustness sweep (PREREGISTRATION.md §10) goes one step further:
 its protocol was committed in a *separate, earlier* commit than its result, so for
-that claim the freeze-before-run gap **is** git-provable — and it confirmed the
+that claim the freeze-before-run gap **is** git-provable, and it confirmed the
 +256 headline is representative across training seeds, not a single-seed artifact.
 
 ## 6. What the rigor layer ships, and what remains
@@ -430,6 +430,12 @@ that claim the freeze-before-run gap **is** git-provable — and it confirmed th
   behavioral-surplus channel does not survive transaction costs and out-of-sample
   holdout, pivot to OFI on equity TAQ data. No Kalshi data has been pulled and
   no backtest result exists yet.
+
+## 7. What I would do next, and differently
+
+First, I would start with full decision-node AIVAT, not only the chance-node control variate used here, so the headline edge resolves on fewer hands. Second, I would pre-register the training-seed sweep before the original confirmatory run rather than after, which closes the seed-selection gap that Section 0 of the pre-registration flags. Third, the next research step is OFF-FSP (arXiv:2403.00841): train on the real PHH hand histories without behavior-cloning them, then measure whether exploitability falls or rises. A null there is the likely and acceptable outcome.
+
+For a quant-research role the transferable core is already here: a reproducible evaluation harness, a test pre-registered before the data, variance reduced with control variates and duplicate scenarios, and negative results reported plainly. The responsibility for the final content, analysis, and conclusions rests entirely with me.
 
 ---
 

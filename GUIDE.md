@@ -172,16 +172,24 @@ snapshot self-play, and warmed fold-equity (the `blockB_*` and `rollout_fe` pane
 [figures/](figures/)), each works mechanically but **none moves the headline.**
 Reported as a clean negative-results sweep, which is itself a result.
 
+### 9. Going deeper (v2): robustness, neural scaling, and exploitation
+
+![Exploitation: the tilt-exploit knob loses to the tilter](figures/exploitation.png)
+
+**What you're looking at:** four pre-registered v2 experiments, each frozen before the run (PREREGISTRATION.md §10 to §13) and reproduced in [notebook 04](notebooks/04_neural_scaling.ipynb) and [notebook 05](notebooks/05_exploitation.ipynb). The figure above is the exploitation result. The robustness, neural, and scaling figures are [`seed_sweep.png`](figures/seed_sweep.png), [`neural_nfsp.png`](figures/neural_nfsp.png), and [`scale.png`](figures/scale.png).
+
+**Takeaway:** four findings, reported whichever way they fell. (i) The +256 headline is robust across 20 training seeds, not a lucky seed (§10). (ii) Neural NFSP only weakly beats tabular on small Leduc, a qualified 2/3 sample-efficiency pass after a corrected epsilon bug, and tabular still wins asymptotically (§11). (iii) At R=20, where tabular CFR cannot converge, truncated tabular CFR still beats neural NFSP (§12, an honest null). (iv) The headline negative: a tilt-exploitation knob that calls lighter and value-bets thinner as the detected tilt rises loses 169 chips/match against the tilter (95% CI [−271, −66], sign-test p≈0.04), because the disciplined baseline already beats it (+533) and loosening walks into its aggression (§13). A small-sample peek had shown the opposite; the powered, pre-registered run overturned it. That reversal, reported as it fell, is the clearest demonstration here of why pre-registration matters.
+
 ---
 
 ## How to reproduce (everything is seeded)
 
 ```bash
-# install (requires Python >= 3.10)
+# install (requires Python >= 3.11)
 python -m pip install -r requirements.txt
 
 # tests (torch-free parts run anywhere; RL/torch tests skip without torch)
-OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 513 green (509 without torch)
+OMP_NUM_THREADS=1 python -m pytest tests/ -q          # 537 green (RL/torch tests skip without torch)
 
 # regenerate the committed measurement data under results/ (trains the DQN, so
 # it needs torch: pip install "torch>=2.0": commented out in requirements.txt)

@@ -229,12 +229,12 @@ def fig_exploitability(index):
                  f"{nfsp_rows[-1]['episodes']//1000}k episodes.")
                 if nfsp_rows else "")
     cap = (f"Exact Leduc exploitability (NashConv; 0 = exact Nash). "
-           f"The CFR time-average converges ({avg0:.3f} to {avgN:.4f}), "
+           f"The CFR time-average converges ({avg0:.3f} to {avgN:.3f}), "
            f"but the greedy last-iterate stays exploitable (~{lastN:.3f}) and does not converge."
            + q_txt + nfsp_txt +
            f" This is the rigorous reason DQN self-play does not reach Nash while "
            f"averaging methods do (REFERENCES.md S1).")
-    sub = (f"CFR time-average converges to Nash ({avg0:.3f} to {avgN:.4f}); "
+    sub = (f"CFR time-average converges to Nash ({avg0:.3f} to {avgN:.3f}); "
            f"greedy last-iterate stays exploitable (~{lastN:.3f}) throughout training.")
     fig = exploitability_curve_figure(
         curve, uniform=d.get("uniform_exploitability"),
@@ -729,8 +729,8 @@ def fig_neural_nfsp(index):
     elif gate_met:
         matched = (f"At matched episode budgets neural beats tabular at {len(wins)}/"
                    f"{len(h2h)} checkpoints ({win_eps}), so the pre-registered "
-                   f"majority gate HOLDS — a qualified sample-efficiency result: "
-                   f"neural is more efficient at the smaller budgets, while tabular "
+                   f"majority gate HOLDS: a qualified sample-efficiency result. "
+                   f"Neural is more efficient at the smaller budgets, while tabular "
                    f"still wins asymptotically (200k), exactly the a-priori §11.3 "
                    f"prediction. ")
     else:
@@ -740,7 +740,7 @@ def fig_neural_nfsp(index):
                       f"vs {wins[0]['tabular']:.2f})" if wins else "")
                    + f", so the pre-registered majority gate FAILS (an honest null). ")
     floor = f" and the CFR Nash floor {cfr:.3f}" if cfr is not None else ""
-    cap = (f"Phase 2 — neural NFSP on Leduc, scored by the EXACT NashConv metric "
+    cap = (f"Phase 2: neural NFSP on Leduc, scored by the EXACT NashConv metric "
            f"(identical to the tabular learners; PREREGISTRATION.md §11). Mean of "
            f"{d['n_seeds']} seeds, band = min/max across seeds. Exploitability "
            f"falls from the uniform {d.get('uniform_exploitability', 0):.2f} to "
@@ -789,12 +789,12 @@ def fig_scale(index):
            f"{d['info_sets']} info-sets, {d['deals_per_cfr_iter']} deals per CFR "
            f"iteration ({spi:.1f}s/iter), so tabular CFR convergence "
            f"(~{d['converge_iters_ref']} iters) would take "
-           f"~{d['cfr_converge_hours_est']:.0f} h — infeasible. Exact exploitability "
-           f"(tabular CFR at {cfr_secs:.0f}s, neural NFSP at ~{nsec:.0f}s/seed — "
+           f"~{d['cfr_converge_hours_est']:.0f} h, infeasible. Exact exploitability "
+           f"(tabular CFR at {cfr_secs:.0f}s, neural NFSP at ~{nsec:.0f}s/seed; "
            f"the wall-clocks were NOT matched, neural got ~{nsec/cfr_secs:.1f}x more): "
            f"uniform {uni:.2f}, neural NFSP {nm:.2f} [{nlo:.2f},{nhi:.2f}], "
-           f"truncated tabular CFR {cfr:.2f} — **{winner} reaches lower "
-           f"exploitability**. "
+           f"truncated tabular CFR {cfr:.2f}. {winner} reaches lower "
+           f"exploitability. "
            + ("Neural wins per-wall-clock at this scale. "
               if hh["neural_beats_tabular_at_matched_budget"] else
               "Honest null: even far from convergence, tabular CFR still beats "
@@ -813,7 +813,7 @@ def fig_scale(index):
 def fig_exploitation(index):
     """Phase C2 exploitation (§13): the per-seed PAIRED DELTA (exploiter − identical
     non-exploiter, both vs the same opponent, mirror + all-in-EV) with its 95% bootstrap
-    CI — vs the fixed tilting opponent (primary) and the non-tilting station (control)."""
+    CI, vs the fixed tilting opponent (primary) and the non-tilting station (control)."""
     d = _load_json("exploitation.json")
     if not d:
         return
@@ -844,7 +844,7 @@ def fig_exploitation(index):
         sign = ("gives EV back" if cci["hi"] < 0 else
                 ("still gains" if cci["lo"] > 0 else "is within noise"))
         ctl_txt = (f" Exploratory control vs a non-tilting station: "
-                   f"{cci['mean']:+.0f} [{cci['lo']:+.0f}, {cci['hi']:+.0f}] — the "
+                   f"{cci['mean']:+.0f} [{cci['lo']:+.0f}, {cci['hi']:+.0f}]: the "
                    f"loosening {sign} there (the exploitation-vs-exploitability tradeoff).")
     cap = (f"Phase C2 exploitation (PREREGISTRATION.md §13). A DBR-style knob conditions "
            f"the policy on the live P(opponent tilted): call lighter (lower fold threshold) "
@@ -854,7 +854,7 @@ def fig_exploitation(index):
            f"mirror + all-in-EV variance reduction), 95% bootstrap CI. Primary vs the fixed "
            f"tilter: {pci['mean']:+.0f} chips/match [{pci['lo']:+.0f}, {pci['hi']:+.0f}] → "
            f"{d['verdict']} (exploiter {p['exploiter_edge_vs_opp']:+.0f} vs non-exploiter "
-           f"{p['baseline_edge_vs_opp']:+.0f}).{ctl_txt} Caveat: EV vs THIS opponent only — "
+           f"{p['baseline_edge_vs_opp']:+.0f}).{ctl_txt} Caveat: EV vs THIS opponent only. "
            f"NOT a Nash-safety claim, and an exploiter is itself counter-exploitable.")
     index.append(("exploitation.png", "phaseC",
                   _save(fig, "exploitation", cap, height=360)))
@@ -924,7 +924,7 @@ def fig_plain_nash(index):
     a = curve[-1]["avg_exploitability"]
     l = curve[-1]["last_iterate_exploitability"]
     take = (f"A self-play bot that averages its whole history converges to "
-            f"near-perfect play ({a:.4f}); one that always uses its latest "
+            f"near-perfect play ({a:.3f}); one that always uses its latest "
             f"strategy, like a plain DQN, stays beatable ({l:.3f}).")
     index.append(("plain_nash.png", "§plain",
                   _save_plain(fig, "plain_nash",

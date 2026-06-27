@@ -9,7 +9,7 @@
 
 This document IS the pre-registration. It describes the harness as it exists in the repository and freezes the confirmatory analysis. **Nothing here is claimed to have been pre-registered earlier in git history.** The registration is **concurrent**, not sequenced ahead of the run: this document, the run script (`scripts/measure_confirmatory.py`), and the outcome (§4.6, `results/confirmatory.json`) are committed *together*: there is deliberately no git-provable time gap between freezing the protocol and running it. What the registration buys is therefore **not** a temporal-precedence claim but a **pre-committed reporting rule**: the frozen protocol (§4.3) is run once and its result reported in full regardless of direction (§8). The exploratory pilot (`results/headline_history.json`) informed the *design*; the confirmatory run tests the frozen protocol and is reported here whatever it returned (it returned a smaller, still-resolved edge).
 
-**What this registration does not establish.** Two honest limits follow from the concurrent design. First, the execution trace is not committed, so an external reader cannot verify from the repository that the frozen protocol was run exactly once rather than re-run until it returned a positive result. The safeguard is the pre-committed reporting rule and the single committed outcome, not an auditable run log. Second, the RL checkpoint fixes `torch_seed=0`, but the training-seed sweep that would show this seed was not chosen after seeing favorable results is not committed, so seed-selection independence cannot be externally verified either. Both are flagged here rather than hidden. The second limitation is now closed: the multi-seed training sweep pre-registered in §10 ships in two commits with a git-provable gap — the frozen protocol and verdict rule (§10.3) first, with no results, then the outcome (§10.5, `results/seed_sweep.json`) — so the freeze-before-run ordering, and therefore seed-selection independence for the sweep, is externally verifiable from git history. The first limitation (no committed execution trace for the original §4 confirmatory) remains a goal for a future run.
+**What this registration does not establish.** Two honest limits follow from the concurrent design. First, the execution trace is not committed, so an external reader cannot verify from the repository that the frozen protocol was run exactly once rather than re-run until it returned a positive result. The safeguard is the pre-committed reporting rule and the single committed outcome, not an auditable run log. Second, the RL checkpoint fixes `torch_seed=0`, but the training-seed sweep that would show this seed was not chosen after seeing favorable results is not committed, so seed-selection independence cannot be externally verified either. Both are flagged here rather than hidden. The second limitation is now closed: the multi-seed training sweep pre-registered in §10 ships in two commits with a git-provable gap (the frozen protocol and verdict rule (§10.3) first, with no results, then the outcome (§10.5, `results/seed_sweep.json`)), so the freeze-before-run ordering, and therefore seed-selection independence for the sweep, is externally verifiable from git history. The first limitation (no committed execution trace for the original §4 confirmatory) remains a goal for a future run.
 
 ---
 
@@ -326,7 +326,7 @@ hands_per_refresh=12)`). The evaluation call, the eval seed block (`0..499`), th
 `n_hands=100`, `mirror=True`, `luck_adjusted=False`, and the Myopic baseline are all
 byte-identical to §4.3. Because the eval block is constant across all arms, the
 fixed seed-range overlap noted in §4.6 shifts every arm by the same amount and
-therefore **cannot explain cross-seed variation** — which is exactly the quantity
+therefore **cannot explain cross-seed variation**, which is exactly the quantity
 of interest here.
 
 ### 10.2 Frozen sweep
@@ -351,7 +351,7 @@ confirmatory harness.
 ### 10.3 Primary outcome and pre-committed verdict rule
 
 **Primary outcome:** the per-seed mirror-arm mean edge (chips/match) reported as a
-**distribution** across the 20 training seeds — its mean, median, SD, min, max, and
+**distribution** across the 20 training seeds: its mean, median, SD, min, max, and
 the **across-seed 95% bootstrap CI of the mean per-seed edge** (the uncertainty in
 the expected edge of a randomly-initialised training run; distinct from any single
 seed's eval CI, which is over eval seeds). Also reported: the count of seeds whose
@@ -384,7 +384,7 @@ per §8.
 edge **+256 chips/match exactly** (`seed0_reproduces_committed: true`), confirming
 the sweep harness is byte-identical to the §4 confirmatory harness.
 
-**Outcome — the edge is robust to training-seed choice (verdict: robust).** Over
+**Outcome: the edge is robust to training-seed choice (verdict: robust).** Over
 the 20 seeds the per-seed mirror-arm edge has **mean +351, median +300, SD 264,
 range [+24, +984]** chips/match. The across-seed 95% bootstrap CI of the mean
 per-seed edge is **[+244.4, +468.0]** (exact stored values; the narrative rounds to
@@ -392,10 +392,10 @@ per-seed edge is **[+244.4, +468.0]** (exact stored values; the narrative rounds
 combined with a positive median this meets the §10.3 robustness rule. **16 of 20
 seeds individually resolve a positive edge** (own eval CI excludes zero), **0
 resolve negative**, and **4 are null** (seeds 8, 9, 11, 19; their means are +64,
-+72, +24, +28 — directionally positive but not individually resolved at 500 eval
++72, +24, +28, all directionally positive but not individually resolved at 500 eval
 seeds). No seed produced a negative edge.
 
-**The published seed 0 was not a favorable draw — if anything it was conservative.**
+**The published seed 0 was not a favorable draw. If anything, it was conservative.**
 Seed 0's +256 sits at the **35th percentile** of the 20-seed distribution, *below*
 the median +300 and well below the mean +351. The headline therefore understates,
 rather than overstates, the typical edge of a randomly-initialised training run.
@@ -405,7 +405,7 @@ favorable result.
 
 **What this does and does not change.** It hardens the §4.6 confirmatory claim: the
 +256 edge over the *Myopic* baseline is representative, not a lucky seed. It does
-**not** touch the honest negatives reported elsewhere — the edge is still measured
+**not** touch the honest negatives reported elsewhere. The edge is still measured
 only against the myopic baseline, and the RL agent still loses head-to-head to the
 zero-parameter Kelly bot (THESIS §3, `results/pool.json`). Robustness to training
 seed is not strength against the field.
@@ -425,7 +425,7 @@ same two-commit, git-provable-gap form as §10.
 
 ### 11.1 What is fixed
 
-- **Method:** `src.leduc_neural_nfsp.LeducNeuralNFSP` — the NFSP algorithm with the
+- **Method:** `src.leduc_neural_nfsp.LeducNeuralNFSP`, the NFSP algorithm with the
   per-info-set Q table and count table replaced by two MLPs over a structured 21-d
   info-set feature (private card, board card, round, the two betting histories).
   It is OFF by default and imported nowhere in the engine; the baseline is
@@ -440,7 +440,7 @@ same two-commit, git-provable-gap form as §10.
   the garden-of-forking-paths §1 warns against; that is deliberately avoided.
 - **Seeds and checkpoints:** seeds `0..4` (5 training seeds, applying the Phase 0
   multi-seed lesson); exact exploitability of Pi recorded at episode checkpoints
-  `{50000, 100000, 200000}` — the same episode counts as the committed tabular NFSP
+  `{50000, 100000, 200000}`, the same episode counts as the committed tabular NFSP
   curve (`results/exploitability.json` `nfsp_curve`), so the head-to-head is at
   matched budgets.
 
@@ -463,7 +463,7 @@ the tabular NFSP baseline at the same episode counts.
 
 **Pre-committed reading of the roadmap gate** ("the neural method must beat the
 tabular baseline on the same metric"): the gate is read as **sample efficiency at
-matched budget** — neural NFSP beats tabular iff its across-seed mean exploitability
+matched budget**: neural NFSP beats tabular iff its across-seed mean exploitability
 is below the tabular value at the same episode count, for a **majority of the three
 checkpoints**. It is stated in advance that **asymptotic** dominance on Leduc is
 **not** expected and is **not** the claim: Leduc is small enough to tabulate
@@ -476,20 +476,20 @@ scaling. The full curve is reported regardless of which way the gate falls (§8)
 
 **Status: EXECUTED, then CORRECTED (erratum 2026-06-27).** The frozen §11.2 protocol
 was first run over seeds `0..4` and committed. A later independent code review
-(recall-mode, correctness mandate — *not* result-hunting) found that the §11.2
+(recall-mode, correctness mandate, *not* result-hunting) found that the §11.2
 incremental-train loop (`m.train(ck - prev)` once per checkpoint) **reset the epsilon
 anneal at every call**, producing a per-checkpoint *sawtooth* (epsilon jumped back to
 0.06 at 50k and 100k) instead of the single monotone `0.06 → 0.0` schedule §11.1
-registered — a faithfulness bug between the frozen code and the registered *intent*.
+registered: a faithfulness bug between the frozen code and the registered *intent*.
 It was corrected (a single `train()` call over the full horizon, recording the curve
 via the existing `eval_hook`) and re-run with **identical seeds, hyperparameters,
-checkpoints, metric, and gate** — only the epsilon bug fixed (plus a
+checkpoints, metric, and gate**, with only the epsilon bug fixed (plus a
 `pow(2.718…) → math.exp` precision tidy, ~1e-10). Both runs are reported in full.
 
 **The correction flips the pre-committed gate from FAIL to a (weak) HOLD.** On the
 fair 5-seed mean, exact NashConv (lower is better):
 
-| episodes | neural — buggy sawtooth (old) | neural — corrected monotone (new) | tabular NFSP | corrected beats? |
+| episodes | neural (buggy sawtooth, old) | neural (corrected monotone, new) | tabular NFSP | corrected beats? |
 |---|---|---|---|---|
 | 50,000 | 1.94 | **1.87** [1.54, 2.30] | 2.40 | yes (5/5 seeds) |
 | 100,000 | 1.86 | **1.70** [1.59, 1.91] | 1.80 | yes (4/5 seeds) |
@@ -499,14 +499,14 @@ Old: **1 of 3** → by the §11.3 majority rule (≥2 of 3) the gate **failed** 
 as a null). Corrected: **2 of 3 → the gate is MET.** Neural converges from the uniform
 **4.75** to **1.59** at 200k; both stay far above the CFR Nash floor (**0.009**).
 
-**Honest reading — a QUALIFIED, weak sample-efficiency pass, not a strong win.** This
+**Honest reading: a QUALIFIED, weak sample-efficiency pass, not a strong win.** This
 is exactly the a-priori §11.3 prediction: neural NFSP is more sample-efficient at the
 *smaller* budgets (clear win at 50k, all 5 seeds below tabular; a real but modest win
-at 100k — 4/5 seeds below, mean margin 0.10, across-seed sd 0.13), while **tabular
+at 100k (4/5 seeds below, mean margin 0.10, across-seed sd 0.13), while **tabular
 still wins asymptotically** (200k: only 1/5 seeds below tabular). The corrected run is
 also **noisier** than the buggy one (200k range 1.32–2.09; seed 2 a high outlier
 throughout). So the honest claim is narrow: neural NFSP **meets the pre-committed
-sample-efficiency gate on Leduc, by a slim 2/3** — it is **not** a robust or asymptotic
+sample-efficiency gate on Leduc, by a slim 2/3**. It is **not** a robust or asymptotic
 win, and on this tabulatable game the tabular learner still represents every info-set
 exactly.
 
@@ -516,8 +516,8 @@ whether the result would flip; the fix makes the implementation match the
 pre-registered intent (`eps_start=0.06 → eps_end=0.0`) **verbatim**, with nothing else
 changed; both the buggy and corrected numbers are reported; and the corrected outcome
 matches the **a-priori** §11.3 prediction (sample efficiency, not asymptotic),
-registered before any run. Moving the goalposts in *either* direction — keeping a buggy
-null, or overclaiming the corrected pass — would be the dishonest move; we report both
+registered before any run. Moving the goalposts in *either* direction (keeping a buggy
+null, or overclaiming the corrected pass) would be the dishonest move; we report both
 and the qualified reading.
 
 **Scope.** This affects only §11 (3-rank Leduc, multi-checkpoint curve). **§12 (R=20)
@@ -535,7 +535,7 @@ tabular NFSP vs the CFR Nash floor, on the exact metric).
 ## 12. Scaling: Does Neural NFSP Help Where Tabular CFR Cannot Converge? (v2 Phase 2, Step 2d)
 
 The §11 finding (neural NFSP is only weakly more sample-efficient on the tiny
-exactly-tabulatable 3-rank Leduc — a qualified 2/3 pass after the §11.4 erratum — and
+exactly-tabulatable 3-rank Leduc (a qualified 2/3 pass after the §11.4 erratum) and
 tabular still wins asymptotically there) motivates the real question: at a scale where
 tabular CFR cannot practically **converge**, does a neural method reach a
 less-exploitable strategy in comparable compute? Registered here and frozen before the
@@ -565,20 +565,19 @@ predicted neural win.
 (across-seed mean and min/max over 3 seeds) and (b) truncated tabular CFR, at the
 matched budget; plus the uniform-random ceiling for reference.
 
-**Pre-committed reading — honest and falsifiable both ways.** We report which method
+**Pre-committed reading: honest and falsifiable both ways.** We report which method
 reaches lower exact exploitability at the matched budget, in full, regardless of
 direction (§8). The honest a-priori expectation, stated before the run, is that
 **tabular CFR will likely win**: CFR converges very fast per iteration (a handful of
 iterations already drives exploitability down), whereas neural NFSP needs many
 episodes and plateaus (§11). If so, the finding is that **neural NFSP has no
-measurable advantage at any scale where tabular CFR is feasible per-iteration** —
-its structural advantage is confined to scales where tabular CFR cannot complete
+measurable advantage at any scale where tabular CFR is feasible per-iteration**. Its structural advantage is confined to scales where tabular CFR cannot complete
 even a few iterations (the cost curve extrapolates this to roughly R≈60, where one
 CFR iteration alone costs as much as the entire neural budget), a regime in which
 exact exploitability is also infeasible and only a lower bound (LBR) could be
 reported. That regime is identified here from the cost curve but not run, and is
 flagged as the honest frontier (a scalable sampled-LBR is required, and a lower
-bound cannot certify low exploitability — only demonstrate exploitation). A neural
+bound cannot certify low exploitability, only demonstrate exploitation). A neural
 win at R=20 would be the surprising, reportable positive.
 
 ### 12.3 Execution status and outcome
@@ -591,37 +590,37 @@ has 12,120 info-sets and 59,280 deals per CFR iteration; a full iteration cost
 **12.7 s**, so the ~10⁴ iterations the 3-rank CFR needed for ~0.009 exploitability
 would take **~35 hours**.
 
-**Head-to-head outcome — an honest null (the a-priori expectation, confirmed
+**Head-to-head outcome: an honest null (the a-priori expectation, confirmed
 strongly).** Exact exploitability at the pre-committed counts (lower is better):
 
 | method | wall-clock | exact exploitability |
 |---|---|---|
-| uniform random | — | 4.878 |
+| uniform random | n/a | 4.878 |
 | **tabular CFR (30 iters)** | **198 s** | **0.253** |
-| neural NFSP (200k ep, 3 seeds) | ~470 s/seed | 1.004 [0.985, 1.018] |
+| neural NFSP (200k ep, 3 seeds) | ~472 s/seed | 1.004 [0.985, 1.018] |
 
-**Tabular CFR decisively beats neural NFSP — with less than half the wall-clock**
-(198 s vs ~470 s). Thirty truncated CFR iterations reach 0.253; neural NFSP plateaus
+**Tabular CFR decisively beats neural NFSP, with less than half the wall-clock**
+(198 s vs ~472 s). Thirty truncated CFR iterations reach 0.253; neural NFSP plateaus
 at ~1.0 (tight across seeds), worse than truncated CFR. The pre-registered question
 is answered **NO**: neural NFSP does not help at R=20.
 
 **Two honest deviations from the §12.1 estimates, disclosed (neither changes the
 conclusion).** (i) The R=20 CFR iteration cost measured **12.7 s**, about **twice**
 the §12.1 pre-run estimate of ~6.6 s (which, in hindsight, was the R=16 cost-curve
-figure, not R=20); the convergence estimate therefore rises from ~18 h to **~35 h**
-— still infeasible. (ii) The "~3–4 min each" wall-clock match did **not** hold in
-execution: tabular CFR ran 198 s but neural NFSP ran **~470 s/seed (~2.4×** the
+figure, not R=20); the convergence estimate therefore rises from ~18 h to **~35 h**,
+still infeasible. (ii) The "~3–4 min each" wall-clock match did **not** hold in
+execution: tabular CFR ran 198 s but neural NFSP ran **~472 s/seed (~2.4×** the
 estimate). The match failing only **strengthens** the null: tabular won decisively
 while given *less than half* the compute neural received.
 
 **What this establishes.** Neural NFSP has **no measurable advantage** over tabular
-CFR at any scale this work can exactly evaluate — even R=20, where CFR *convergence*
+CFR at any scale this work can exactly evaluate, including R=20, where CFR *convergence*
 is infeasible (~35 h), a few truncated CFR iterations already dominate, because CFR
-converges very fast per iteration while neural NFSP plateaus. This is the **third
-pre-registered honest null** of v2 (after: the RL edge is only over a myopic
-baseline and loses to Kelly; neural NFSP does not beat tabular NFSP on 3-rank Leduc).
-The regime where a neural structural advantage **might** emerge — and it is **not
-demonstrated here** — is confined to scales where tabular CFR cannot complete even a
+converges very fast per iteration while neural NFSP plateaus. This is the **second
+pre-registered honest null** of v2 (after: the RL edge is over a myopic
+baseline and loses to Kelly).
+The regime where a neural structural advantage **might** emerge (and it is **not
+demonstrated here**) is confined to scales where tabular CFR cannot complete even a
 few iterations; the cost curve extrapolates this to roughly **R≈60**, where one CFR
 iteration alone (~7–8 min, the measured neural budget) consumes the entire neural
 budget. That regime is **not measurable by exact NashConv** (also infeasible there)
@@ -643,11 +642,11 @@ policy (uniform 3.82 ≤ 4.88; neural ~0.80 mean, range 0.76–0.86 ≤ 1.00; CF
 
 The v2 equilibrium work establishes that chasing Nash on exactly-evaluable games yields
 nulls (§11 is at best a weak sample-efficiency pass; §12 a null). The literature review
-(`docs/V2_RESEARCH_ROADMAP.md`) identifies the **one direction with a realistic positive
+(the v2 research roadmap, local working notes, not committed) identifies the **one direction with a realistic positive
 result: exploitation beyond Nash.** A Nash strategy is *provably* over-conservative
 against a suboptimal opponent (SES, NeurIPS 2022); Data-Biased Response (Johanson &
 Bowling, AISTATS 2009) formalises a **continuum** with a per-information confidence weight
-`p ∈ [0,1]` — `p=0` recovers Nash/baseline, `p=1` recovers best response. This experiment
+`p ∈ [0,1]`: `p=0` recovers Nash/baseline, `p=1` recovers best response. This experiment
 asks whether our HMM tilt posterior `p_tilted`, used as exactly that DBR confidence
 weight, earns a measurable EV edge. Registered here and frozen before the run (two-commit
 git-provable gap, as §10/§11/§12). Posed as an OPEN QUESTION, not a predicted win; a null
@@ -658,7 +657,7 @@ is an acceptable, reportable outcome (§8).
 - **Knob (a-priori, NOT tuned on the EV metric):** `BotPlayer(tilt_exploit=True)` conditions
   the per-decision effective thresholds on the live belief posterior `p_tilted`:
   `eff_tight = clamp(tight − 0.15·p_tilted)` (call lighter / lower fold threshold) and
-  `eff_aggr = clamp(aggr + 0.25·p_tilted)` (value-bet thinner) — the principled counter to
+  `eff_aggr = clamp(aggr + 0.25·p_tilted)` (value-bet thinner), the principled counter to
   an over-aggressive, too-loose opponent. The slopes 0.15 / 0.25 are round a-priori choices
   from the counter-policy direction, frozen before any EV was measured (selecting them on
   the metric would be the garden-of-forking-paths §1 warns against). OFF by default →
@@ -669,12 +668,12 @@ is an acceptable, reportable outcome (§8).
   so range-modelling and tilt *detection* are held identical and the ONLY difference is
   whether the explicit knob *acts* on `p_tilted`. `exploiter` = `tilt_exploit=True`;
   `non-exploiter` = `tilt_exploit=False` (detects tilt, ignores it).
-- **Opponent (primary):** `AdaptiveBotPlayer(mode="tilt")` defaults — a genuine
+- **Opponent (primary):** `AdaptiveBotPlayer(mode="tilt")` defaults, a genuine
   non-stationary tilter (after a loss: raises more, folds less, looser), whose PnL→tilt
   trigger the hero detector shares, so `p_tilted` leads the aggression signal by a hand.
 - **Seeds / harness:** paired seed block `range(300)`, `n_hands=200`, blinds 10/20, stack
   1000, **mirror (duplicate-seat) + all-in-EV (luck-adjusted)** variance reduction
-  (REFERENCES §2; the AIVAT-family chance-node control variate — load-bearing, since the
+  (REFERENCES §2; the AIVAT-family chance-node control variate, load-bearing, since the
   raw per-seed PnL SD is bust-dominated).
 - **Frozen script:** `scripts/measure_exploitation.py` (committed in this freeze with NO
   results).
@@ -703,7 +702,7 @@ signs is reported alongside (the bust-dominated headline test). Reported in full
 regardless of direction (§8).
 
 **Load-bearing caveats (pre-committed, stated before the result):**
-1. This measures EV against **THIS fixed tilting opponent only** — it is **NOT** a
+1. This measures EV against **THIS fixed tilting opponent only**. It is **NOT** a
    Nash-safety claim. A Nash bound is neither computed nor implied.
 2. An exploiter is itself **counter-exploitable**: deviating toward best response opens you
    to a counter-strategy (the un-eliminable exploitation-vs-exploitability tradeoff; SES's
@@ -712,13 +711,15 @@ regardless of direction (§8).
    loosening to exploit fold-prone opponents loses to callers). An **exploratory** control
    arm runs the same paired delta vs a non-tilting loose-passive station to surface this; it
    is **not** the confirmatory test and its result does not change the primary verdict.
+4. Hero and opponent share one RNG per match, so the opponent's tilt regime diverges between the exploiter and baseline arms once the hero's first action differs. This inflates paired-delta variance and is a conservative, honest limitation.
+5. The hero detector's `recover=0.05` is slower than the tilter's true `recover=0.25`, so `p_tilted` overstates sustained tilt and the knob stays partially active after the opponent has already recovered. This is a known a-priori misspecification.
 
 ### 13.4 Execution status and outcome
 
 **Status: EXECUTED.** The frozen protocol was run once over the 300-seed paired block and
 committed to `results/exploitation.json`. Reported in full per §8.
 
-**Outcome — a resolved NEGATIVE: the exploitation knob HURTS (the pre-committed verdict,
+**Outcome: a resolved NEGATIVE. The exploitation knob HURTS (the pre-committed verdict,
 falsifiable both ways, fell the unexpected way).** Both heroes beat the tilter, but the
 exploiter wins **less**:
 
@@ -735,33 +736,33 @@ non-tilter control is ~neutral (−13, CI [−81, +55], unresolved).
 **Why the textbook counter-policy backfires here (the game-theoretic reading).** The
 disciplined baseline *already* exploits the tilter handsomely (+533): a tight-ish
 value-bettor punishes a loose-aggressive opponent by betting for value and folding marginal
-spots. The a-priori knob — "call lighter / value-bet thinner as p_tilted rises" — is the
+spots. The a-priori knob ("call lighter / value-bet thinner as p_tilted rises") is the
 right counter to an opponent that **over-bluffs**, but this tilter is a loose-aggressive
 **maniac** (plays ~any hand, raises ~always when tilted), so calling lighter pays off its
 *value*, and value-betting thinner walks into its re-raises. Against a maniac the correct
-counter is to **tighten and trap**, not loosen — the opposite of what the knob does. The
+counter is to **tighten and trap**, not loosen, which is the opposite of what the knob does. The
 control contrast confirms the mechanism: vs a loose-**passive** station (which does not
 punish loosening) the knob is ~neutral, while vs the **aggressive** tilter it loses. This is
 the exploitation-vs-exploitability tradeoff made concrete (caveats 1–2): a deviation tuned
 for one opponent archetype is counter-exploited by another.
 
 **This is a discipline win, not a project failure (the Phase 0 lesson, again).** An
-exploratory n=6 smoke check (run only to verify the script executed — explicitly **not**
+exploratory n=6 smoke check (run only to verify the script executed, explicitly **not**
 used to set the a-priori config) happened to show a +152 paired delta. The pre-registered,
 properly-powered n=300 run **overturned it to −169**: the small-n peek was noise. Reporting
-the powered, pre-committed result over the tempting peek — and not retuning the knob after
-seeing the sign — is exactly the pre-registration discipline §1/§10 exist for. We report the
+the powered, pre-committed result over the tempting peek, and not retuning the knob after
+seeing the sign, is exactly the pre-registration discipline §1/§10 exist for. We report the
 result faithfully and do **not** move the goalposts (e.g. by flipping the knob's sign
 post-hoc and re-running until it "works").
 
 **What this establishes.** A pre-registered EV test resolves that conditioning the policy on
 detected tilt, via this a-priori DBR-style counter-policy, **reduces** EV against this
 loose-aggressive tilter relative to a disciplined non-exploiting baseline. It is the
-fourth v2 honest negative (RL loses to Kelly; §11 a qualified pass; §12 tabular > neural;
-and now the tilt-exploit knob is counter-productive here). The transferable finding is
-methodological — a tempting, textbook-motivated, small-n-supported edge did **not** survive a
-powered pre-registered test — and game-theoretic — loosening against an *aggressive* opponent
-backfires; discipline already exploits it. EV vs **this** opponent only; no Nash claim.
+second pre-registered NEGATIVE result of v2 (after §12's scaling null). The v2 tally is:
+§10 robust, §11 qualified pass, §12 null, §13 negative. The transferable finding is
+methodological: a tempting, textbook-motivated, small-n-supported edge did **not** survive a
+powered pre-registered test. It is also game-theoretic: loosening against an *aggressive* opponent
+backfires, and discipline already exploits it. EV vs **this** opponent only; no Nash claim.
 
 **Figure:** `figures/exploitation.png` (the paired delta + 95% CI, primary vs tilter and the
 non-tilter control, against a 0 line).
