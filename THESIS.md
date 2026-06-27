@@ -224,6 +224,26 @@ exploitability is also infeasible and only an LBR **lower bound**
 applies, and a lower bound can demonstrate exploitation but cannot *certify* a
 strategy is good. That frontier is identified but, honestly, not claimed.
 
+**Exploitation beyond Nash (Phase C2), and a pre-registration that caught a false
+positive.** The equilibrium experiments show that chasing Nash on exactly-evaluable
+games yields nulls; the literature ([`docs/V2_RESEARCH_ROADMAP.md`](docs/V2_RESEARCH_ROADMAP.md))
+flags the one direction with a realistic *positive* — exploiting a suboptimal opponent.
+The repo already has a two-state {normal, tilted} HMM tracking `P(opponent tilted)`; §13
+turns it into a policy via a Data-Biased-Response-style knob (Johanson & Bowling 2009):
+as `p_tilted` rises the bot calls lighter and value-bets thinner (`p_tilted=0` recovers
+the baseline). Two byte-identical heroes — one acting on the signal, one ignoring it —
+play the fixed tilting opponent on a 300-seed paired, mirror + all-in-EV block. The
+pre-committed verdict fell the *unexpected* way — a **resolved negative**: the knob
+**loses −169 chips/match** (95% CI [−271, −66], sign-test p≈0.04;
+[`figures/exploitation.png`](figures/exploitation.png)). The reason is game-theoretic —
+the disciplined baseline already crushes the loose-aggressive tilter (+533) by
+value-betting and folding marginal spots, so *loosening* against an aggressive opponent
+walks into its aggression and pays off its value (the right counter to a maniac is to
+tighten and trap). An exploratory n=6 smoke check had shown +152; the powered,
+pre-registered n=300 run overturned it. Reporting the powered result — not the peek, and
+not flipping the knob's sign post-hoc — is exactly what the freeze→result discipline
+(§10–§13) exists for. Measured vs *this* opponent only; no Nash-safety claim.
+
 ## 5. Honest-negative as a feature, not a bug
 
 The deliverable is **method + intellectual honesty**: reproducible, paired,
