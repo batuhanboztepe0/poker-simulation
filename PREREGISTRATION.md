@@ -715,7 +715,53 @@ regardless of direction (§8).
 
 ### 13.4 Execution status and outcome
 
-**Status: PENDING.** The frozen knob (`src/player.py` `tilt_exploit`), its tests
-(`tests/test_tilt_exploit.py`), and the frozen protocol/script
-(`scripts/measure_exploitation.py`) are committed here with **NO results**. The run and its
-outcome are reported in a later commit (the git-provable gap, as §10/§11/§12).
+**Status: EXECUTED.** The frozen protocol was run once over the 300-seed paired block and
+committed to `results/exploitation.json`. Reported in full per §8.
+
+**Outcome — a resolved NEGATIVE: the exploitation knob HURTS (the pre-committed verdict,
+falsifiable both ways, fell the unexpected way).** Both heroes beat the tilter, but the
+exploiter wins **less**:
+
+| arm (vs the fixed tilter) | mean net chips/match |
+|---|---|
+| non-exploiter (baseline) | **+533** |
+| exploiter (tilt knob on) | **+196** |
+| **paired delta (exploiter − baseline)** | **−169**, 95% CI **[−271, −66]** |
+
+The 95% bootstrap CI of the paired delta **excludes 0 below**, so by the §13.3 rule the
+exploitation edge is **NEGATIVE** (sign test 131W–168L–1T, p = 0.037). The exploratory
+non-tilter control is ~neutral (−13, CI [−81, +55], unresolved).
+
+**Why the textbook counter-policy backfires here (the game-theoretic reading).** The
+disciplined baseline *already* exploits the tilter handsomely (+533): a tight-ish
+value-bettor punishes a loose-aggressive opponent by betting for value and folding marginal
+spots. The a-priori knob — "call lighter / value-bet thinner as p_tilted rises" — is the
+right counter to an opponent that **over-bluffs**, but this tilter is a loose-aggressive
+**maniac** (plays ~any hand, raises ~always when tilted), so calling lighter pays off its
+*value*, and value-betting thinner walks into its re-raises. Against a maniac the correct
+counter is to **tighten and trap**, not loosen — the opposite of what the knob does. The
+control contrast confirms the mechanism: vs a loose-**passive** station (which does not
+punish loosening) the knob is ~neutral, while vs the **aggressive** tilter it loses. This is
+the exploitation-vs-exploitability tradeoff made concrete (caveats 1–2): a deviation tuned
+for one opponent archetype is counter-exploited by another.
+
+**This is a discipline win, not a project failure (the Phase 0 lesson, again).** An
+exploratory n=6 smoke check (run only to verify the script executed — explicitly **not**
+used to set the a-priori config) happened to show a +152 paired delta. The pre-registered,
+properly-powered n=300 run **overturned it to −169**: the small-n peek was noise. Reporting
+the powered, pre-committed result over the tempting peek — and not retuning the knob after
+seeing the sign — is exactly the pre-registration discipline §1/§10 exist for. We report the
+result faithfully and do **not** move the goalposts (e.g. by flipping the knob's sign
+post-hoc and re-running until it "works").
+
+**What this establishes.** A pre-registered EV test resolves that conditioning the policy on
+detected tilt, via this a-priori DBR-style counter-policy, **reduces** EV against this
+loose-aggressive tilter relative to a disciplined non-exploiting baseline. It is the
+fourth v2 honest negative (RL loses to Kelly; §11 a qualified pass; §12 tabular > neural;
+and now the tilt-exploit knob is counter-productive here). The transferable finding is
+methodological — a tempting, textbook-motivated, small-n-supported edge did **not** survive a
+powered pre-registered test — and game-theoretic — loosening against an *aggressive* opponent
+backfires; discipline already exploits it. EV vs **this** opponent only; no Nash claim.
+
+**Figure:** `figures/exploitation.png` (the paired delta + 95% CI, primary vs tilter and the
+non-tilter control, against a 0 line).

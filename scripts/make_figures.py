@@ -810,6 +810,56 @@ def fig_scale(index):
                   _save(fig, "scale", cap, height=420)))
 
 
+def fig_exploitation(index):
+    """Phase C2 exploitation (§13): the per-seed PAIRED DELTA (exploiter − identical
+    non-exploiter, both vs the same opponent, mirror + all-in-EV) with its 95% bootstrap
+    CI — vs the fixed tilting opponent (primary) and the non-tilting station (control)."""
+    d = _load_json("exploitation.json")
+    if not d:
+        return
+    rows = [(d["primary"], "vs tilting opponent<br>(primary)", "#1f77b4")]
+    if d.get("control_non_tilter"):
+        rows.append((d["control_non_tilter"], "vs non-tilting station<br>(control)",
+                     "#888888"))
+    ys = [r[1] for r in rows]
+    xs = [r[0]["paired_delta_mean"] for r in rows]
+    lo = [r[0]["paired_delta_mean"] - r[0]["paired_delta_ci95"]["lo"] for r in rows]
+    hi = [r[0]["paired_delta_ci95"]["hi"] - r[0]["paired_delta_mean"] for r in rows]
+    colors = [r[2] for r in rows]
+    fig = go.Figure(go.Scatter(
+        x=xs, y=ys, mode="markers", marker=dict(size=15, color=colors),
+        error_x=dict(type="data", symmetric=False, array=hi, arrayminus=lo,
+                     thickness=2, width=10, color="#444")))
+    fig.add_vline(x=0, line_dash="dot", line_color="#c0392b")
+    fig.update_layout(
+        xaxis_title="exploiter − non-exploiter, chips/match (paired, mirror + all-in-EV). "
+                    ">0 = the p_tilted knob earns EV.",
+        yaxis_title="", showlegend=False)
+    p = d["primary"]; pci = p["paired_delta_ci95"]
+    n = len(p.get("per_seed_delta", []))
+    ctl = d.get("control_non_tilter")
+    ctl_txt = ""
+    if ctl:
+        cci = ctl["paired_delta_ci95"]
+        sign = ("gives EV back" if cci["hi"] < 0 else
+                ("still gains" if cci["lo"] > 0 else "is within noise"))
+        ctl_txt = (f" Exploratory control vs a non-tilting station: "
+                   f"{cci['mean']:+.0f} [{cci['lo']:+.0f}, {cci['hi']:+.0f}] — the "
+                   f"loosening {sign} there (the exploitation-vs-exploitability tradeoff).")
+    cap = (f"Phase C2 exploitation (PREREGISTRATION.md §13). A DBR-style knob conditions "
+           f"the policy on the live P(opponent tilted): call lighter (lower fold threshold) "
+           f"and value-bet thinner as p_tilted rises (p_tilted=0 recovers the baseline). "
+           f"The two heroes are byte-identical except this knob; both carry the same HMM "
+           f"detector. Per-seed PAIRED DELTA (exploiter − non-exploiter, same {n}-seed block, "
+           f"mirror + all-in-EV variance reduction), 95% bootstrap CI. Primary vs the fixed "
+           f"tilter: {pci['mean']:+.0f} chips/match [{pci['lo']:+.0f}, {pci['hi']:+.0f}] → "
+           f"{d['verdict']} (exploiter {p['exploiter_edge_vs_opp']:+.0f} vs non-exploiter "
+           f"{p['baseline_edge_vs_opp']:+.0f}).{ctl_txt} Caveat: EV vs THIS opponent only — "
+           f"NOT a Nash-safety claim, and an exploiter is itself counter-exploitable.")
+    index.append(("exploitation.png", "phaseC",
+                  _save(fig, "exploitation", cap, height=360)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -916,7 +966,7 @@ def fig_plain_tilt(index):
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
             fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep, fig_neural_nfsp,
-            fig_scale,
+            fig_scale, fig_exploitation,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -933,6 +983,7 @@ DATA_DEPS = {
     "fig_seed_sweep": "results/seed_sweep.json",
     "fig_neural_nfsp": "results/neural_nfsp.json",
     "fig_scale": "results/scale_experiment.json",
+    "fig_exploitation": "results/exploitation.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",
