@@ -844,7 +844,47 @@ directional, not established.
 
 ### 14.4 Execution status and outcome
 
-**Status: PENDING.** The RNR solver (`src/leduc_rnr.py`), its tests
-(`tests/test_leduc_rnr.py`), and the frozen protocol and script
-(`scripts/measure_rnr.py`) are committed here with no results. The run and its outcome
-are reported in a later commit (the git-provable gap, as §10, §11 and §12).
+**Status: EXECUTED.** The frozen protocol was run once (5000 CFR iterations per solve)
+and committed to `results/rnr_frontier.json`. Reported in full per §8.
+
+**Outcome: a reliable positive.** RNR exploits every one of the three opponents for a
+strictly positive, exactly-measured EV gain over the Nash baseline, and all four
+validation gates hold for each (p=0 reproduces Nash, p=1 matches the independently
+computed exact best response, EV monotone in p). The Nash strategy itself is near exact
+(self-play exploitability 0.013). Exact, zero sampling variance, in chips per deal:
+
+| opponent | Nash EV vs it | RNR max gain over Nash | exact best response | RNR(p=1) exploitability |
+|---|---|---|---|---|
+| station (calling) | +0.503 | **+0.964** | +1.467 | 2.730 |
+| maniac (raising) | +0.210 | **+2.157** | +2.367 | 1.858 |
+| uniform | +0.592 | **+1.495** | +2.087 | 3.647 |
+
+(The EV-monotone gate uses a 5e-3 tolerance: the station frontier has a sub-1e-5 EV
+inversion between p=0.9 and p=1.0, about 3e-6, which is CFR convergence noise at finite
+iterations and well within the tolerance. Exploitability also rises monotonically with p
+in these results, though that is observed, not a gated check.)
+
+**The exploitation-vs-exploitability tradeoff, quantified exactly.** The gain is bought
+with the counter's own exploitability, which rises with p, and the frontier is concave,
+so most of the exploitation is available at a fraction of the exploitability. Against the calling station, p=0.5 already earns +0.71 over Nash at an
+exploitability of only 0.43, while p=1 earns +0.96 but at 2.73 (about six times more
+exploitable for a quarter more gain). A mid-frontier p is the robust operating point,
+which is the whole point of RNR over a raw best response.
+
+**Why this is the reliable positive §13 could not deliver.** §13 measured exploitation
+in heads-up bust matches, where path-dependent variance (per-seed SD near 800) swamped
+any incremental edge, and a brittle directional knob applied the wrong archetype. §14
+measures on Leduc with exact EV (zero variance) and uses the validated RNR mechanism, so
+the edge is resolved exactly and is large. This is the first positive exploitation
+capability in the project. It reproduces the known RNR result (Johanson and Bowling)
+exactly on this game, the same way §6 reproduced the Nash-convergence theory; the novelty
+is the exact reproduction and the clean frontier, not a new algorithm.
+
+**Honest boundary.** RNR here exploits a KNOWN opponent strategy given exactly, so it
+isolates the exploitation mechanism and its tradeoff, not online opponent detection (the
+HMM detector of §13 is a separate piece). The gain is not Nash-safe: a high-p counter is
+itself exploitable. And the result is exact on Leduc; transfer to larger games is
+directional. Within those bounds it is a clean, reliable, exactly-measured positive.
+
+**Figure:** `figures/rnr_frontier.png` (EV gain over Nash vs the counter's own
+exploitability, one concave frontier per opponent, p from 0 to 1).

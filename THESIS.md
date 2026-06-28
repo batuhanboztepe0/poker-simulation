@@ -244,6 +244,25 @@ pre-registered n=300 run overturned it. Reporting the powered result (not the pe
 not flipping the knob's sign post-hoc) is exactly what the freeze→result discipline
 (§10–§13) exists for. Measured vs *this* opponent only; no Nash-safety claim.
 
+**Exact exploitation (Phase C3): the reliable positive.** The §13 negative pointed the
+way. A literature review flagged two fixes: use the validated Restricted Nash Response
+(RNR, Johanson & Bowling) rather than a brittle hand-tuned knob, and measure on Leduc
+where EV is exact, escaping the heads-up bust-match variance that swamped §13. §14 does
+both. RNR restricts the opponent to play a fixed strategy with probability `p` and a free
+strategy with probability `1-p`, so `p=0` is Nash and `p=1` is the exact best response.
+Against three exploitable opponents (a calling station, a maniac, and uniform random),
+RNR earns a strictly positive, exactly-measured EV gain over Nash: up to **+0.96, +2.16,
+and +1.50 chips per deal** respectively, with zero sampling variance
+([`figures/rnr_frontier.png`](figures/rnr_frontier.png)). All four validation gates hold
+(p=0 reproduces Nash, p=1 matches the independently computed exact best response, EV is
+monotone in p). This is the project's first reliable exploitation positive: a clean,
+exactly-measured exploitation capability, and the exploitation-vs-exploitability tradeoff
+is quantified, since the gain is bought with the counter's own rising exploitability. The
+honest boundary: RNR exploits a *known* opponent given exactly, so this isolates the
+exploitation mechanism, not online detection; the gain is not Nash-safe; and it
+reproduces validated RNR theory exactly on this game, the same way §4 reproduced the
+Nash-convergence result, rather than introducing a new algorithm.
+
 ## 5. Honest-negative as a feature, not a bug
 
 The deliverable is **method + intellectual honesty**: reproducible, paired,

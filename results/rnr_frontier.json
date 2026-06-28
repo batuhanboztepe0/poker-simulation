@@ -1,0 +1,195 @@
+{
+ "protocol": {
+  "method": "Restricted Nash Response (Johanson-Bowling) on Leduc, exact EV",
+  "iters": 5000,
+  "p_grid": [
+   0.0,
+   0.1,
+   0.25,
+   0.5,
+   0.75,
+   0.9,
+   1.0
+  ],
+  "opponents": [
+   "station",
+   "maniac",
+   "uniform"
+  ],
+  "metric": "exact EV over all 120 deals; gain over Nash; exact exploitability",
+  "nash_self_play_exploitability": 0.012681122992103095,
+  "registered_in": "PREREGISTRATION.md \u00a714",
+  "verdict_rule": "reliable positive iff every opponent has max gain over Nash > 0 AND all validation gates (p0=Nash, p1=exact BR, monotone) hold; pre-committed before the run"
+ },
+ "opponents": {
+  "station": {
+   "ev_nash_vs_opp": 0.5030820345955068,
+   "br_exact_vs_opp": 1.4666666666666666,
+   "frontier": [
+    {
+     "p": 0.0,
+     "ev_vs_opp": 0.5030820345955068,
+     "gain_over_nash": 0.0,
+     "exploitability": 0.005930872104400839
+    },
+    {
+     "p": 0.1,
+     "ev_vs_opp": 0.7719699817750809,
+     "gain_over_nash": 0.2688879471795741,
+     "exploitability": 0.08047786371668483
+    },
+    {
+     "p": 0.25,
+     "ev_vs_opp": 0.8870328321548383,
+     "gain_over_nash": 0.3839507975593315,
+     "exploitability": 0.1663508030797547
+    },
+    {
+     "p": 0.5,
+     "ev_vs_opp": 1.2149493906864568,
+     "gain_over_nash": 0.71186735609095,
+     "exploitability": 0.42816216456253425
+    },
+    {
+     "p": 0.75,
+     "ev_vs_opp": 1.3674319085774695,
+     "gain_over_nash": 0.8643498739819627,
+     "exploitability": 0.8290526501281068
+    },
+    {
+     "p": 0.9,
+     "ev_vs_opp": 1.4666227116421395,
+     "gain_over_nash": 0.9635406770466327,
+     "exploitability": 1.0444405095659932
+    },
+    {
+     "p": 1.0,
+     "ev_vs_opp": 1.4666201639819922,
+     "gain_over_nash": 0.9635381293864854,
+     "exploitability": 2.7299789235336935
+    }
+   ],
+   "gates": {
+    "p0_gain_near_zero": true,
+    "p0_exploitability_near_zero": true,
+    "p1_matches_exact_br": true,
+    "ev_monotone_in_p": true
+   },
+   "max_gain_over_nash": 0.9635406770466327
+  },
+  "maniac": {
+   "ev_nash_vs_opp": 0.20977056743324926,
+   "br_exact_vs_opp": 2.3666666666666667,
+   "frontier": [
+    {
+     "p": 0.0,
+     "ev_vs_opp": 0.20977056743324926,
+     "gain_over_nash": 0.0,
+     "exploitability": 0.005930872104400839
+    },
+    {
+     "p": 0.1,
+     "ev_vs_opp": 0.9320161060327927,
+     "gain_over_nash": 0.7222455385995434,
+     "exploitability": 0.10409593095638434
+    },
+    {
+     "p": 0.25,
+     "ev_vs_opp": 1.4700266598623404,
+     "gain_over_nash": 1.260256092429091,
+     "exploitability": 0.26971907573251996
+    },
+    {
+     "p": 0.5,
+     "ev_vs_opp": 2.0389276276819204,
+     "gain_over_nash": 1.829157060248671,
+     "exploitability": 0.6281950766819713
+    },
+    {
+     "p": 0.75,
+     "ev_vs_opp": 2.335273558660397,
+     "gain_over_nash": 2.125502991227148,
+     "exploitability": 0.9754007717384983
+    },
+    {
+     "p": 0.9,
+     "ev_vs_opp": 2.366461144459333,
+     "gain_over_nash": 2.156690577026084,
+     "exploitability": 0.9790781459925606
+    },
+    {
+     "p": 1.0,
+     "ev_vs_opp": 2.366480665164767,
+     "gain_over_nash": 2.156710097731518,
+     "exploitability": 1.858259357359485
+    }
+   ],
+   "gates": {
+    "p0_gain_near_zero": true,
+    "p0_exploitability_near_zero": true,
+    "p1_matches_exact_br": true,
+    "ev_monotone_in_p": true
+   },
+   "max_gain_over_nash": 2.156710097731518
+  },
+  "uniform": {
+   "ev_nash_vs_opp": 0.5919706485995657,
+   "br_exact_vs_opp": 2.0875,
+   "frontier": [
+    {
+     "p": 0.0,
+     "ev_vs_opp": 0.5919706485995657,
+     "gain_over_nash": 0.0,
+     "exploitability": 0.005930872104400839
+    },
+    {
+     "p": 0.1,
+     "ev_vs_opp": 0.68796846313027,
+     "gain_over_nash": 0.09599781453070433,
+     "exploitability": 0.04871268713070989
+    },
+    {
+     "p": 0.25,
+     "ev_vs_opp": 1.0294419132045196,
+     "gain_over_nash": 0.4374712646049539,
+     "exploitability": 0.20818831132040383
+    },
+    {
+     "p": 0.5,
+     "ev_vs_opp": 1.7919543584397943,
+     "gain_over_nash": 1.1999837098402286,
+     "exploitability": 1.150966870623785
+    },
+    {
+     "p": 0.75,
+     "ev_vs_opp": 2.052632823140015,
+     "gain_over_nash": 1.460662174540449,
+     "exploitability": 2.852351089539648
+    },
+    {
+     "p": 0.9,
+     "ev_vs_opp": 2.0729087456597686,
+     "gain_over_nash": 1.4809380970602029,
+     "exploitability": 3.326034977251617
+    },
+    {
+     "p": 1.0,
+     "ev_vs_opp": 2.08744589074546,
+     "gain_over_nash": 1.4954752421458941,
+     "exploitability": 3.6469158698046362
+    }
+   ],
+   "gates": {
+    "p0_gain_near_zero": true,
+    "p0_exploitability_near_zero": true,
+    "p1_matches_exact_br": true,
+    "ev_monotone_in_p": true
+   },
+   "max_gain_over_nash": 1.4954752421458941
+  }
+ },
+ "all_opponents_positive": true,
+ "all_gates_pass": true,
+ "verdict": "RELIABLE POSITIVE: RNR exploits every opponent for an exact EV gain over Nash, validation gates hold",
+ "elapsed_secs": 1631.9
+}

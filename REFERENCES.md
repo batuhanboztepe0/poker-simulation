@@ -262,12 +262,26 @@ numbers and a tabular-NFSP fix, not a novel theorem.
   diverges. The divergence of plain gradient descent-ascent / MWU is established
   by the Mertikopoulos et al. and Bailey-Piliouras papers above.)*
 
+## 8. Opponent modelling and safe exploitation (RNR / DBR)
+
+- **Johanson, Zinkevich, Bowling (2007).** "Computing Robust Counter-Strategies."
+  *NeurIPS (NIPS) 2007.* Introduces the Restricted Nash Response (RNR): a counter-strategy
+  computed against an opponent restricted to play a fixed strategy with probability p and a
+  free strategy with probability 1-p. Shows a pure best response (p=1) is brittle (it beats
+  its target but loses to almost every other opponent), which motivates restricting p. This
+  is the method reproduced exactly on Leduc in PREREGISTRATION.md §14.
+- **Johanson, Bowling (2009).** "Data Biased Robust Counter Strategies." *AISTATS 2009.*
+  The Data-Biased Response (DBR) refinement: per-information-set confidence weighting, so the
+  counter overfits the opponent model less when observations are sparse. The
+  exploitation-vs-exploitability tradeoff and the overfitting-at-high-p caveat noted in
+  §13 / §14 trace to the RNR/DBR line. ✓ method confirmed; magnitudes are game-specific.
+
 ---
 
 *Compiled from a 26-source sweep (94 candidate claims, 25 adversarially
 verified: 12 confirmed, 13 refuted) plus a 6-source real-data-tilt sweep (§6,
 3-vote verified: 4 confirmed, 2 with ⚠ qualifications). The §3 Bartlett-O'Hara
-entry (cite-with-caveat) and the §7 convergence anchors (definitional) were added
-later via independent web/literature verification, outside the original sweep
-tally. The refuted/qualified items are kept visible above on purpose, knowing
+entry (cite-with-caveat), the §7 convergence anchors (definitional), and the §8
+RNR/DBR papers (from the v2 exploitation literature pass) were added later via
+independent web/literature verification, outside the original sweep tally. The refuted/qualified items are kept visible above on purpose, knowing
 what does **not** hold up is part of the result.*

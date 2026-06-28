@@ -866,6 +866,48 @@ def fig_exploitation(index):
                   _save(fig, "exploitation", cap, height=360)))
 
 
+def fig_rnr(index):
+    """Phase C3 (§14): the exact Restricted Nash Response frontier on Leduc. Each
+    opponent is a curve in (exploitability, EV-gain-over-Nash) space, traced by the
+    mixing parameter p from 0 (Nash) to 1 (exact best response)."""
+    d = _load_json("rnr_frontier.json")
+    if not d:
+        return
+    colors = {"station": "#1f77b4", "maniac": "#d62728", "uniform": "#2ca02c"}
+    fig = go.Figure()
+    maxgain = {}
+    for name, o in d["opponents"].items():
+        fr = o["frontier"]
+        fig.add_trace(go.Scatter(
+            x=[pt["exploitability"] for pt in fr],
+            y=[pt["gain_over_nash"] for pt in fr],
+            mode="lines+markers", name=name,
+            line=dict(color=colors.get(name, "#888"), width=2),
+            marker=dict(size=7),
+            text=[f"p={pt['p']}" for pt in fr], hoverinfo="text+x+y"))
+        maxgain[name] = max(pt["gain_over_nash"] for pt in fr)
+    fig.add_hline(y=0, line_dash="dot", line_color="#888")
+    fig.update_layout(
+        xaxis_title="counter's own exploitability (NashConv; 0 = unexploitable)",
+        yaxis_title="exact EV gain over Nash vs the opponent (chips)",
+        legend=dict(x=0.02, y=0.98, bgcolor="rgba(255,255,255,0.6)"))
+    gains = ", ".join(f"{n} +{maxgain[n]:.2f}" for n in d["opponents"])
+    cap = (f"Phase C3 exact exploitation (PREREGISTRATION.md §14). Restricted Nash "
+           f"Response (RNR, Johanson-Bowling) on Leduc against three exploitable "
+           f"opponents. Each curve traces the mixing parameter p from 0 (Nash, "
+           f"bottom-left) to 1 (the exact best response, top-right): the y-axis is the "
+           f"exact EV gained over the Nash baseline against that opponent, the x-axis "
+           f"is the counter's own exploitability. Exploiting earns a strictly positive, "
+           f"exactly-measured EV gain (the reliable positive: max gain over Nash "
+           f"{gains}), and that gain is bought with higher exploitability (the "
+           f"exploitation-vs-exploitability tradeoff). All EV is exact over the 120 "
+           f"deals (zero sampling variance); p=0 reproduces Nash and p=1 matches the "
+           f"independently computed exact best response. Contrast with the §13 "
+           f"heads-up null, where bust-match variance swamped any incremental edge.")
+    index.append(("rnr_frontier.png", "phaseC",
+                  _save(fig, "rnr_frontier", cap, height=460)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -972,7 +1014,7 @@ def fig_plain_tilt(index):
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
             fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep, fig_neural_nfsp,
-            fig_scale, fig_exploitation,
+            fig_scale, fig_exploitation, fig_rnr,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -990,6 +1032,7 @@ DATA_DEPS = {
     "fig_neural_nfsp": "results/neural_nfsp.json",
     "fig_scale": "results/scale_experiment.json",
     "fig_exploitation": "results/exploitation.json",
+    "fig_rnr": "results/rnr_frontier.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",
