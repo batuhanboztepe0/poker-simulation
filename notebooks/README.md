@@ -1,6 +1,6 @@
 # Notebooks: the story, end to end
 
-**What this is.** A decision-science portfolio that measures poker the way a quant measures a trading strategy: the question is never *"did I win?"* but *"is the edge real, or is it noise / overfitting?"* These five executed notebooks walk that arc from start to finish. Each reads top-to-bottom on GitHub (outputs are saved, no retraining): it loads the committed `../results/*.json`, recomputes the key statistic with the project's *own* functions, shows the matching figure from [`../figures/`](../figures/), and ends with an honest takeaway.
+**What this is.** A decision-science portfolio that measures poker the way a quant measures a trading strategy: the question is never *"did I win?"* but *"is the edge real, or is it noise / overfitting?"* Start with the one-page visual tour, [`00_overview.ipynb`](00_overview.ipynb), then read the five chapters below in order. Each chapter reads top-to-bottom on GitHub (outputs are saved, no retraining): it loads the committed `../results/*.json`, recomputes the key statistic with the project's *own* functions, shows the matching figure from [`../figures/`](../figures/), and ends with an honest takeaway.
 
 **The 60-second version.** One RL edge *resolves* over a weak baseline (+256 chips/match) but loses to a 0-parameter Kelly bot; exact game theory on Leduc reproduces Nash convergence; neural methods give honest nulls (and one qualified pass that only appeared after a transparently-reported bug-fix); a real-data behavioral finding holds on 777k human hands; and a pre-registered attempt to *exploit* opponent tilt resolves negative. A tempting, small-sample-supported edge that did not survive a powered test. The deliverable is the measurement discipline, not a single headline number.
 
@@ -8,6 +8,7 @@
 
 | # | Notebook | The question it answers | Honest result |
 |---|---|---|---|
+| 0 | [`00_overview.ipynb`](00_overview.ipynb) | The one-page visual tour: every headline figure in one place, with links to the chapter that reproduces each. | Start here. The whole project in one notebook. |
 | 1 | [`01_evaluation_rigor.ipynb`](01_evaluation_rigor.ipynb) | Is a high-variance agent's edge *real*? Paired/mirror seeds, bootstrap CIs, the exact binomial sign test, and variance reduction (mirror + all-in-EV control variate). | RL beats the myopic baseline (+256, 95% CI [+144, +364]), but loses to a 0-parameter Kelly bot. |
 | 2 | [`02_exploitability_leduc.ipynb`](02_exploitability_leduc.ipynb) | What does ground truth look like? Exact Leduc exploitability (NashConv), recomputed live. | The time-average converges toward Nash (0.009); the greedy last-iterate (the DQN regime) stays exploitable. |
 | 3 | [`03_realdata_tilt.ipynb`](03_realdata_tilt.ipynb) | Is "tilt" real in *human* data? 777k PHH hands, within-player, vs a shuffled placebo. | Post-loss players are looser/more aggressive (small but real; placebo ~0). Opponent-model validation only, never the policy. |

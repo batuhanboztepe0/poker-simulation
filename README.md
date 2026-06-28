@@ -75,7 +75,7 @@ This is not:
 - **[GUIDE.md](GUIDE.md)**: a five-minute, picture-first tour of every result.
 - **[THESIS.md](THESIS.md)**: the full narrative, the decision-science framing, the placement against state of the art, and the prioritized next steps.
 - **[REFERENCES.md](REFERENCES.md)**: every external claim's source, with honest verification flags. Refuted claims are kept visible on purpose, with confirmed / refuted / qualified tags.
-- **[notebooks/](notebooks/)**: five executed notebooks that reproduce the headline claims from committed data, no retraining. They read top to bottom on GitHub.
+- **[notebooks/](notebooks/)**: a one-page visual overview ([`00_overview.ipynb`](notebooks/00_overview.ipynb)) plus five executed chapters that reproduce the headline claims from committed data, no retraining. They read top to bottom on GitHub.
 - **[figures/README.md](figures/README.md)**: the complete figure index.
 
 ## Quickstart
