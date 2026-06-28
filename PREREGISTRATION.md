@@ -766,3 +766,85 @@ backfires, and discipline already exploits it. EV vs **this** opponent only; no 
 
 **Figure:** `figures/exploitation.png` (the paired delta + 95% CI, primary vs tilter and the
 non-tilter control, against a 0 line).
+
+---
+
+## 14. Exact Exploitation: the Restricted Nash Response Frontier on Leduc (v2 Phase C3)
+
+The §13 heads-up exploitation attempt resolved negative for two reasons a literature
+review (peer-reviewed, summarised in `docs/V2_RESEARCH_ROADMAP.md`) makes precise.
+First, a hand-tuned directional knob is a brittle best-response: Johanson, Zinkevich
+and Bowling (NIPS 2007) show a pure best response loses to almost every opponent
+except the one it was built for, and the §13 knob loosened, the loose-passive counter,
+against a loose-aggressive tilter, which is the wrong archetype. Second, the heads-up
+bust-match metric has a path-dependent variance so large that any incremental edge is
+swamped (a probe put the per-seed standard deviation near 800 chips). The validated fix
+is the Restricted Nash Response (RNR), and the variance problem is removed by measuring
+on Leduc, where EV is exact. Registered here and frozen before the run, in the
+two-commit git-provable-gap form of §10, §11 and §12.
+
+### 14.1 What is fixed
+
+- **Method:** Restricted Nash Response (`src.leduc_rnr.LeducRNR`). The opponent is
+  restricted to play a fixed strategy with probability `p` and a free,
+  regret-minimised strategy with probability `1 - p`; our player regret-minimises
+  against that p-restricted opponent. `p=0` is the Nash strategy; `p=1` is the exact
+  best response to the fixed opponent; intermediate `p` traces the frontier.
+- **Opponents (three suboptimal, exploitable fixed strategies):** `station` (always
+  check or call, never fold or raise), `maniac` (raise whenever legal, else call), and
+  `uniform` (uniform over legal actions).
+- **Mixing grid:** `p` in `{0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0}`.
+- **Iterations:** 5000 CFR iterations per solve (full 120-deal enumeration).
+- **Metrics, all exact (zero sampling variance):** the EV of the RNR(p) counter against
+  the opponent over all 120 deals; its gain over the Nash strategy's EV against the same
+  opponent; and the RNR(p) counter's own exploitability (NashConv, computed with the
+  verified `leduc_cfr` best-response machinery).
+- **Validation gates (per opponent), frozen:** `p=0` reproduces Nash (gain within 0.02,
+  exploitability within 0.05), `p=1` matches the independently computed exact best
+  response (within 0.01), and EV is monotone non-decreasing in `p`.
+- **Frozen script:** `scripts/measure_rnr.py`, committed in this freeze with no results.
+  The method is OFF the engine path and the baseline is byte-identical; tests in
+  `tests/test_leduc_rnr.py`.
+
+### 14.2 Frozen run
+
+```python
+# Frozen before the run. Do not change after registration.
+nash = nash_strategy(iters=5000)
+for opp in (station, maniac, uniform):
+    ev_nash = ev_player0(nash, opp)
+    for p in (0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0):
+        counter = LeducRNR(opp, p).train(5000)
+        record ev_player0(counter, opp), ev - ev_nash, counter.exploitability()
+```
+
+### 14.3 Primary outcome and pre-committed reading
+
+**Primary outcome:** the exact EV-gain-over-Nash and the exact exploitability of the
+RNR(p) counter, for every opponent and every `p` (the frontier).
+
+**Pre-committed reading.** A reliable positive is declared iff, for every one of the
+three exploitable opponents, (i) the maximum gain over Nash across the grid is strictly
+positive, and (ii) all four validation gates hold (`p=0` is Nash, `p=1` is the exact
+best response, EV monotone in `p`). The expected shape, stated before the run, is a
+monotone exploitation-vs-exploitability frontier: EV against the opponent rises from the
+Nash value at `p=0` to the best-response value at `p=1`, while the counter's own
+exploitability rises in step, which is the cost of exploiting. Reported in full
+regardless of direction (§8).
+
+**Load-bearing caveats (pre-committed).** (1) RNR exploits a KNOWN opponent strategy
+given exactly; it is not an online detector, so this isolates the exploitation
+mechanism, not the detection. (2) The exploitation-vs-exploitability tradeoff is real
+and quantified here: a high-`p` counter that gains the most EV is also the most
+exploitable, so the gain is not a free lunch and is not a Nash-safety claim. (3) RNR is
+known to overfit the opponent model at high `p` with little data; here the opponent is
+given exactly, so this experiment measures the frontier's exact shape, not the
+finite-data estimation problem. (4) The result is on Leduc; transfer to larger games is
+directional, not established.
+
+### 14.4 Execution status and outcome
+
+**Status: PENDING.** The RNR solver (`src/leduc_rnr.py`), its tests
+(`tests/test_leduc_rnr.py`), and the frozen protocol and script
+(`scripts/measure_rnr.py`) are committed here with no results. The run and its outcome
+are reported in a later commit (the git-provable gap, as §10, §11 and §12).
