@@ -94,11 +94,17 @@ def _save_plain(fig, name, title, takeaway, width=960, height=540):
     os.makedirs(FIGURES, exist_ok=True)
     wrapped = "<br>".join(textwrap.wrap(takeaway, width=92))
     n = wrapped.count("<br>") + 1
+    # Bottom stack, top to bottom: tick labels, the x-axis title pulled tight to the
+    # axis, then the plain-language caption. The caption is anchored at the plot
+    # bottom and pushed down a FIXED number of pixels (yshift), not a paper-relative
+    # fraction, so it clears the axis title regardless of how the margin resizes the
+    # plot. The bottom margin grows with the caption's line count so nothing clips.
     fig.update_layout(**{**THEME_PLAIN, "title": dict(text=title),
-                         "margin": dict(t=80, b=90 + 24 * n, l=80, r=60)})
-    fig.add_annotation(text=wrapped, xref="paper", yref="paper", x=0.5, y=-0.22,
-                       showarrow=False, align="center", xanchor="center",
-                       yanchor="top", font=dict(size=14, color="#333"))
+                         "margin": dict(t=80, b=86 + 26 * n, l=80, r=60)})
+    fig.update_xaxes(title_standoff=8)
+    fig.add_annotation(text=wrapped, xref="paper", yref="paper", x=0.5, y=0,
+                       yanchor="top", yshift=-64, showarrow=False, align="center",
+                       xanchor="center", font=dict(size=14, color="#333"))
     fig.write_image(os.path.join(FIGURES, name + ".png"),
                     width=width, height=height, scale=2)
     fig.write_html(os.path.join(FIGURES, name + ".html"), include_plotlyjs="cdn")
