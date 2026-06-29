@@ -269,13 +269,13 @@ guaranteed by construction. §15 removes the gift. The hero plays Nash, observes
 estimates the opponent (a Dirichlet-smoothed frequency table), and only then runs RNR on
 the *estimate*, scored by exact EV against the *true* opponent. Best-responding to a wrong
 estimate can lose, so a positive gain is now empirical. It is positive anyway: with the
-conservative `p=0.5` and 40 observed hands, the gain over Nash is +0.75, +1.31, +1.13, and
+conservative `p=0.5` and 40 observed hands, the gain over Nash is +0.74, +1.31, +1.13, and
 +0.78 chips against the station, maniac, uniform, and a stochastic loose-passive opponent,
 every 95% CI excluding zero ([`figures/dbr_frontier.png`](figures/dbr_frontier.png)). The
 sharper finding is the cost of estimation. A raw best response to the estimate (`p=1`)
 overfits: against the maniac, whose aggression ends hands fast and leaves its strategy
-sparsely observed, the raw response loses to Nash on average (−0.20 chips) across the
-measured range (N up to 400), while the conservative `p=0.5` wins from the first dozen. The pre-registered
+sparsely observed, the raw response loses to Nash on average across the measured range
+(−0.15 chips at N=400, near −0.19 at the smaller N), while the conservative `p=0.5` wins from the first dozen. The pre-registered
 validity gate (that plentiful data recovers the exact §14 ceiling for deterministic
 opponents) failed for exactly this reason, and the failure is the point: a restricted
 response is what keeps exploitation from turning into a loss when the opponent is known only
@@ -398,7 +398,7 @@ that claim the freeze-before-run gap **is** git-provable, and it confirmed the
   parameter. (Specific meta-analytic point estimates are deliberately not quoted
   here. They were not primary-source-verified in this project's reference sweep.)
 
-  **Pre-registered confound controls** (PREREGISTRATION.md §5.3)**.** Three
+  **Pre-registered confound controls** (PREREGISTRATION.md §5.3). Three
   confounds could explain the asymmetry without any loss-aversion mechanism, and
   the project pre-commits to reporting honestly if they absorb the effect:
   (i) *Session time-of-day:* fatigue in late-session hands could co-vary with
