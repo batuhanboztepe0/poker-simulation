@@ -888,3 +888,89 @@ directional. Within those bounds it is a clean, reliable, exactly-measured posit
 
 **Figure:** `figures/rnr_frontier.png` (EV gain over Nash vs the counter's own
 exploitability, one concave frontier per opponent, p from 0 to 1).
+
+---
+
+## 15. Detect-then-Exploit: Does Exploitation Survive Opponent Estimation? (v2 Phase C3)
+
+§14 handed the RNR solver the opponent's exact strategy, so the positive gain over Nash
+was guaranteed by construction: best-responding to a known suboptimal opponent cannot do
+worse than Nash. The §14 honest boundary (§14.4) flagged the missing piece, online
+opponent detection. This experiment closes it. The hero plays Nash, observes the opponent
+for `N` hands, estimates its strategy, and only then computes RNR against the estimate.
+Best-responding to a wrong estimate can lose to the true opponent, so a positive gain
+here is a genuine empirical result, not a theorem. Registered and frozen before the run,
+in the two-commit git-provable-gap form of §10 through §14.
+
+### 15.1 What is fixed
+
+- **Method:** detect-then-exploit (`src.leduc_dbr`). Observe `N` hands of the opponent
+  while the hero plays Nash (`observe`); estimate the opponent strategy as a
+  Dirichlet(`alpha=1`)-smoothed empirical frequency table (`sigma_hat_fn`), with unseen
+  info-sets falling back to the uniform prior; solve RNR(estimate, `p`)
+  (`src.leduc_rnr.LeducRNR`); measure the realized exact EV of the counter against the
+  TRUE opponent over all 120 deals.
+- **Opponents (four):** the three §14 opponents `station`, `maniac`, `uniform`, plus
+  `loose_passive`, a STOCHASTIC, non-uniform opponent (calls most, raises 0.25 when
+  legal, folds 0.05 to 0.15). The uniform prior is the correct estimate of `uniform`, and
+  a deterministic opponent is pinned by one visit, so `loose_passive` is the only opponent
+  whose strategy genuinely needs many samples per info-set to estimate. It is where a raw
+  best response is expected to overfit the finite-sample estimate.
+- **Mixing grid:** `p` in `{0.5, 0.75, 1.0}`. (`p=0` is Nash, gain 0 by construction, the
+  y-axis baseline.)
+- **Observation counts:** `N` in `{12, 40, 120, 400}`; **6 observation seeds** averaged
+  per `(opponent, N, p)`.
+- **Iterations:** 800 CFR iterations per RNR solve (a pre-freeze probe showed the realized
+  gain flat to within 0.02 from 400 to 3000 iterations); 2000 for the exact-ceiling solve.
+- **Metrics (EV exact, only the observation sample is random):** the realized EV of the
+  counter against the true opponent; its gain over the Nash strategy's EV against the same
+  opponent; the counter's own exploitability; and the distinct opponent info-sets observed.
+  Per `(opponent, N, p)`: across-seed mean, population std, 95% normal CI lower bound, min
+  and max.
+- **Gates, frozen:**
+  - **G1 (validity):** at the largest `N` (400), for the deterministic opponents (`station`,
+    `maniac`), the mean gain matches the exact ceiling (RNR handed the true opponent) within
+    0.10 chips, for every `p`. The full pipeline must recover the §14 exact result when the
+    opponent is easy to estimate; this also cross-checks §14.
+  - **G2 (reliable positive):** at the moderate `N` (40) with the conservative `p=0.5`, the
+    95% CI lower bound of the mean gain is `> 0` for every opponent.
+  - **G3 (secondary, data-biased tradeoff):** on the stochastic opponent `loose_passive` at
+    the smallest `N` (12), the conservative `p=0.5` has a higher mean realized gain than the
+    raw best response `p=1.0`.
+- **Frozen script:** `scripts/measure_dbr.py`, committed in this freeze with no results. The
+  method is OFF the engine path and the baseline is byte-identical; tests in
+  `tests/test_leduc_dbr.py`.
+
+### 15.2 Frozen run
+
+```python
+# Frozen before the run. Do not change after registration.
+nash = nash_strategy(iters=4000)
+for opp in (station, maniac, uniform, loose_passive):
+    ev_nash    = ev_player0(nash, opp)
+    ceiling[p] = ev_player0(LeducRNR(opp, p).train(2000), opp) - ev_nash   # exact, handed truth
+    for N in (12, 40, 120, 400):
+        for p in (0.5, 0.75, 1.0):
+            for seed in range(6):
+                counts  = observe(opp, N, seed, reference=nash)   # hero plays Nash, watches
+                hat     = sigma_hat_fn(counts, alpha=1)           # Dirichlet estimate
+                counter = LeducRNR(hat, p).train(800)             # RNR on the ESTIMATE
+                gain    = ev_player0(counter, opp) - ev_nash      # exact EV vs the TRUE opp
+```
+
+### 15.3 Primary outcome and pre-committed reading
+
+The result is a **reliable positive iff G1 and G2 both hold**: the pipeline recovers the
+exact §14 frontier when the opponent is easy to estimate (G1), and detect-then-exploit with
+a conservative `p` beats Nash for a gain whose 95% CI excludes zero at moderate observation
+counts, for every opponent (G2). G3 is the secondary data-biased-response observation,
+reported either way: against a genuinely hard-to-estimate stochastic opponent, a restricted
+response beats a raw best response to the noisy estimate at low data. A failure of G2,
+meaning estimation error swamps the edge at this `N`, is an acceptable, reportable null.
+This is the meaningful upgrade over §14: the positive is no longer guaranteed by
+construction, because the counter best-responds to an estimate, not to the truth.
+
+### 15.4 Execution status and outcome
+
+**Status: FROZEN, PENDING.** This subsection is filled after the run, with the per-opponent
+gain grid, the G1/G2/G3 verdicts, and `results/dbr_frontier.json`.
