@@ -212,7 +212,7 @@ neural method helps where tabular CFR cannot *converge*, a parameterised R-rank 
 tabular CFR convergence is genuinely infeasible). A pre-registered (§12),
 matched-wall-clock head-to-head scored both by exact NashConv: **truncated tabular
 CFR (30 iterations, 198 s) reaches 0.253, while neural NFSP (200k episodes, 3 seeds,
-~470 s) plateaus at 1.00**. **Tabular wins decisively, with less than half the
+~470 s) plateaus at 1.00**. **Tabular wins, at less than half the
 wall-clock** ([`figures/scale.png`](figures/scale.png)). The honest conclusion:
 neural NFSP has no measurable advantage over tabular CFR at any scale this work can
 exactly evaluate; CFR converges so fast per iteration that a handful of iterations
@@ -236,7 +236,7 @@ play the fixed tilting opponent on a 300-seed paired, mirror + all-in-EV block. 
 pre-committed verdict fell the *unexpected* way, a **resolved negative**: the knob
 **loses −169 chips/match** (95% CI [−271, −66], sign-test p≈0.04;
 [`figures/exploitation.png`](figures/exploitation.png)). The reason is game-theoretic:
-the disciplined baseline already crushes the loose-aggressive tilter (+533) by
+the disciplined baseline already beats the loose-aggressive tilter (+533) by
 value-betting and folding marginal spots, so *loosening* against an aggressive opponent
 walks into its aggression and pays off its value (the right counter to a maniac is to
 tighten and trap). An exploratory n=6 smoke check had shown +152; the powered,

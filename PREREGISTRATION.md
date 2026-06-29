@@ -523,7 +523,7 @@ and the qualified reading.
 **Scope.** This affects only §11 (3-rank Leduc, multi-checkpoint curve). **§12 (R=20)
 is unaffected**: there `BigLeducNeuralNFSP.train()` is called *once* (its epsilon
 schedule was already monotone) and LBR used full enumeration, and truncated tabular
-CFR still **decisively** beats neural NFSP (0.253 vs 1.004). The v2 tally is therefore
+CFR still beats neural NFSP (0.253 vs 1.004). The v2 tally is therefore
 **two honest nulls + one qualified sample-efficiency pass** (this §11), not three
 nulls.
 
@@ -599,7 +599,7 @@ strongly).** Exact exploitability at the pre-committed counts (lower is better):
 | **tabular CFR (30 iters)** | **198 s** | **0.253** |
 | neural NFSP (200k ep, 3 seeds) | ~472 s/seed | 1.004 [0.985, 1.018] |
 
-**Tabular CFR decisively beats neural NFSP, with less than half the wall-clock**
+**Tabular CFR beats neural NFSP, at less than half the wall-clock**
 (198 s vs ~472 s). Thirty truncated CFR iterations reach 0.253; neural NFSP plateaus
 at ~1.0 (tight across seeds), worse than truncated CFR. The pre-registered question
 is answered **NO**: neural NFSP does not help at R=20.
@@ -610,7 +610,7 @@ the §12.1 pre-run estimate of ~6.6 s (which, in hindsight, was the R=16 cost-cu
 figure, not R=20); the convergence estimate therefore rises from ~18 h to **~35 h**,
 still infeasible. (ii) The "~3–4 min each" wall-clock match did **not** hold in
 execution: tabular CFR ran 198 s but neural NFSP ran **~472 s/seed (~2.4×** the
-estimate). The match failing only **strengthens** the null: tabular won decisively
+estimate). The match failing only **strengthens** the null: tabular won
 while given *less than half* the compute neural received.
 
 **What this establishes.** Neural NFSP has **no measurable advantage** over tabular
