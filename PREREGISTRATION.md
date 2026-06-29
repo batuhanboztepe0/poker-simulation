@@ -972,5 +972,61 @@ construction, because the counter best-responds to an estimate, not to the truth
 
 ### 15.4 Execution status and outcome
 
-**Status: FROZEN, PENDING.** This subsection is filled after the run, with the per-opponent
-gain grid, the G1/G2/G3 verdicts, and `results/dbr_frontier.json`.
+**Status: EXECUTED.** The frozen §15.2 protocol ran once (`results/dbr_frontier.json`, 65
+minutes, 304 RNR solves). **G2 holds, G3 holds, G1 fails.** The pre-committed conjunction
+verdict (a clean reliable positive needs G1 AND G2) therefore does not hold. We report all
+three, because the G1 failure is itself informative.
+
+**G2, the reliable positive: confirmed.** At N=40 observed hands with the conservative
+`p=0.5`, the mean exact EV gain over Nash and its 95% CI lower bound are positive for every
+opponent: `station` +0.745 (CI lo +0.716), `maniac` +1.314 (CI lo +1.168), `uniform` +1.127
+(CI lo +1.074), `loose_passive` +0.776 (CI lo +0.735). Each CI excludes zero. (The CI uses a
+normal approximation with the across-seed std on six seeds; a more conservative t-interval
+with the sample std still excludes zero for every opponent, the smallest lower bound being
+`station` +0.70.) This is the meaningful upgrade over §14: the opponent is estimated from
+data, not handed to the solver, so a positive gain is no longer guaranteed by construction
+(best-responding to a wrong estimate can lose), and it is positive anyway for a conservative
+`p`. Detect-then-exploit beats Nash at N=40 observed hands.
+
+**G1, the validity check: fails, for an informative reason.** The deterministic `station`
+recovers its exact ceiling at the largest N for every `p` (at `p=1.0`, +0.967 = the ceiling
+exactly; the pipeline is correct). The deterministic `maniac` does NOT: at N=400 its raw
+best response (`p=1.0`) returns a mean **−0.150, a LOSS to Nash on average** (the loss holds
+in 5 of the 6 seeds, with high across-seed variance), against a ceiling of +2.172. A
+follow-up check outside the frozen grid (exploratory, not part of the registered run)
+confirms the cause is observability, not a bug. The always-raise maniac ends hands fast, so
+it visits its ~82 info-sets sparsely (N=400 reaches 54 of them, N=2000 reaches 67, all 82
+need about 20,000 hands), and the Dirichlet smoothing keeps even an observed deterministic
+action soft until it is seen many times. The raw best response to that soft, incomplete
+estimate exploits a passivity the true always-raise maniac does not have, and is punished: it
+is still a loss at N=2000 (−0.19) and turns positive only near N=20,000 (+0.77), never
+reaching the +2.17 ceiling at any tested N. My G1
+premise (deterministic opponents are easy to estimate, so large N recovers the ceiling) was
+too strong, and the maniac disproves it. The pre-registration did its job. (At `p<1` the
+"ceiling" is a reference, not a strict upper bound: for `station` the realized gain slightly
+exceeds it, because RNR on the estimate is a different counter from RNR on the truth.)
+
+**G3, the data-biased-response tradeoff: confirmed.** On the stochastic
+`loose_passive` at the smallest N (12), the conservative `p=0.5` gains +0.768 against the raw
+best response's +0.568: the restricted response wins on the mean and on the variance (std
+0.036 vs 0.051). The `maniac` makes the same point in its strongest form: at N=12 the
+conservative `p=0.5` gains +1.325 while the raw `p=1.0` returns −0.195, a loss. For two of
+four opponents, raw-best-responding to the estimate does worse than a conservative response,
+and for the maniac it crosses from a large win to a loss. A restricted response (`p<1`) is
+not a luxury here. It is what keeps exploitation from turning into a loss.
+
+**Honest verdict.** The substantive positive (G2) holds on its own: conservative-`p`
+detect-then-exploit beats Nash for every opponent, each CI excluding zero, with the opponent
+estimated rather than given. By the pre-committed G1-and-G2 conjunction this is not a clean
+"reliable positive," because G1 fails for the maniac. That failure is not a defect in the
+positive. It confirms the prediction of the data-biased-response literature (Johanson and
+Bowling): a raw best response to a finite-sample opponent estimate can lose to Nash, and the
+value of the restricted response is that it does not. This is the meaningful exploitation result
+the §13 heads-up null could not deliver and the §14 exact frontier could not claim (it was
+handed the opponent). Scope is unchanged from §14: exact on 3-rank Leduc, against opponent
+classes we chose, with a frequency-table estimator (not the §13 two-state HMM, which lives
+in the heads-up sim); transfer to larger games is directional.
+
+**Figure:** `figures/dbr_frontier.png` (exact EV gain over Nash vs hands observed; the four
+conservative-`p=0.5` curves all beat Nash; the dotted maniac `p=1.0` raw best response loses
+to Nash across the measured range, N up to 400).

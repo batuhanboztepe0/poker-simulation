@@ -908,6 +908,65 @@ def fig_rnr(index):
                   _save(fig, "rnr_frontier", cap, height=460)))
 
 
+def fig_dbr(index):
+    """Phase C3 (§15): detect-then-exploit. The hero plays Nash, observes N hands,
+    estimates the opponent, then RNR(estimate, p), measured exactly vs the true opponent.
+    The conservative p=0.5 beats Nash for every opponent (the reliable positive); a raw
+    best response (p=1.0) to the noisy estimate can LOSE to Nash, shown for the maniac."""
+    d = _load_json("dbr_frontier.json")
+    if not d:
+        return
+    ngrid = d["protocol"]["n_grid"]
+    ocolors = {"station": "#1f77b4", "maniac": "#d62728",
+               "uniform": "#2ca02c", "loose_passive": "#9467bd"}
+    fig = go.Figure()
+    # The reliable positive: conservative p=0.5 beats Nash for every opponent.
+    for name in ["station", "maniac", "uniform", "loose_passive"]:
+        g = d["opponents"][name]["grid"]
+        fig.add_trace(go.Scatter(
+            x=ngrid, y=[g[f"N{N}_p0.5"]["mean_gain"] for N in ngrid],
+            mode="lines+markers", name=f"{name}, p=0.5",
+            line=dict(color=ocolors[name], width=2), marker=dict(size=6)))
+    # The cautionary tale: a raw best response to the maniac estimate loses to Nash.
+    gm = d["opponents"]["maniac"]["grid"]
+    fig.add_trace(go.Scatter(
+        x=ngrid, y=[gm[f"N{N}_p1.0"]["mean_gain"] for N in ngrid],
+        mode="lines+markers", name="maniac, p=1 (raw best response)",
+        line=dict(color=ocolors["maniac"], width=2, dash="dot"),
+        marker=dict(size=8, symbol="x")))
+    fig.add_hline(y=0, line_dash="dash", line_color="#444",
+                  annotation_text="Nash (no exploitation)", annotation_font_size=10,
+                  annotation_position="bottom right")
+    fig.update_layout(
+        xaxis_title="opponent hands observed (N, log scale)",
+        yaxis_title="exact EV gain over Nash vs the true opponent (chips)",
+        xaxis_type="log", margin=dict(t=64),
+        legend=dict(orientation="h", x=0.5, xanchor="center", y=1.02,
+                    yanchor="bottom", bgcolor="rgba(255,255,255,0.65)"))
+    fig.add_annotation(text="solid = conservative p=0.5 (every opponent beats Nash)",
+                       xref="paper", yref="paper", x=0.5, y=0.42, showarrow=False,
+                       font=dict(size=11, color="#666"))
+    mN = d["protocol"]["moderate_N"]
+    g2 = ", ".join(
+        f"{n} +{d['opponents'][n]['grid'][f'N{mN}_p0.5']['mean_gain']:.2f}"
+        for n in d["opponents"])
+    cap = (f"Phase C3 detect-then-exploit (PREREGISTRATION.md §15). Unlike §14, the "
+           f"opponent is not handed to the solver: the hero plays Nash, observes N hands, "
+           f"estimates the opponent (Dirichlet-smoothed frequencies), then runs RNR on the "
+           f"estimate, measured exactly against the true opponent. Best-responding to a "
+           f"wrong estimate can lose, so a positive gain is empirical, not guaranteed. The "
+           f"reliable positive holds for every opponent (solid lines): at N={mN} observed "
+           f"hands with the conservative p=0.5, the mean gain over Nash is {g2} chips, each "
+           f"95% CI excluding zero. The cautionary tale (dotted) is the maniac under a raw "
+           f"best response (p=1.0): it loses to Nash on average across the measured range (N up to 400), "
+           f"because the always-raise maniac visits its many info-sets too sparsely to estimate, and "
+           f"best-responding to the soft estimate exploits a passivity that is not there. "
+           f"This is the data-biased-response lesson exactly: a restricted response (p<1) "
+           f"is not a luxury, it is what keeps exploitation from turning into a loss.")
+    index.append(("dbr_frontier.png", "phaseC",
+                  _save(fig, "dbr_frontier", cap, height=480)))
+
+
 def fig_plain_rl_edge(index):
     conf = _load_json("confirmatory.json")
     if conf and conf.get("confirmatory_primary", {}).get("ci95"):
@@ -1014,7 +1073,7 @@ def fig_plain_tilt(index):
 BUILDERS = [fig_exec_summary, fig_variance_reduction, fig_exploitability,
             fig_headline, fig_pool, fig_icm, fig_block_b, fig_tilt_realdata,
             fig_tilt_lossvswin, fig_rollout_fe, fig_seed_sweep, fig_neural_nfsp,
-            fig_scale, fig_exploitation, fig_rnr,
+            fig_scale, fig_exploitation, fig_rnr, fig_dbr,
             fig_plain_rl_edge, fig_plain_nash, fig_plain_tilt]
 
 DATA_DEPS = {
@@ -1033,6 +1092,7 @@ DATA_DEPS = {
     "fig_scale": "results/scale_experiment.json",
     "fig_exploitation": "results/exploitation.json",
     "fig_rnr": "results/rnr_frontier.json",
+    "fig_dbr": "results/dbr_frontier.json",
     "fig_plain_rl_edge": "results/headline_history.json",
     "fig_plain_nash": "results/exploitability.json",
     "fig_plain_tilt": "results/tilt_realdata.json",

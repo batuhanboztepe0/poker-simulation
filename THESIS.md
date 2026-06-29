@@ -263,6 +263,26 @@ exploitation mechanism, not online detection; the gain is not Nash-safe; and it
 reproduces validated RNR theory exactly on this game, the same way §4 reproduced the
 Nash-convergence result, rather than introducing a new algorithm.
 
+**Detect-then-exploit (Phase C3, §15): exploitation that survives estimation.** §14's
+boundary was that the opponent was handed to the solver exactly, so the positive was
+guaranteed by construction. §15 removes the gift. The hero plays Nash, observes `N` hands,
+estimates the opponent (a Dirichlet-smoothed frequency table), and only then runs RNR on
+the *estimate*, scored by exact EV against the *true* opponent. Best-responding to a wrong
+estimate can lose, so a positive gain is now empirical. It is positive anyway: with the
+conservative `p=0.5` and 40 observed hands, the gain over Nash is +0.75, +1.31, +1.13, and
++0.78 chips against the station, maniac, uniform, and a stochastic loose-passive opponent,
+every 95% CI excluding zero ([`figures/dbr_frontier.png`](figures/dbr_frontier.png)). The
+sharper finding is the cost of estimation. A raw best response to the estimate (`p=1`)
+overfits: against the maniac, whose aggression ends hands fast and leaves its strategy
+sparsely observed, the raw response loses to Nash on average (−0.20 chips) across the
+measured range (N up to 400), while the conservative `p=0.5` wins from the first dozen. The pre-registered
+validity gate (that plentiful data recovers the exact §14 ceiling for deterministic
+opponents) failed for exactly this reason, and the failure is the point: a restricted
+response is what keeps exploitation from turning into a loss when the opponent is known only
+through data. This is the data-biased-response lesson of Johanson and Bowling, confirmed here
+on 3-rank Leduc, against chosen opponent classes, with a frequency estimator rather than the
+§13 HMM.
+
 ## 5. Honest-negative as a feature, not a bug
 
 The deliverable is **method + intellectual honesty**: reproducible, paired,
